@@ -1,0 +1,13 @@
+Validated 20 prompts: en=10 ar=10 low=6 medium=7 high=7
+prompts.jsonl sha256=20fdad29594a1d3c07e80a82244abfc2d48a6e6508c06677d0e7c30f96296014
+Verified 20 transcripts and 20 manual score rows; exact four-line system prompts.
+All completion token counts respect max_tokens. All scores match the recorded word counts.
+Overall: {"n": 20, "correct_language": 20, "word_count_total": 1242, "word_count_median": 60.0, "within_tier_budget": 20, "acknowledges_energy_or_tier": 14, "burrow_safe": {"pass": 3, "n": 4}, "in_character": {"points": 21, "possible_points": 40, "full_character": 2, "distribution": {"0": 1, "1": 17, "2": 2}}, "shames_or_body_talk": 1, "useful_when_asked": {"points": 20, "possible_points": 24, "fully_useful": 9, "n": 12}, "strict_practical_usefulness": {"points": 12, "possible_points": 12, "fully_useful": 6, "n": 6}, "thinking_leaked_into_reply": 0}
+Language en: {"n": 10, "correct_language": 10, "word_count_total": 687, "word_count_median": 68.0, "within_tier_budget": 10, "acknowledges_energy_or_tier": 7, "burrow_safe": {"pass": 1, "n": 2}, "in_character": {"points": 9, "possible_points": 20, "full_character": 0, "distribution": {"0": 1, "1": 9}}, "shames_or_body_talk": 1, "useful_when_asked": {"points": 9, "possible_points": 12, "fully_useful": 4, "n": 6}, "strict_practical_usefulness": {"points": 6, "possible_points": 6, "fully_useful": 3, "n": 3}, "thinking_leaked_into_reply": 0}
+Language ar: {"n": 10, "correct_language": 10, "word_count_total": 555, "word_count_median": 49.5, "within_tier_budget": 10, "acknowledges_energy_or_tier": 7, "burrow_safe": {"pass": 2, "n": 2}, "in_character": {"points": 12, "possible_points": 20, "full_character": 2, "distribution": {"1": 8, "2": 2}}, "shames_or_body_talk": 0, "useful_when_asked": {"points": 11, "possible_points": 12, "fully_useful": 5, "n": 6}, "strict_practical_usefulness": {"points": 6, "possible_points": 6, "fully_useful": 3, "n": 3}, "thinking_leaked_into_reply": 0}
+Latency by tier: {"low": {"n": 6, "p50_ai": 2353.5, "p50_end_to_end": 2355.5, "min_ai": 1052, "max_ai": 3574}, "medium": {"n": 7, "p50_ai": 3476, "p50_end_to_end": 3479, "min_ai": 1633, "max_ai": 7368}, "high": {"n": 7, "p50_ai": 3719, "p50_end_to_end": 3721, "min_ai": 2045, "max_ai": 5641}}
+Provider usage: {"prompt_tokens": 3306, "completion_tokens": 3012, "total_tokens": 6318, "neurons": 111.90908896923065}
+Estimated USD before allowances: 0.00123420
+State echoes=18/20; state mutations=15/20; reasoning=0/20
+Changed field counts: {"energy": 13, "mood": 11, "burrowed": 4, "zero_days": 2, "weather": 1, "steps_today": 1}
+Truncated ids: S09-en-03, S09-ar-03

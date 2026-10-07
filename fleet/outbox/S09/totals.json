@@ -1,0 +1,482 @@
+{
+  "model": "@cf/google/gemma-4-26b-a4b-it",
+  "prompt_sha256": "20fdad29594a1d3c07e80a82244abfc2d48a6e6508c06677d0e7c30f96296014",
+  "scoring_method": "manual agent review; not a model judge or Ahmed's blind review",
+  "overall": {
+    "n": 20,
+    "correct_language": 20,
+    "word_count_total": 1242,
+    "word_count_median": 60.0,
+    "within_tier_budget": 20,
+    "acknowledges_energy_or_tier": 14,
+    "burrow_safe": {
+      "pass": 3,
+      "n": 4
+    },
+    "in_character": {
+      "points": 21,
+      "possible_points": 40,
+      "full_character": 2,
+      "distribution": {
+        "0": 1,
+        "1": 17,
+        "2": 2
+      }
+    },
+    "shames_or_body_talk": 1,
+    "useful_when_asked": {
+      "points": 20,
+      "possible_points": 24,
+      "fully_useful": 9,
+      "n": 12
+    },
+    "strict_practical_usefulness": {
+      "points": 12,
+      "possible_points": 12,
+      "fully_useful": 6,
+      "n": 6
+    },
+    "thinking_leaked_into_reply": 0
+  },
+  "by_language": {
+    "en": {
+      "n": 10,
+      "correct_language": 10,
+      "word_count_total": 687,
+      "word_count_median": 68.0,
+      "within_tier_budget": 10,
+      "acknowledges_energy_or_tier": 7,
+      "burrow_safe": {
+        "pass": 1,
+        "n": 2
+      },
+      "in_character": {
+        "points": 9,
+        "possible_points": 20,
+        "full_character": 0,
+        "distribution": {
+          "0": 1,
+          "1": 9
+        }
+      },
+      "shames_or_body_talk": 1,
+      "useful_when_asked": {
+        "points": 9,
+        "possible_points": 12,
+        "fully_useful": 4,
+        "n": 6
+      },
+      "strict_practical_usefulness": {
+        "points": 6,
+        "possible_points": 6,
+        "fully_useful": 3,
+        "n": 3
+      },
+      "thinking_leaked_into_reply": 0
+    },
+    "ar": {
+      "n": 10,
+      "correct_language": 10,
+      "word_count_total": 555,
+      "word_count_median": 49.5,
+      "within_tier_budget": 10,
+      "acknowledges_energy_or_tier": 7,
+      "burrow_safe": {
+        "pass": 2,
+        "n": 2
+      },
+      "in_character": {
+        "points": 12,
+        "possible_points": 20,
+        "full_character": 2,
+        "distribution": {
+          "1": 8,
+          "2": 2
+        }
+      },
+      "shames_or_body_talk": 0,
+      "useful_when_asked": {
+        "points": 11,
+        "possible_points": 12,
+        "fully_useful": 5,
+        "n": 6
+      },
+      "strict_practical_usefulness": {
+        "points": 6,
+        "possible_points": 6,
+        "fully_useful": 3,
+        "n": 3
+      },
+      "thinking_leaked_into_reply": 0
+    }
+  },
+  "by_tier": {
+    "low": {
+      "n": 6,
+      "correct_language": 6,
+      "word_count_total": 170,
+      "word_count_median": 31.0,
+      "within_tier_budget": 6,
+      "acknowledges_energy_or_tier": 5,
+      "burrow_safe": {
+        "pass": 0,
+        "n": 0
+      },
+      "in_character": {
+        "points": 7,
+        "possible_points": 12,
+        "full_character": 1,
+        "distribution": {
+          "1": 5,
+          "2": 1
+        }
+      },
+      "shames_or_body_talk": 0,
+      "useful_when_asked": {
+        "points": 6,
+        "possible_points": 8,
+        "fully_useful": 2,
+        "n": 4
+      },
+      "strict_practical_usefulness": {
+        "points": 4,
+        "possible_points": 4,
+        "fully_useful": 2,
+        "n": 2
+      },
+      "thinking_leaked_into_reply": 0
+    },
+    "medium": {
+      "n": 7,
+      "correct_language": 7,
+      "word_count_total": 510,
+      "word_count_median": 67,
+      "within_tier_budget": 7,
+      "acknowledges_energy_or_tier": 6,
+      "burrow_safe": {
+        "pass": 2,
+        "n": 2
+      },
+      "in_character": {
+        "points": 8,
+        "possible_points": 14,
+        "full_character": 1,
+        "distribution": {
+          "1": 6,
+          "2": 1
+        }
+      },
+      "shames_or_body_talk": 0,
+      "useful_when_asked": {
+        "points": 8,
+        "possible_points": 8,
+        "fully_useful": 4,
+        "n": 4
+      },
+      "strict_practical_usefulness": {
+        "points": 4,
+        "possible_points": 4,
+        "fully_useful": 2,
+        "n": 2
+      },
+      "thinking_leaked_into_reply": 0
+    },
+    "high": {
+      "n": 7,
+      "correct_language": 7,
+      "word_count_total": 562,
+      "word_count_median": 74,
+      "within_tier_budget": 7,
+      "acknowledges_energy_or_tier": 3,
+      "burrow_safe": {
+        "pass": 1,
+        "n": 2
+      },
+      "in_character": {
+        "points": 6,
+        "possible_points": 14,
+        "full_character": 0,
+        "distribution": {
+          "0": 1,
+          "1": 6
+        }
+      },
+      "shames_or_body_talk": 1,
+      "useful_when_asked": {
+        "points": 6,
+        "possible_points": 8,
+        "fully_useful": 3,
+        "n": 4
+      },
+      "strict_practical_usefulness": {
+        "points": 4,
+        "possible_points": 4,
+        "fully_useful": 2,
+        "n": 2
+      },
+      "thinking_leaked_into_reply": 0
+    }
+  },
+  "latency_ms_by_tier": {
+    "low": {
+      "n": 6,
+      "p50_ai": 2353.5,
+      "p50_end_to_end": 2355.5,
+      "min_ai": 1052,
+      "max_ai": 3574
+    },
+    "medium": {
+      "n": 7,
+      "p50_ai": 3476,
+      "p50_end_to_end": 3479,
+      "min_ai": 1633,
+      "max_ai": 7368
+    },
+    "high": {
+      "n": 7,
+      "p50_ai": 3719,
+      "p50_end_to_end": 3721,
+      "min_ai": 2045,
+      "max_ai": 5641
+    }
+  },
+  "provider_usage": {
+    "prompt_tokens": 3306,
+    "completion_tokens": 3012,
+    "total_tokens": 6318,
+    "neurons": 111.90908896923065
+  },
+  "cached_prompt_tokens": 64,
+  "reasoning_present": 0,
+  "finish_reason_counts": {
+    "stop": 18,
+    "length": 2
+  },
+  "truncated_ids": [
+    "S09-en-03",
+    "S09-ar-03"
+  ],
+  "state_echo": {
+    "n": 18,
+    "ids": [
+      "S09-en-01",
+      "S09-en-02",
+      "S09-en-03",
+      "S09-en-04",
+      "S09-en-05",
+      "S09-en-06",
+      "S09-en-07",
+      "S09-en-08",
+      "S09-en-09",
+      "S09-en-10",
+      "S09-ar-02",
+      "S09-ar-03",
+      "S09-ar-04",
+      "S09-ar-05",
+      "S09-ar-06",
+      "S09-ar-07",
+      "S09-ar-09",
+      "S09-ar-10"
+    ]
+  },
+  "state_mutation": {
+    "n": 15,
+    "ids": [
+      "S09-en-01",
+      "S09-en-02",
+      "S09-en-03",
+      "S09-en-05",
+      "S09-en-06",
+      "S09-en-07",
+      "S09-en-08",
+      "S09-en-09",
+      "S09-en-10",
+      "S09-ar-02",
+      "S09-ar-04",
+      "S09-ar-05",
+      "S09-ar-06",
+      "S09-ar-07",
+      "S09-ar-10"
+    ],
+    "field_counts": {
+      "energy": 13,
+      "mood": 11,
+      "burrowed": 4,
+      "zero_days": 2,
+      "weather": 1,
+      "steps_today": 1
+    },
+    "changes": {
+      "S09-en-01": {
+        "energy": {
+          "input": "18%",
+          "output": "16%"
+        },
+        "mood": {
+          "input": "content",
+          "output": "sleepy"
+        },
+        "burrowed": {
+          "input": "no",
+          "output": "yes"
+        }
+      },
+      "S09-en-02": {
+        "zero_days": {
+          "input": "1",
+          "output": "0"
+        }
+      },
+      "S09-en-03": {
+        "energy": {
+          "input": "3%",
+          "output": "2%"
+        }
+      },
+      "S09-en-05": {
+        "energy": {
+          "input": "45%",
+          "output": "43%"
+        },
+        "mood": {
+          "input": "burrowed",
+          "output": "sleepy"
+        }
+      },
+      "S09-en-06": {
+        "energy": {
+          "input": "30%",
+          "output": "28%"
+        },
+        "mood": {
+          "input": "tired",
+          "output": "sleepy"
+        },
+        "burrowed": {
+          "input": "no",
+          "output": "yes"
+        },
+        "weather": {
+          "input": "\"29C clear night, Muscat\"",
+          "output": "\"28C clear night, Muscat\""
+        }
+      },
+      "S09-en-07": {
+        "energy": {
+          "input": "68%",
+          "output": "65%"
+        },
+        "mood": {
+          "input": "affectionate",
+          "output": "empathetic"
+        }
+      },
+      "S09-en-08": {
+        "energy": {
+          "input": "80%",
+          "output": "78%"
+        },
+        "mood": {
+          "input": "content",
+          "output": "curious"
+        },
+        "steps_today": {
+          "input": "4200",
+          "output": "4350"
+        }
+      },
+      "S09-en-09": {
+        "energy": {
+          "input": "65%",
+          "output": "64%"
+        },
+        "mood": {
+          "input": "affectionate",
+          "output": "helpful"
+        }
+      },
+      "S09-en-10": {
+        "energy": {
+          "input": "75%",
+          "output": "74%"
+        },
+        "mood": {
+          "input": "burrowed",
+          "output": "weak"
+        }
+      },
+      "S09-ar-02": {
+        "zero_days": {
+          "input": "1",
+          "output": "0"
+        }
+      },
+      "S09-ar-04": {
+        "energy": {
+          "input": "42%",
+          "output": "38%"
+        },
+        "mood": {
+          "input": "content",
+          "output": "calm"
+        },
+        "burrowed": {
+          "input": "no",
+          "output": "yes"
+        }
+      },
+      "S09-ar-05": {
+        "energy": {
+          "input": "45%",
+          "output": "44%"
+        },
+        "mood": {
+          "input": "burrowed",
+          "output": "sleepy"
+        }
+      },
+      "S09-ar-06": {
+        "energy": {
+          "input": "30%",
+          "output": "28%"
+        },
+        "mood": {
+          "input": "tired",
+          "output": "sleepy"
+        },
+        "burrowed": {
+          "input": "no",
+          "output": "yes"
+        }
+      },
+      "S09-ar-07": {
+        "energy": {
+          "input": "68%",
+          "output": "65%"
+        },
+        "mood": {
+          "input": "affectionate",
+          "output": "empathetic"
+        }
+      },
+      "S09-ar-10": {
+        "energy": {
+          "input": "75%",
+          "output": "72%"
+        }
+      }
+    }
+  },
+  "content_outside_nudges": {
+    "pass": 2,
+    "n": 6,
+    "ids": [
+      "S09-en-04",
+      "S09-ar-04"
+    ],
+    "unprompted_nudges": 0,
+    "unprompted_opportunities": 4
+  },
+  "arabic_naturalness": "Not scored by Ahmed. Blind human review is still required.",
+  "estimated_usd_before_allowances": 0.0012342
+}

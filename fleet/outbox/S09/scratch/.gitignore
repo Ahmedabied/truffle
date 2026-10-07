@@ -1,0 +1,4 @@
+.wrangler/
+node_modules/
+dev.log
+wrangler.pid

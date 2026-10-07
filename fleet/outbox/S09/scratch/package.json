@@ -1,0 +1,7 @@
+{
+  "name": "truffle-s09-baseline-scratch",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Local-only Workers AI baseline. No deploy script or dependencies."
+}

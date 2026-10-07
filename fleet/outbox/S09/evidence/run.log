@@ -1,0 +1,22 @@
+Validated 20 prompts: en=10 ar=10 low=6 medium=7 high=7
+prompts.jsonl sha256=20fdad29594a1d3c07e80a82244abfc2d48a6e6508c06677d0e7c30f96296014
+SKIP S09-en-01: existing transcript is frozen
+S09-en-02 tier=low ai_ms=3574 e2e_ms=3590 finish=stop reasoning=False usage={"prompt_tokens": 146, "completion_tokens": 90, "total_tokens": 236, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 3.781818151473999}
+S09-en-03 tier=low ai_ms=2307 e2e_ms=2309 finish=length reasoning=False usage={"prompt_tokens": 165, "completion_tokens": 120, "total_tokens": 285, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 4.772727012634277}
+S09-en-04 tier=medium ai_ms=3476 e2e_ms=3479 finish=stop reasoning=False usage={"prompt_tokens": 164, "completion_tokens": 171, "total_tokens": 335, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.154545307159424}
+S09-en-05 tier=medium ai_ms=5651 e2e_ms=5654 finish=stop reasoning=False usage={"prompt_tokens": 172, "completion_tokens": 160, "total_tokens": 332, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 5.927272796630859}
+S09-en-06 tier=medium ai_ms=2669 e2e_ms=2672 finish=stop reasoning=False usage={"prompt_tokens": 157, "completion_tokens": 127, "total_tokens": 284, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 4.890909194946289}
+S09-en-07 tier=high ai_ms=2045 e2e_ms=2047 finish=stop reasoning=False usage={"prompt_tokens": 165, "completion_tokens": 186, "total_tokens": 351, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.572727203369141}
+S09-en-08 tier=high ai_ms=3719 e2e_ms=3721 finish=stop reasoning=False usage={"prompt_tokens": 152, "completion_tokens": 177, "total_tokens": 329, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.2090911865234375}
+S09-en-09 tier=high ai_ms=3756 e2e_ms=3759 finish=stop reasoning=False usage={"prompt_tokens": 171, "completion_tokens": 180, "total_tokens": 351, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.46363639831543}
+S09-en-10 tier=high ai_ms=3387 e2e_ms=3389 finish=stop reasoning=False usage={"prompt_tokens": 181, "completion_tokens": 178, "total_tokens": 359, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.5}
+S09-ar-01 tier=low ai_ms=1052 e2e_ms=1055 finish=stop reasoning=False usage={"prompt_tokens": 147, "completion_tokens": 24, "total_tokens": 171, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 1.9909089803695679}
+S09-ar-02 tier=low ai_ms=1883 e2e_ms=1885 finish=stop reasoning=False usage={"prompt_tokens": 154, "completion_tokens": 85, "total_tokens": 239, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 3.718181610107422}
+S09-ar-03 tier=low ai_ms=2400 e2e_ms=2402 finish=length reasoning=False usage={"prompt_tokens": 175, "completion_tokens": 120, "total_tokens": 295, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 4.863636016845703}
+S09-ar-04 tier=medium ai_ms=7368 e2e_ms=7370 finish=stop reasoning=False usage={"prompt_tokens": 177, "completion_tokens": 383, "total_tokens": 560, "prompt_tokens_details": {"cached_tokens": 64}, "neurons": 11.763635635375977}
+S09-ar-05 tier=medium ai_ms=6643 e2e_ms=6645 finish=stop reasoning=False usage={"prompt_tokens": 181, "completion_tokens": 184, "total_tokens": 365, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.663636207580566}
+S09-ar-06 tier=medium ai_ms=2987 e2e_ms=2989 finish=stop reasoning=False usage={"prompt_tokens": 157, "completion_tokens": 118, "total_tokens": 275, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 4.645454406738281}
+S09-ar-07 tier=high ai_ms=3766 e2e_ms=3769 finish=stop reasoning=False usage={"prompt_tokens": 177, "completion_tokens": 197, "total_tokens": 374, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.981818199157715}
+S09-ar-08 tier=medium ai_ms=1633 e2e_ms=1634 finish=stop reasoning=False usage={"prompt_tokens": 154, "completion_tokens": 74, "total_tokens": 228, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 3.418181896209717}
+S09-ar-09 tier=high ai_ms=5641 e2e_ms=5643 finish=stop reasoning=False usage={"prompt_tokens": 177, "completion_tokens": 186, "total_tokens": 363, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.681818008422852}
+S09-ar-10 tier=high ai_ms=3004 e2e_ms=3007 finish=stop reasoning=False usage={"prompt_tokens": 189, "completion_tokens": 158, "total_tokens": 347, "prompt_tokens_details": {"cached_tokens": 0}, "neurons": 6.027272701263428}
