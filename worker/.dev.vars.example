@@ -1,0 +1,3 @@
+# copy to .dev.vars (gitignored). never commit real values.
+MODAL_URL=https://example--truffle-brain.modal.run
+MODAL_TOKEN=replace-me

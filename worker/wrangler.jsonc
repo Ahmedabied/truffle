@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "truffle",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "ai": { "binding": "AI" },
+  "durable_objects": {
+    "bindings": [{ "name": "TRUFFLE", "class_name": "TruffleDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TruffleDO"] }],
+  "observability": { "enabled": true },
+  "vars": {
+    "BRAIN_TIMEOUT_MS": "25000"
+  }
+  // Secrets (never here): MODAL_URL, MODAL_TOKEN -> .dev.vars locally, `wrangler secret put` in prod.
+}

@@ -37,3 +37,7 @@ models/
 
 # fleet scratch
 fleet/outbox/**/raw/
+
+# fleet scratch workers
+fleet/outbox/**/node_modules/
+fleet/outbox/**/.wrangler/
