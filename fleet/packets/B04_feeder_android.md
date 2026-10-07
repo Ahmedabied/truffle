@@ -8,7 +8,7 @@ Finish the Kotlin feeder from S02 into an installable APK.
 Read first: docs/01_product_spec.md, docs/02_architecture.md, docs/04_research_facts.md (relevant section). Repo: ~/Desktop/Truffle.
 
 ## Deliverable
-feeder-android/ building on the box, APK attached as a GitHub Release draft, README with first-run checklist.
+feeder-android/ building on the box per findings/02_box_android_toolchain.md, APK attached as a GitHub Release draft, README with first-run checklist.
 
 ## Acceptance
 Real steps from Ahmed's Samsung arrive at /feed and match Samsung Health within 2%.

@@ -16,7 +16,7 @@ Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this.
 ## Thursday morning
 
 - Read `fleet/outbox/S01/RESULT.md` first. Decide Plan A or B. Write `decisions/0011_serving_plan.md`.
-- Start B03 (web), B04 (feeder, on the box), B05 (finetune pipeline).
+- Start B03 (web), B04 (feeder: build on the box per findings/02, not on the laptop), B05 (finetune pipeline).
 - Ahmed's seed lines due noon -> launch Wave B.
 
 ## Things that will bite

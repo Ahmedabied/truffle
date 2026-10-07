@@ -1,6 +1,6 @@
 # 07 - Timeline (Oman time, UTC+4)
 
-Deadline: **Mon Oct 12, 10:59**. Publish target: **Sat Oct 11, 22:00**.
+Deadline: **Mon Oct 12, 10:59**. Publish target: **Sat Oct 10, 22:00**.
 
 ## Wed Oct 7 (tonight)
 

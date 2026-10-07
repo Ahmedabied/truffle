@@ -33,5 +33,5 @@ $0. Ledger: `fleet/costs.md`.
 
 ## Known environment facts
 
-- Laptop: 9.4GB free disk, RTX 3050 4GB, no Android SDK. Build the APK on the box.
+- Laptop: 9.4GB free disk, RTX 3050 4GB, no Android SDK. Box (`ssh workstation`) has the SDK and 77GB free: all Android work there (findings/02).
 - GPT fleet: plan may end ~Oct 9. Astra waves must run Wed night / Thu.

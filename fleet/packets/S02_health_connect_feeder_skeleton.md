@@ -11,7 +11,7 @@ Read first: docs/01_product_spec.md, docs/02_architecture.md, docs/04_research_f
 feeder-android/ Gradle project (Compose or plain views, smallest possible), manifest with permissions and rationale activity, a README with the Samsung Health > Health Connect checklist and the sideload steps.
 
 ## Acceptance
-Project compiles with Gradle 8 on a machine with the Android SDK (document SDK packages needed). Handles SecurityException (revoked permission) with a re-grant prompt. No analytics, no extra permissions.
+Project compiles with Gradle 8 on the box (`ssh workstation`, SDK at ~/Android/Sdk, platforms 35/36; see findings/02_box_android_toolchain.md). Handles SecurityException (revoked permission) with a re-grant prompt. No analytics, no extra permissions.
 
 ## Do not
 Do not add location unless behind an explicit toggle. Do not target Play distribution.

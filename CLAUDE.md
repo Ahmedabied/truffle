@@ -15,7 +15,7 @@ A DEV Hacktoberfest Week 1 ("Touch Grass") entry. Deadline **Mon 2026-10-12 10:5
 5. **Public voice.** Anything that can end up in the DEV post, README, UI copy or commit messages: no em dashes or en dashes, short sentences, one idea each, no "X rather than Y" tics, no unsourced superlatives. See `docs/06_writeup_plan.md`.
 6. **Secrets never touch git.** `.dev.vars`, Modal tokens, HF tokens, Cloudflare tokens live in env or `.dev.vars` (gitignored). Grep before every commit. Agent session transcripts get uploaded to DEV later: do not paste secrets into chat either.
 7. **Money.** Budget is $20 loaded + Modal's $30 free credit. Hard cap $50 total. Log every paid run in `fleet/costs.md` (what, GPU, minutes, $). Dry-run estimates before any GPU job over $3.
-8. **This laptop has ~9GB free disk and a 4GB GPU.** Never download model weights here. All GPU work is cloud (Modal / RunPod). Android SDK (~4GB) goes on the box (`ssh workstation`) unless space is freed first.
+8. **This laptop has ~9GB free disk and a 4GB GPU.** Never download model weights here. All GPU work is cloud (Modal / RunPod). **All Android work runs on the box** (`ssh workstation`, SDK at ~/Android/Sdk, 77GB free): see `findings/02_box_android_toolchain.md`.
 9. **Scope.** Core = steps -> energy -> tiered Gemma brain -> ASCII world -> feeder -> fine-tune with before/after numbers -> judge mode. Quests from OpenStreetMap are a **stretch** for Saturday only if core is done Friday night.
 10. **Session hygiene.** Every session ends by updating `STATE.md` and `HANDOFF.md` and adding `sessions/YYYY-MM-DD_session-NN_<slug>.md`. Commit often with messages a judge can read.
 
