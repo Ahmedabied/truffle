@@ -6,9 +6,15 @@
   "compatibility_flags": ["nodejs_compat"],
   "ai": { "binding": "AI" },
   "durable_objects": {
-    "bindings": [{ "name": "TRUFFLE", "class_name": "TruffleDO" }]
+    "bindings": [
+      { "name": "TRUFFLE", "class_name": "TruffleDO" },
+      { "name": "LIMITER", "class_name": "LimiterDO" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TruffleDO"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["TruffleDO"] },
+    { "tag": "v2", "new_sqlite_classes": ["LimiterDO"] }
+  ],
   "observability": { "enabled": true },
   "vars": {
     "BRAIN_TIMEOUT_MS": "25000"
