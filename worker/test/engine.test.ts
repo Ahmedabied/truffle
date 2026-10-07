@@ -101,3 +101,16 @@ describe("decideTier input hardening", () => {
     expect(decideTier(state, bogus).cost).toBe(200);
   });
 });
+
+describe("S10 hardening", () => {
+  it("feed ignores fractional, negative and unsafe totals", () => {
+    const state = { ...DEFAULT_STATE, energy: 100, steps_today: 100, lifetime_steps: 100 };
+    for (const bad of [100.5, -1, Number.MAX_SAFE_INTEGER + 2, NaN, Infinity]) {
+      expect(feed(state, bad)).toEqual(state);
+    }
+  });
+  it("newSpore on a living Truffle is a no-op", () => {
+    const state = { ...DEFAULT_STATE, energy: 3000, lifetime_steps: 3000, steps_today: 3000 };
+    expect(newSpore(state)).toEqual(state);
+  });
+});

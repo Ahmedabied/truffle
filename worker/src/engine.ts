@@ -173,8 +173,9 @@ export function chargeChat(state: TruffleState, decision: TierDecision): Truffle
 /** /feed with an absolute total since local midnight. Dead Truffle: no-op. */
 export function feed(state: TruffleState, steps_today_total: number): TruffleState {
   const next = cloneState(state);
-  if (state.dead || !Number.isFinite(steps_today_total)) return next;
-  const total = Math.floor(steps_today_total);
+  // Only non-negative safe integers are steps. Anything else is a no-op (S10-08).
+  if (state.dead || !Number.isSafeInteger(steps_today_total) || steps_today_total < 0) return next;
+  const total = steps_today_total;
   const delta = Math.max(0, total - state.steps_today);
   if (delta === 0) return next;
   next.steps_today = total;
@@ -249,6 +250,8 @@ export function shouldBurrow(apparent_temperature_daytime_max_c: number): boolea
 
 /** After death: fresh Spore, gravestones kept (max 20). */
 export function newSpore(state: TruffleState): TruffleState {
+  // A living Truffle cannot be replaced. Only death opens the way to a new spore (S10-11).
+  if (!state.dead) return cloneState(state);
   let gravestones = state.gravestones.map((g) => ({ ...g }));
   if (state.dead) {
     // midnight() normally wrote the stone already. Write it here only if it is missing.
