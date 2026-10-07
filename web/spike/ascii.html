@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="light">
+<title>Truffle | ASCII world spike</title>
+<style>
+  :root { color: #293e35; background: #f5f2e9; font-family: system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  header, .panel { padding: 12px max(14px, env(safe-area-inset-left)); max-width: 680px; margin: auto; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 1.25rem; }
+  .tag, .hint, .telemetry { font-size: .75rem; }
+  .tag { color: #53665b; }
+  .grid-font {
+    font-family: "Noto Sans Mono", "Droid Sans Mono", "Roboto Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    font-weight: 400; font-style: normal; font-kerning: none;
+    font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0;
+    letter-spacing: 0; white-space: pre; direction: ltr; unicode-bidi: isolate;
+  }
+  #scene { width: 100%; }
+  #world {
+    margin: 0; padding: 0; border: 0; width: 100%; font-size: 16px; line-height: 1.12;
+    color: var(--ink, #e8eddb);
+    background: linear-gradient(to bottom, var(--sky, #172c3b) 0%, var(--sky, #172c3b) 60.714286%, var(--soil, #293632) 60.714286%, var(--soil, #293632) 100%);
+  }
+  #probe { position: fixed; left: -20000px; top: 0; visibility: hidden; pointer-events: none; }
+  .telemetry { padding-top: 7px; padding-bottom: 5px; font-variant-numeric: tabular-nums; color: #53665b; }
+  .telemetry p { margin: 0 0 3px; }
+  #reply {
+    font-family: "Noto Sans Arabic", "Geeza Pro", Tahoma, system-ui, sans-serif;
+    font-size: 1.05rem; line-height: 1.65; min-height: 3.3em; margin: 0 0 9px;
+    overflow-wrap: anywhere; white-space: pre-wrap;
+  }
+  .chat { border-top: 1px solid #d9ded2; border-bottom: 1px solid #d9ded2; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+  .wide { grid-column: 1 / -1; }
+  fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+  legend { padding: 0; font-weight: 650; font-size: .83rem; }
+  label { font-size: .85rem; }
+  .range-label { display: flex; justify-content: space-between; gap: 6px; }
+  input[type="range"] { display: block; width: 100%; margin: 0; min-height: 44px; accent-color: #426647; }
+  .options { display: flex; flex-wrap: wrap; gap: 0 14px; }
+  .choice { display: inline-flex; align-items: center; min-height: 44px; gap: 7px; }
+  input[type="radio"], input[type="checkbox"] { margin: 0; width: 19px; height: 19px; accent-color: #426647; }
+  button { border: 1px solid #345437; background: #345437; color: white; border-radius: 7px; padding: 10px 16px; min-height: 44px; font: inherit; cursor: pointer; }
+  :focus-visible { outline: 3px solid #956015; outline-offset: 3px; }
+  .hint { margin: 7px 0 0; color: #53665b; line-height: 1.5; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  @media (max-width: 340px) { .controls { column-gap: 9px; } .options { gap: 0 10px; } }
+</style>
+</head>
+<body>
+<header><h1>Truffle</h1><span class="tag">Offline world study</span></header>
+<main>
+  <div id="scene"><pre id="world" class="grid-font" dir="ltr" role="img" aria-label="Truffle's ASCII world. Loading the scene."></pre></div>
+  <span id="probe" class="grid-font" aria-hidden="true"></span>
+  <div class="panel telemetry">
+    <p id="timing" aria-live="off">Measuring frames...</p>
+    <p id="cells">Measuring character cells...</p>
+  </div>
+  <section class="panel chat" aria-label="Reply typing demo">
+    <p id="reply" dir="auto" lang="ar" aria-hidden="true">أهلًا. أنا هنا، تحت الرمل.</p>
+    <p id="reply-status" class="sr-only" dir="auto" lang="ar" role="status" aria-atomic="true">أهلًا. أنا هنا، تحت الرمل.</p>
+    <div class="controls">
+      <fieldset><legend>Reply language</legend><div class="options">
+        <label class="choice"><input type="radio" name="language" value="ar" checked>Arabic</label>
+        <label class="choice"><input type="radio" name="language" value="en">English</label>
+      </div></fieldset>
+      <fieldset><legend>Typing speed</legend><div class="options">
+        <label class="choice"><input type="radio" name="speed" value="40" checked>Low: 40 ms</label>
+        <label class="choice"><input type="radio" name="speed" value="12">High: 12 ms</label>
+      </div></fieldset>
+      <div class="wide"><button id="type" type="button">Type reply</button></div>
+    </div>
+  </section>
+  <section class="panel controls" aria-label="Scene controls">
+    <div><label class="range-label" for="hour">Local hour <output id="hour-value" for="hour"></output></label><input id="hour" type="range" min="0" max="23" step="1" value="18"></div>
+    <div><label class="range-label" for="wind">Wind <output id="wind-value" for="wind"></output></label><input id="wind" type="range" min="0" max="40" step="1" value="12"></div>
+    <fieldset class="wide"><legend>Truffle mood</legend><div class="options">
+      <label class="choice"><input type="radio" name="mood" value="content" checked>Content</label>
+      <label class="choice"><input type="radio" name="mood" value="asleep">Asleep</label>
+      <label class="choice"><input type="radio" name="mood" value="affectionate">Affectionate</label>
+    </div></fieldset>
+    <fieldset><legend>Ground</legend><div class="options">
+      <label class="choice"><input type="radio" name="ground" value="sand" checked>Sand</label>
+      <label class="choice"><input type="radio" name="ground" value="grass">Grass</label>
+    </div></fieldset>
+    <div><label class="choice"><input id="rain" type="checkbox">Rain</label></div>
+    <div class="wide">
+      <label class="choice"><input id="reduce" type="checkbox">Reduced motion</label>
+      <p id="motion-note" class="hint"></p>
+      <p class="hint">A visual spike, not judge mode. Energy and 6,120 steps are sample data. No model, weather service or energy engine is connected.</p>
+    </div>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const COLS = 40, ROWS = 28, PERIOD = 1000 / 12;
+  const $ = id => document.getElementById(id);
+  const world = $('world'), probe = $('probe');
+  const media = matchMedia('(prefers-reduced-motion: reduce)');
+  const state = { hour: new Date().getHours(), wind: 12, ground: 'sand', rain: false, mood: 'content' };
+  const sprites = {
+    content: [
+      '     .----.     ',
+      "   .' .  . '.   ",
+      '  /          \\  ',
+      ' |   o    o   | ',
+      ' |    \\__/    | ',
+      '  \\          /  ',
+      "   '--------'   "
+    ],
+    asleep: [
+      '             z  ',
+      '          z     ',
+      '    .------.    ',
+      "  .'        '.  ",
+      ' /   -    -   \\ ',
+      '|      .       |',
+      " '------------' "
+    ],
+    affectionate: [
+      '    .----.  <3  ',
+      "  .' .  . '.    ",
+      ' /          \\ / ',
+      '|   ^    ^   |  ',
+      '|  . \\__/ .  |  ',
+      ' \\          /   ',
+      "  '--------'    "
+    ]
+  };
+  const skies = {
+    night: { sky: '#172c3b', ink: '#e8eddb', sand: '#293632', grass: '#243b31' },
+    dawn:  { sky: '#eed7bd', ink: '#393d32', sand: '#e2cc9e', grass: '#c3cea3' },
+    day:   { sky: '#dceddf', ink: '#243f37', sand: '#dcd3a7', grass: '#b6cca0' },
+    dusk:  { sky: '#e6b695', ink: '#3d342e', sand: '#cdb78c', grass: '#b7be92' }
+  };
+  const clouds = [{ x: 1, y: 3, speed: 1 }, { x: 24, y: 5, speed: .75 }, { x: 36, y: 8, speed: .55 }];
+  let cloudPhase = 0, rainPhase = 0, nextFrame = null, lastFrame = null, telemetryAt = 0;
+  let frames = 0, over100 = 0, totalIntervals = 0, intervalCount = 0;
+  const intervals = [], drawTimes = [];
+  let layout = {}, activePalette = '', typing = null, typingTimer = 0;
+  let reduced = media.matches || $('reduce').checked;
+  const mod = (n, d) => ((n % d) + d) % d;
+  const band = () => state.hour < 5 || state.hour >= 20 ? 'night' : state.hour < 8 ? 'dawn' : state.hour < 17 ? 'day' : 'dusk';
+  const energy = () => state.mood === 'asleep' ? 0 : state.mood === 'affectionate' ? 9 : 7;
+
+  // Measure DOM text, including block and box glyphs. No canvas is used.
+  function measure(text) {
+    probe.textContent = text;
+    return probe.getBoundingClientRect().width;
+  }
+  function fitGrid() {
+    const available = $('scene').getBoundingClientRect().width;
+    if (!available) return;
+    probe.style.fontSize = '100px';
+    probe.style.letterSpacing = '0px';
+    const glyphs = ['M', ' ', '\u2500', '\u2502', '\u250c', '\u2510', '\u2514', '\u2518', '\u2588', '\u2591'];
+    const base = measure('M'.repeat(COLS));
+    const glyphWidths = Object.fromEntries(glyphs.map(g => [g, measure(g.repeat(COLS)) / COLS]));
+    const mono = Object.values(glyphWidths).every(w => Math.abs(w - base / COLS) < .1);
+    const fontSize = available * 100 / base;
+    probe.style.fontSize = fontSize + 'px';
+    // A tiny spacing correction absorbs the browser's fractional font-size rounding.
+    const correction = (available - measure('M'.repeat(COLS))) / COLS;
+    probe.style.letterSpacing = correction + 'px';
+    world.style.fontSize = fontSize + 'px';
+    world.style.letterSpacing = correction + 'px';
+    const fitted = measure('M'.repeat(COLS));
+    layout = { viewport: available, fontSize, cellWidth: fitted / COLS, lineHeight: fontSize * 1.12, fittedWidth: fitted, correction, mono, glyphWidthsAt100px: glyphWidths };
+    $('cells').textContent = `40 x 28 | cell ${layout.cellWidth.toFixed(2)} px | ${mono ? 'glyph widths match' : 'check font fallback widths'}`;
+  }
+  let previousWidth = 0;
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(entries => {
+      const width = entries[0].contentRect.width;
+      if (Math.abs(width - previousWidth) > .01) { previousWidth = width; fitGrid(); }
+    }).observe($('scene'));
+  } else { addEventListener('resize', fitGrid); }
+  if (document.fonts) document.fonts.ready.then(fitGrid);
+
+  function syncControls() {
+    $('hour-value').textContent = String(state.hour).padStart(2, '0') + ':00';
+    $('wind-value').textContent = state.wind + ' km/h';
+    $('motion-note').textContent = reduced
+      ? `Motion paused by ${media.matches ? 'system preference' : 'the checkbox'}. Clouds and rain stay still. Replies appear at once.`
+      : 'Clouds follow the wind. Reduced motion freezes clouds and rain, and reveals replies at once.';
+    const palette = band() + state.ground;
+    if (palette !== activePalette) {
+      activePalette = palette;
+      const colors = skies[band()];
+      world.style.setProperty('--sky', colors.sky);
+      world.style.setProperty('--ink', colors.ink);
+      world.style.setProperty('--soil', colors[state.ground]);
+    }
+    world.setAttribute('aria-label', `A ${band()} ASCII landscape at ${state.hour}:00. Three clouds. ${state.wind} km/h wind. ${state.ground} ground${state.rain ? ' with rain' : ''}. Truffle is ${state.mood}. Energy ${energy() * 10} percent. Stage Truffle. 6,120 steps. ${reduced ? 'Motion paused.' : ''}`);
+  }
+  function syncMotion() {
+    reduced = media.matches || $('reduce').checked;
+    if (reduced && typing) finishTyping();
+    syncControls();
+  }
+  $('hour').value = state.hour;
+  for (const id of ['hour', 'wind']) $(id).addEventListener('input', () => { state[id] = Number($(id).value); syncControls(); });
+  for (const name of ['mood', 'ground']) {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(input => input.addEventListener('change', () => { if (input.checked) { state[name] = input.value; syncControls(); } }));
+  }
+  $('rain').addEventListener('change', () => { state.rain = $('rain').checked; syncControls(); });
+  $('reduce').addEventListener('change', syncMotion);
+  if (media.addEventListener) media.addEventListener('change', syncMotion);
+  else media.addListener(syncMotion);
+
+  function compose() {
+    const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(' '));
+    const put = (x, y, text) => {
+      if (y < 0 || y >= ROWS) return;
+      Array.from(text).forEach((char, dx) => { if (x + dx >= 0 && x + dx < COLS) grid[y][x + dx] = char; });
+    };
+    const stamp = (x, y, lines) => lines.forEach((line, dy) => put(x, y + dy, line));
+    // Back to front: sky, light, clouds, horizon, ground, rain, pet, HUD.
+    if (band() === 'night') for (let i = 0; i < 14; i++) put((i * 13 + 3) % COLS, (i * 7 + 1) % 13, i % 3 ? '.' : '+');
+    const sun = state.hour >= 6 && state.hour < 19;
+    const progress = sun ? (state.hour - 6) / 12 : mod(state.hour - 19, 24) / 11;
+    const lightX = Math.round(2 + progress * 31);
+    const lightY = Math.round(10 - Math.sin(progress * Math.PI) * 9);
+    stamp(lightX, lightY, sun ? ['\\ | /', '- O -', '/ | \\'] : [' .-. ', '(  . ', " `-. "]);
+    clouds.forEach(cloud => stamp(Math.floor(mod(cloud.x + cloudPhase * cloud.speed, COLS + 10)) - 5, cloud.y, ['  .--.  ', ' (    ).', '(______)']));
+    put(0, 16, '\u2500'.repeat(COLS));
+    for (let y = 17; y < 26; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const seed = (x * 13 + y * 7) % 23;
+        grid[y][x] = state.ground === 'sand' ? (seed < 3 ? '.' : ' ') : (seed < 5 ? '"' : seed < 8 ? ',' : seed === 9 ? 'v' : ' ');
+      }
+    }
+    if (state.ground === 'sand') { put(3, 19, '\\|/'); put(32, 23, '\\|/'); put(7, 25, 'v'); }
+    if (state.rain) for (let i = 0; i < 30; i++) {
+      const y = Math.floor(mod(i * 7 + rainPhase, 25));
+      const x = mod(i * 11 + Math.floor(rainPhase / 4), COLS);
+      put(x, y, state.wind > 20 ? '/' : '|');
+    }
+    stamp(12, 18, sprites[state.mood]);
+    put(0, 26, '\u2500'.repeat(COLS));
+    put(0, 27, ` E ${'\u2588'.repeat(energy())}${'\u2591'.repeat(10 - energy())}  Truffle  6120 steps`);
+    return grid.map(row => row.join('')).join('\n');
+  }
+  function remember(array, value) { array.push(value); if (array.length > 720) array.shift(); }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (document.hidden) return;
+    if (nextFrame === null) nextFrame = now;
+    if (now + .25 < nextFrame) return;
+    // Preserve the 12 Hz deadline. Skip missed deadlines without catch-up renders.
+    nextFrame += PERIOD;
+    if (nextFrame < now) nextFrame += Math.ceil((now - nextFrame) / PERIOD) * PERIOD;
+    const elapsed = lastFrame === null ? 0 : now - lastFrame;
+    lastFrame = now;
+    if (elapsed > 0) {
+      remember(intervals, elapsed);
+      totalIntervals += elapsed;
+      intervalCount++;
+      if (elapsed > 100) over100++;
+    }
+    if (!reduced) {
+      const dt = Math.min(elapsed, 250) / 1000;
+      cloudPhase = mod(cloudPhase + dt * state.wind / 24, 100000);
+      if (state.rain) rainPhase = mod(rainPhase + dt * 6, 100000);
+    }
+    const start = performance.now();
+    world.textContent = compose(); // The only grid DOM write. One string per rendered frame.
+    remember(drawTimes, performance.now() - start);
+    frames++;
+    if (now - telemetryAt > 1000) {
+      telemetryAt = now;
+      const recent = intervals.slice(-60);
+      const fps = recent.length ? 1000 * recent.length / recent.reduce((a, b) => a + b, 0) : 0;
+      $('timing').textContent = `${fps.toFixed(1)} fps | >100 ms: ${over100} | ${frames} frames`;
+    }
+  }
+  document.addEventListener('visibilitychange', () => { lastFrame = null; nextFrame = null; });
+
+  const samples = {
+    ar: 'جبت معك ريحة المطر. خبّيت لك مكان في الظل.',
+    en: 'You brought the outside back with you. I saved you a patch of shade.'
+  };
+  function finishTyping() {
+    if (!typing) return;
+    clearTimeout(typingTimer);
+    $('reply').textContent = typing.text;
+    $('reply-status').textContent = typing.text;
+    typing = null;
+  }
+  $('type').addEventListener('click', () => {
+    clearTimeout(typingTimer);
+    const language = document.querySelector('input[name="language"]:checked').value;
+    const delay = Number(document.querySelector('input[name="speed"]:checked').value);
+    const text = samples[language];
+    // Graphemes keep Arabic marks with their letter. Joining remains the browser's job.
+    let chars;
+    if (typeof Intl.Segmenter === 'function') chars = Array.from(new Intl.Segmenter(language, { granularity: 'grapheme' }).segment(text), part => part.segment);
+    else chars = Array.from(text).reduce((parts, char) => {
+      if (/[\u0300-\u036f\u064b-\u065f\u0670]/.test(char) && parts.length) parts[parts.length - 1] += char;
+      else parts.push(char);
+      return parts;
+    }, []);
+    typing = { text, chars, position: 0 };
+    $('reply').lang = $('reply-status').lang = language;
+    $('reply').textContent = '';
+    $('reply-status').textContent = '';
+    if (reduced) { finishTyping(); return; }
+    function tick() {
+      if (!typing) return;
+      typing.position++;
+      $('reply').textContent = typing.chars.slice(0, typing.position).join('');
+      if (typing.position === typing.chars.length) finishTyping();
+      else typingTimer = setTimeout(tick, delay);
+    }
+    typingTimer = setTimeout(tick, delay);
+  });
+
+  // Read-only snapshots for the laptop test harness and the phone console.
+  window.asciiSpike = {
+    stats: () => ({ frames, over100, meanFps: totalIntervals ? 1000 * intervalCount / totalIntervals : 0, intervals: [...intervals], drawTimes: [...drawTimes], layout: { ...layout }, state: { ...state }, reduced, cloudPhase, rainPhase, typing: !!typing }),
+    resetStats: () => { frames = over100 = totalIntervals = intervalCount = 0; intervals.length = drawTimes.length = 0; lastFrame = nextFrame = null; }
+  };
+  fitGrid();
+  syncControls();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
