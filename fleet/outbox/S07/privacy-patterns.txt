@@ -1,0 +1,19 @@
+(api[_-]?key|access[_-]?key|secret|password|passwd|token|authorization|bearer|set-cookie|cookie)
+gh[pousr]_[A-Za-z0-9_]{20,}
+github_pat_[A-Za-z0-9_]{20,}
+gitlab_pat_|glpat-
+sk-(ant-|proj-)?[A-Za-z0-9_-]{16,}
+hf_[A-Za-z0-9]{16,}
+(ak|as)-[A-Za-z0-9_-]{16,}
+(AKIA|ASIA)[A-Z0-9]{16}
+AIza[0-9A-Za-z_-]{20,}
+eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+
+BEGIN [A-Z ]*PRIVATE KEY|BEGIN PGP PRIVATE KEY BLOCK
+[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}
+\+?[0-9][0-9 ()-]{6,}[0-9]
+workstation
+/home/[^/[:space:]]+|/Users/[^/[:space:]]+|[A-Za-z]:\\{1,2}Users\\{1,2}|~/
+(account[_-]?id|CLOUDFLARE_ACCOUNT_ID)
+\b[0-9a-fA-F]{32}\b
+(ssh|scp|sftp|https?://[^/[:space:]]+@|presigned|x-amz-|x-goog-)
+(pairing|phrase|latitude|longitude|phone|email|health|steps_today)
