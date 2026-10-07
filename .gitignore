@@ -1,0 +1,39 @@
+# secrets
+.dev.vars
+.env
+.env.*
+*.pem
+*.key
+.modal.toml
+hf_token*
+
+# node
+node_modules/
+.wrangler/
+dist/
+.DS_Store
+
+# android
+feeder-android/.gradle/
+feeder-android/build/
+feeder-android/**/build/
+feeder-android/local.properties
+feeder-android/.idea/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# python / finetune
+__pycache__/
+.venv/
+*.pyc
+finetune/data/generated/*.jsonl
+finetune/runs/
+finetune/adapters/
+models/
+*.safetensors
+*.gguf
+
+# fleet scratch
+fleet/outbox/**/raw/

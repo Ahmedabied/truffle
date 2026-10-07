@@ -1,0 +1,217 @@
+{
+  "$schema_note": "Spec-by-test for the Truffle energy engine. Each case: a starting state, one event, the expected state after. Constants are the v1 values in docs/01_product_spec.md. The engine must pass every case. Add cases with behaviour; never bend a case to fit code without a decision record.",
+  "constants": {
+    "stages": [
+      { "name": "Spore", "min_lifetime_steps": 0, "energy_max": 6000, "burn": 1500 },
+      { "name": "Sprout", "min_lifetime_steps": 5000, "energy_max": 12000, "burn": 3000 },
+      { "name": "Truffle", "min_lifetime_steps": 30000, "energy_max": 20000, "burn": 5000 },
+      { "name": "Elder", "min_lifetime_steps": 100000, "energy_max": 30000, "burn": 7000 }
+    ],
+    "tiers": {
+      "asleep": { "cost": 0, "thinking": false, "max_tokens": 0, "memory_days": 0 },
+      "low": { "min_ratio_exclusive": 0.0, "max_ratio_exclusive": 0.25, "cost": 20, "thinking": false, "max_tokens": 120, "memory_days": 1 },
+      "medium": { "min_ratio_inclusive": 0.25, "max_ratio_exclusive": 0.60, "cost": 60, "thinking": false, "max_tokens": 400, "memory_days": 7 },
+      "high": { "min_ratio_inclusive": 0.60, "cost": 200, "thinking": true, "max_tokens": 1200, "memory_days": null }
+    },
+    "death_zero_days": 4,
+    "affection_min_steps": 500,
+    "affection_multiplier": 1.10,
+    "burrow_apparent_c": 42
+  },
+  "default_state": {
+    "energy": 0, "lifetime_steps": 0, "stage": "Spore", "zero_days": 0, "affection": 0,
+    "age_days": 0, "steps_today": 0, "avg7": 0, "history7": [], "burrowed": false, "dead": false
+  },
+  "cases": [
+    {
+      "id": "01_new_spore_is_asleep",
+      "state": {},
+      "event": { "type": "tier_check" },
+      "expect": { "tier": "asleep", "model_call": false, "mood": "asleep" }
+    },
+    {
+      "id": "02_feed_3000_spore_medium",
+      "state": {},
+      "event": { "type": "feed", "steps_today_total": 3000 },
+      "expect": { "energy": 3000, "steps_today": 3000, "lifetime_steps": 3000, "stage": "Spore", "tier": "medium", "mood": "content" }
+    },
+    {
+      "id": "03_feed_is_absolute_total_not_delta",
+      "state": { "energy": 3000, "steps_today": 3000, "lifetime_steps": 3000 },
+      "event": { "type": "feed", "steps_today_total": 3500 },
+      "expect": { "energy": 3500, "steps_today": 3500, "lifetime_steps": 3500 }
+    },
+    {
+      "id": "04_feed_lower_total_is_ignored",
+      "state": { "energy": 3500, "steps_today": 3500, "lifetime_steps": 3500 },
+      "event": { "type": "feed", "steps_today_total": 3400 },
+      "expect": { "energy": 3500, "steps_today": 3500, "lifetime_steps": 3500 }
+    },
+    {
+      "id": "05_user_asks_high_but_energy_allows_medium",
+      "state": { "energy": 3000, "lifetime_steps": 3000 },
+      "event": { "type": "chat", "requested_tier": "high" },
+      "expect": { "tier": "medium", "thinking": false, "max_tokens": 400, "energy_after": 2940 }
+    },
+    {
+      "id": "06_high_tier_costs_200",
+      "state": { "energy": 5000, "lifetime_steps": 5000, "stage": "Sprout" },
+      "event": { "type": "chat", "requested_tier": "high" },
+      "expect": { "tier": "medium", "energy_after": 4940 },
+      "note": "5000/12000 = 0.416 -> medium. Stage changed the ceiling."
+    },
+    {
+      "id": "07_high_tier_on_spore_at_5000",
+      "state": { "energy": 5000, "lifetime_steps": 4000 },
+      "event": { "type": "chat", "requested_tier": "high" },
+      "expect": { "tier": "high", "thinking": true, "max_tokens": 1200, "energy_after": 4800 },
+      "note": "Spore energy_max 6000, 5000/6000 = 0.83 -> high."
+    },
+    {
+      "id": "08_low_tier_costs_20",
+      "state": { "energy": 1000, "lifetime_steps": 1000 },
+      "event": { "type": "chat", "requested_tier": "high" },
+      "expect": { "tier": "low", "thinking": false, "max_tokens": 120, "memory_days": 1, "energy_after": 980 }
+    },
+    {
+      "id": "09_boundary_ratio_exactly_0_25_is_medium",
+      "state": { "energy": 1500, "lifetime_steps": 1500 },
+      "event": { "type": "tier_check" },
+      "expect": { "tier": "medium" }
+    },
+    {
+      "id": "10_boundary_ratio_exactly_0_60_is_high",
+      "state": { "energy": 3600, "lifetime_steps": 3600 },
+      "event": { "type": "tier_check" },
+      "expect": { "tier": "high" }
+    },
+    {
+      "id": "11_energy_below_cost_drops_a_tier",
+      "state": { "energy": 50, "lifetime_steps": 50 },
+      "event": { "type": "chat", "requested_tier": "high" },
+      "expect": { "tier": "low", "energy_after": 30 },
+      "note": "ratio 0.008 -> low (cost 20) and 50 >= 20 so low stands."
+    },
+    {
+      "id": "12_energy_below_20_is_asleep_for_this_message",
+      "state": { "energy": 15, "lifetime_steps": 15 },
+      "event": { "type": "chat", "requested_tier": "low" },
+      "expect": { "tier": "asleep", "model_call": false, "energy_after": 15 }
+    },
+    {
+      "id": "13_midnight_burn_spore",
+      "state": { "energy": 2000, "lifetime_steps": 2000, "steps_today": 2000, "age_days": 0 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "energy": 500, "zero_days": 0, "age_days": 1, "steps_today": 0, "avg7": 2000, "affection": 1 },
+      "note": "First day: avg7_before was 0 and steps 2000 >= 500, so affection +1."
+    },
+    {
+      "id": "14_midnight_to_zero_sets_zero_days_1",
+      "state": { "energy": 1000, "lifetime_steps": 1000, "steps_today": 1000, "history7": [4000, 4000, 4000], "avg7": 4000 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "energy": 0, "zero_days": 1, "mood": "tired", "affection": 0 },
+      "note": "1000 < 4000*1.1 -> affection decays from 0 and stays 0."
+    },
+    {
+      "id": "15_fourth_zero_midnight_is_death",
+      "state": { "energy": 0, "lifetime_steps": 8000, "stage": "Sprout", "zero_days": 3, "age_days": 10 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "zero_days": 4, "dead": true, "mood": "dead", "gravestone": { "age_days": 11, "lifetime_steps": 8000, "stage": "Sprout" } }
+    },
+    {
+      "id": "16_burrowed_day_skips_burn_and_zero_count",
+      "state": { "energy": 0, "lifetime_steps": 8000, "stage": "Sprout", "zero_days": 2, "burrowed": true, "age_days": 5 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "energy": 0, "zero_days": 2, "dead": false, "age_days": 6, "burrowed": false },
+      "note": "Oman summer rule. The 4-day clock pauses on heat days."
+    },
+    {
+      "id": "17_burrowed_day_burn_skipped_even_with_energy",
+      "state": { "energy": 4000, "lifetime_steps": 8000, "stage": "Sprout", "burrowed": true },
+      "event": { "type": "midnight", "burrowed_tomorrow": true },
+      "expect": { "energy": 4000, "zero_days": 0, "burrowed": true }
+    },
+    {
+      "id": "18_feed_on_burrowed_day_feeds_but_does_not_grow",
+      "state": { "energy": 1000, "lifetime_steps": 4000, "steps_today": 0, "burrowed": true },
+      "event": { "type": "feed", "steps_today_total": 2000 },
+      "expect": { "energy": 3000, "steps_today": 2000, "lifetime_steps": 4000, "stage": "Spore" }
+    },
+    {
+      "id": "19_growth_crosses_into_sprout",
+      "state": { "energy": 4000, "lifetime_steps": 4000, "steps_today": 4000 },
+      "event": { "type": "feed", "steps_today_total": 5500 },
+      "expect": { "energy": 5500, "lifetime_steps": 5500, "stage": "Sprout", "energy_max": 12000, "burn": 3000, "tier": "medium" },
+      "note": "5500/12000 = 0.458 -> medium. Growing raises the ceiling, so the same energy is now a lower ratio. Intended."
+    },
+    {
+      "id": "20_energy_caps_at_stage_max",
+      "state": { "energy": 5500, "lifetime_steps": 4000, "steps_today": 4000 },
+      "event": { "type": "feed", "steps_today_total": 4900 },
+      "expect": { "energy": 6000, "lifetime_steps": 4900, "stage": "Spore" },
+      "note": "900 delta, only 500 fits. Overflow lost."
+    },
+    {
+      "id": "21_affection_increments_when_beating_avg_by_10pct",
+      "state": { "energy": 5000, "lifetime_steps": 20000, "stage": "Sprout", "steps_today": 5000, "history7": [4000, 4000, 4000, 4000, 4000, 4000, 4000], "avg7": 4000, "affection": 2 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "affection": 3, "mood": "affectionate", "avg7": 4142.857142857143, "energy": 2000 },
+      "note": "5000 > 4400. New avg7 over last 7 completed days = (6*4000 + 5000)/7."
+    },
+    {
+      "id": "22_affection_does_not_increment_at_plus_5pct",
+      "state": { "energy": 4200, "lifetime_steps": 20000, "stage": "Sprout", "steps_today": 4200, "history7": [4000, 4000, 4000, 4000, 4000, 4000, 4000], "avg7": 4000, "affection": 2 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "affection": 1 }
+    },
+    {
+      "id": "23_affection_needs_min_500_steps_on_first_day",
+      "state": { "energy": 300, "lifetime_steps": 300, "steps_today": 300 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "affection": 0, "energy": 0, "zero_days": 1 }
+    },
+    {
+      "id": "24_affection_caps_at_5",
+      "state": { "energy": 9000, "lifetime_steps": 25000, "stage": "Sprout", "steps_today": 9000, "history7": [4000, 4000, 4000, 4000, 4000, 4000, 4000], "avg7": 4000, "affection": 5 },
+      "event": { "type": "midnight", "burrowed_tomorrow": false },
+      "expect": { "affection": 5 }
+    },
+    {
+      "id": "25_new_spore_after_death_resets_everything",
+      "state": { "energy": 0, "lifetime_steps": 8000, "stage": "Sprout", "zero_days": 4, "age_days": 11, "affection": 2, "dead": true },
+      "event": { "type": "new_spore" },
+      "expect": { "energy": 0, "lifetime_steps": 0, "stage": "Spore", "zero_days": 0, "age_days": 0, "affection": 0, "dead": false, "gravestones_count": 1 }
+    },
+    {
+      "id": "26_dead_truffle_refuses_feed_and_chat",
+      "state": { "dead": true, "energy": 0 },
+      "event": { "type": "feed", "steps_today_total": 9000 },
+      "expect": { "energy": 0, "tier": "asleep", "model_call": false, "mood": "dead" }
+    },
+    {
+      "id": "27_mood_priority_burrowed_beats_wilting",
+      "state": { "energy": 0, "zero_days": 2, "burrowed": true, "lifetime_steps": 10000, "stage": "Sprout" },
+      "event": { "type": "tier_check" },
+      "expect": { "tier": "asleep", "mood": "burrowed" }
+    },
+    {
+      "id": "28_burrow_threshold_from_weather",
+      "state": {},
+      "event": { "type": "weather", "apparent_temperature_daytime_max_c": 42.0 },
+      "expect": { "burrowed": true }
+    },
+    {
+      "id": "29_no_burrow_just_under_threshold",
+      "state": {},
+      "event": { "type": "weather", "apparent_temperature_daytime_max_c": 41.9 },
+      "expect": { "burrowed": false }
+    },
+    {
+      "id": "30_state_block_reflects_engine_not_model",
+      "state": { "energy": 7560, "lifetime_steps": 12000, "stage": "Sprout", "affection": 3, "steps_today": 6120, "avg7": 4800, "age_days": 3 },
+      "event": { "type": "state_block", "lang": "ar", "weather_text": "34C clear, Muscat" },
+      "expect": { "state_block": "[truffle stage=Sprout energy=63% tier=high mood=affectionate zero_days=0 burrowed=no weather=\"34C clear, Muscat\" lang=ar steps_today=6120 avg7=4800 age_days=3]" },
+      "note": "7560/12000 = 0.63 -> 63%, high. The block is built by the engine string-for-string."
+    }
+  ]
+}
