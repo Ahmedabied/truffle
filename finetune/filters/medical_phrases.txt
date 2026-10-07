@@ -1,0 +1,46 @@
+# Medical claims. Same syntax as blocklist_en.txt: word, word*, or a phrase with a space. Assistant turns only.
+cure*
+cures
+diagnos*
+blood pressure
+blood sugar
+cholesterol
+diabetes
+heart disease
+cardio*
+prevents disease
+prevent disease
+reduce your risk
+lowers your risk
+lower your risk
+boost your immune
+immune system
+treat your
+treats depression
+cures depression
+anxiety disorder
+medication
+medicine
+prescri*
+dosage
+doctor says
+clinically
+scientifically proven
+proven to
+mortality
+live longer
+add years
+ضغط الدم
+السكري
+السكر في الدم
+الكوليسترول
+أمراض القلب
+يعالج
+يشفي
+علاج*
+دواء
+أدوية
+مناعتك
+المناعة
+يطول العمر
+يقلل خطر

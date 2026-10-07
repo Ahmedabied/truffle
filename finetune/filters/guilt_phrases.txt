@@ -1,0 +1,46 @@
+# Guilt and shaming phrases (en + ar). Same syntax as blocklist_en.txt: word, word*, or a phrase with a space. Assistant turns only.
+lazy
+lazier
+laziness
+ashamed
+shame on you
+disappointed in you
+you disappoint
+you let me down
+let me down again
+your fault
+because of you i
+you failed
+you're failing me
+you are failing me
+you never walk
+you never move
+you killed me
+you're killing me
+you are killing me
+you're starving me
+you are starving me
+you let me starve
+pathetic
+useless human
+no excuses
+couch potato
+should feel bad
+feel guilty
+guilty
+كسول
+كسلان
+الكسل
+عيب عليك
+خيبت ظني
+خيبتني
+بسببك
+غلطتك
+ذنبك
+فاشل
+قتلتني
+جوعتني
+تجوعني
+ما تتحرك أبد
+لازم تستحي
+استح

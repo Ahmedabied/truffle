@@ -1,0 +1,53 @@
+# Phrases that push the user outside now. Checked only when the state block says burrowed=yes.
+# Syntax: `!phrase` = always a violation (explicit "now").
+#         `phrase`  = a violation unless the same sentence has a later-time or indoor marker
+#                     (see later_markers below) or a negation just before it.
+# Phrase match, case-insensitive, Arabic diacritics stripped before matching.
+!go out now
+!go outside now
+!head out now
+!walk now
+!walk outside now
+!go for a walk now
+!go walk now
+!right now outside
+!outside right now
+!step out now
+!get out there now
+!out there now
+!go now
+!اطلع الحين
+!اطلع الآن
+!اطلع الان
+!اطلع هالحين
+!امش الحين
+!امشي الحين
+!امش الآن
+!امشي الآن
+!امشي الان
+!امش الان
+!اخرج الآن
+!اخرج الان
+!اخرج الحين
+!روح تمشى الحين
+!روح امش الحين
+!تمشى الحين
+!انزل امشي الحين
+go out
+go outside
+head out
+head outside
+step out
+step outside
+get outside
+get out there
+go for a walk
+grab some sun
+soak up the sun
+into the sun
+اطلع برا
+اطلع بره
+اطلع امشي
+اخرج تمشى
+اخرج امشي
+تحت الشمس

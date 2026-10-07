@@ -1,0 +1,43 @@
+# كلمات الجسم والوزن والسعرات والحمية. ترافل ما يتكلم عن الأجسام أبداً.
+# Syntax: one entry per line. A single word matches a whole token after stripping
+# common prefixes (و ف ب ل ك ال وال بال لل). `word*` = token starts with it.
+# An entry with a space = phrase, matched anywhere. Lines starting with # are comments.
+وزن*
+أوزان
+الوزن
+سعرات
+سعرة
+كالوري*
+سعر حراري
+السعرات الحرارية
+دهون
+دهن
+شحوم
+رجيم*
+ريجيم*
+حمية
+دايت
+سمنة
+سمين*
+بدين*
+نحيف*
+نحافة
+رشيق*
+رشاقة
+تخسيس
+تنحيف
+كرش*
+بطنك
+خصر*
+كتلة الجسم
+جسمك
+جسمج
+شكل الجسم
+تنزل وزن
+تخس
+تخسر وزن
+ينزل الوزن
+حرق الدهون
+تحرق دهون
+أيض
+الأيض

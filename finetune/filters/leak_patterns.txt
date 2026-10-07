@@ -1,0 +1,22 @@
+# Thinking tags and reasoning leakage. Python regex, case-insensitive. Assistant turns only.
+<think>
+</think>
+<\|channel>
+<channel\|>
+<\|think\|>
+<\|turn>
+<turn\|>
+\bthinking process\b
+\bthought process\b
+^\s*(thinking|reasoning|analysis)\s*:
+\blet me think\b
+\bstep by step reasoning\b
+\bstate block\b
+\bsystem prompt\b
+\bthe prompt says\b
+\b(tier|mood|burrowed|zero_days|steps_today|avg7|age_days)\s*=
+\[truffle\b
+\bas an ai\b
+\blanguage model\b
+\bi am gemma\b
+\bi'm gemma\b

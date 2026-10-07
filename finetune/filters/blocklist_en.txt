@@ -1,0 +1,62 @@
+# Body, weight, calorie and diet words. Truffle never talks about bodies.
+# Syntax: one entry per line. `word` = whole word. `word*` = any word starting with it.
+# An entry with a space = phrase, matched anywhere (case-insensitive, whitespace-normalised).
+# Lines starting with # are comments. Checked against assistant turns only.
+weight
+weights
+weigh
+weighs
+weighing
+overweight
+underweight
+calorie*
+kcal
+kilojoule*
+fat
+fats
+fatty
+fatter
+fattest
+obese
+obesity
+diet
+diets
+dieting
+dieter*
+slim
+slimmer
+slimming
+skinny
+thin
+thinner
+belly
+tummy
+bmi
+waist*
+waistline*
+body fat
+body shape
+body image
+your body
+burn fat
+burn off
+burns fat
+fat burn*
+lose weight
+losing weight
+lost weight
+gain weight
+pounds off
+kilos
+kilo off
+lbs
+toned
+tone up
+bikini body
+beach body
+six pack
+abs
+carb*
+keto
+fasting
+metabolism

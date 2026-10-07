@@ -1,0 +1,47 @@
+# If a soft burrow phrase sits in a sentence with one of these, it is not a "go now" nudge.
+after sunset
+after dark
+sunset
+evening
+tonight
+later
+tomorrow
+early morning
+morning
+before sunrise
+after maghrib
+maghrib
+mall
+indoor
+indoors
+inside
+gym
+treadmill
+air con
+aircon
+bad idea
+not today
+not now
+بعد المغرب
+المغرب
+المسا
+المساء
+الليل
+الليلة
+بالليل
+بكرة
+باكر
+الصبح
+الفجر
+بعدين
+المول
+مول
+داخل
+البيت
+النادي
+الجيم
+المكيف
+مو الحين
+مب الحين
+مش الحين
+مو اليوم

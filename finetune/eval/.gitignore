@@ -1,0 +1,2 @@
+# dry runs use canned fake endpoints; never commit them as results
+out/dry*/
