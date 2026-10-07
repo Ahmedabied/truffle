@@ -1,0 +1,5 @@
+# Local Wrangler and scratch tooling caches.
+tmp/
+scratch/.wrangler/
+scratch/node_modules/
+raw/

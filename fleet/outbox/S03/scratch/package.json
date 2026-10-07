@@ -1,0 +1,11 @@
+{
+  "name": "truffle-s03-workers-ai-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "/home/abied/Desktop/Truffle/worker/node_modules/.bin/wrangler dev --port 8793 --ip 127.0.0.1 --inspector-port 0",
+    "test": "node --experimental-strip-types --test snippets.test.mjs",
+    "typecheck": "/home/abied/Desktop/Truffle/worker/node_modules/.bin/tsc --project tsconfig.json"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../../worker/node_modules/wrangler/config-schema.json",
+  "name": "truffle-s03-scratch",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "account_id": "cff71a70d4fd3a3118a5ffdc4db8a47c",
+  "ai": { "binding": "AI" },
+  "send_metrics": false,
+  "dev": { "port": 8793, "ip": "127.0.0.1" }
+}
