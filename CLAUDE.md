@@ -4,7 +4,7 @@ Read this first, then `STATE.md`, then `HANDOFF.md`. Everything else is in `PLAY
 
 ## What this is
 
-A DEV Hacktoberfest Week 1 ("Touch Grass") entry. Deadline **Sun 2026-10-12 10:59 Oman time** (Oct 11, 11:59 PM PDT). We publish **Saturday night**, not Sunday morning. The repo is **public** and judges read it.
+A DEV Hacktoberfest Week 1 ("Touch Grass") entry. Deadline **Mon 2026-10-12 10:59 Oman time** (Oct 11, 11:59 PM PDT). We publish **Saturday night**, leaving Sunday and Monday morning as buffer. The repo is **public** and judges read it.
 
 ## Ground rules (non-negotiable)
 

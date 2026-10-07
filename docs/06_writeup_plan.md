@@ -50,4 +50,4 @@ Each evening Ahmed sends: steps today (screenshot of Samsung Health), the weathe
 
 ## Publish
 
-Saturday Oct 11, ~22:00 Oman (= 11:00 PDT Saturday). Leaves 13 hours of buffer. Sunday morning: reply to comments, fix typos, nothing structural.
+Saturday Oct 10, ~22:00 Oman (= 11:00 PDT Saturday). Leaves 37 hours of buffer. Sunday morning: reply to comments, fix typos, nothing structural.

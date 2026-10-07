@@ -1,6 +1,6 @@
 # 07 - Timeline (Oman time, UTC+4)
 
-Deadline: **Sun Oct 12, 10:59**. Publish target: **Sat Oct 11, 22:00**.
+Deadline: **Mon Oct 12, 10:59**. Publish target: **Sat Oct 11, 22:00**.
 
 ## Wed Oct 7 (tonight)
 
@@ -39,7 +39,7 @@ Deadline: **Sun Oct 12, 10:59**. Publish target: **Sat Oct 11, 22:00**.
 - Diary day 3.
 - **22:00 publish.** Update README with "built within the window; later commits noted".
 
-## Sun Oct 11 / Oct 12 morning
+## Sun Oct 11 and Mon Oct 12 morning
 
 - Reply to comments. Typos only. Deadline Oct 12, 10:59.
 - Winners announced week of Oct 12. Week 2 theme drops Mon Oct 12: decide whether to enter.
