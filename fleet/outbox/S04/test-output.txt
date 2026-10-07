@@ -1,0 +1,124 @@
+TAP version 13
+# Subtest: Muscat fixture: local today, tomorrow, current fields and state text
+ok 1 - Muscat fixture: local today, tomorrow, current fields and state text
+  ---
+  duration_ms: 2.346368
+  type: 'test'
+  ...
+# Subtest: Riyadh fixture: local today, tomorrow, current fields and state text
+ok 2 - Riyadh fixture: local today, tomorrow, current fields and state text
+  ---
+  duration_ms: 0.269456
+  type: 'test'
+  ...
+# Subtest: Phoenix fixture: local today, tomorrow, current fields and state text
+ok 3 - Phoenix fixture: local today, tomorrow, current fields and state text
+  ---
+  duration_ms: 0.288627
+  type: 'test'
+  ...
+# Subtest: Berlin fixture: local today, tomorrow, current fields and state text
+ok 4 - Berlin fixture: local today, tomorrow, current fields and state text
+  ---
+  duration_ms: 0.21365
+  type: 'test'
+  ...
+# Subtest: Kuala Lumpur fixture: local today, tomorrow, current fields and state text
+ok 5 - Kuala Lumpur fixture: local today, tomorrow, current fields and state text
+  ---
+  duration_ms: 0.299125
+  type: 'test'
+  ...
+# Subtest: 06:00 and 22:00 are included; adjacent times and dates are excluded
+ok 6 - 06:00 and 22:00 are included; adjacent times and dates are excluded
+  ---
+  duration_ms: 0.173313
+  type: 'test'
+  ...
+# Subtest: burrow starts at exactly 42.0, without rounding 41.9 up
+ok 7 - burrow starts at exactly 42.0, without rounding 41.9 up
+  ---
+  duration_ms: 0.135454
+  type: 'test'
+  ...
+# Subtest: a day with no hourly slots in the window has a null maximum and does not burrow
+ok 8 - a day with no hourly slots in the window has a null maximum and does not burrow
+  ---
+  duration_ms: 0.159296
+  type: 'test'
+  ...
+# Subtest: null, non-finite and non-numeric hourly values do not become temperatures
+ok 9 - null, non-finite and non-numeric hourly values do not become temperatures
+  ---
+  duration_ms: 0.291031
+  type: 'test'
+  ...
+# Subtest: malformed local timestamps cannot enter the daytime window
+ok 10 - malformed local timestamps cannot enter the daytime window
+  ---
+  duration_ms: 0.235193
+  type: 'test'
+  ...
+# Subtest: a missing current day does not fall back to the host clock
+ok 11 - a missing current day does not fall back to the host clock
+  ---
+  duration_ms: 0.607973
+  type: 'test'
+  ...
+# Subtest: malformed payloads preserve missing data instead of inventing clear, dry weather
+ok 12 - malformed payloads preserve missing data instead of inventing clear, dry weather
+  ---
+  duration_ms: 0.128304
+  type: 'test'
+  ...
+# Subtest: explicit dates must be real YYYY-MM-DD dates
+ok 13 - explicit dates must be real YYYY-MM-DD dates
+  ---
+  duration_ms: 0.314671
+  type: 'test'
+  ...
+# Subtest: every documented weather code maps to a short condition with CURRENT temperature
+ok 14 - every documented weather code maps to a short condition with CURRENT temperature
+  ---
+  duration_ms: 0.19083
+  type: 'test'
+  ...
+# Subtest: current precipitation and wind preserve provider units without rounding
+ok 15 - current precipitation and wind preserve provider units without rounding
+  ---
+  duration_ms: 0.059452
+  type: 'test'
+  ...
+# Subtest: URL contains the exact five fields for hourly and current, two days and auto timezone
+ok 16 - URL contains the exact five fields for hourly and current, two days and auto timezone
+  ---
+  duration_ms: 0.35064
+  type: 'test'
+  ...
+# Subtest: fetch adapter uses the URL builder and returns the parsed forecast
+ok 17 - fetch adapter uses the URL builder and returns the parsed forecast
+  ---
+  duration_ms: 12.325588
+  type: 'test'
+  ...
+# Subtest: fetch adapter surfaces HTTP errors for the caller's cached fallback
+ok 18 - fetch adapter surfaces HTTP errors for the caller's cached fallback
+  ---
+  duration_ms: 0.236336
+  type: 'test'
+  ...
+# Subtest: fetch adapter surfaces invalid JSON without turning it into safe weather
+ok 19 - fetch adapter surfaces invalid JSON without turning it into safe weather
+  ---
+  duration_ms: 0.321534
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 95.941574

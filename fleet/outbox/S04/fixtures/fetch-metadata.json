@@ -1,0 +1,52 @@
+[
+  {
+    "city": "muscat",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=23.588&longitude=58.383&hourly=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&current=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&timezone=auto&forecast_days=2",
+    "retrieved_at_utc": "2026-10-07T19:43:32.434784+00:00",
+    "bytes": 2550,
+    "current_time": "2026-10-07T23:30",
+    "timezone": "Asia/Muscat",
+    "utc_offset_seconds": 14400,
+    "hourly_slots": 48
+  },
+  {
+    "city": "riyadh",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=24.713&longitude=46.675&hourly=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&current=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&timezone=auto&forecast_days=2",
+    "retrieved_at_utc": "2026-10-07T19:43:32.435281+00:00",
+    "bytes": 2536,
+    "current_time": "2026-10-07T22:30",
+    "timezone": "Asia/Riyadh",
+    "utc_offset_seconds": 10800,
+    "hourly_slots": 48
+  },
+  {
+    "city": "phoenix",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=33.448&longitude=-112.074&hourly=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&current=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&timezone=auto&forecast_days=2",
+    "retrieved_at_utc": "2026-10-07T19:43:32.435216+00:00",
+    "bytes": 2542,
+    "current_time": "2026-10-07T12:30",
+    "timezone": "America/Phoenix",
+    "utc_offset_seconds": -25200,
+    "hourly_slots": 48
+  },
+  {
+    "city": "berlin",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.405&hourly=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&current=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&timezone=auto&forecast_days=2",
+    "retrieved_at_utc": "2026-10-07T19:43:32.435528+00:00",
+    "bytes": 2562,
+    "current_time": "2026-10-07T21:30",
+    "timezone": "Europe/Berlin",
+    "utc_offset_seconds": 7200,
+    "hourly_slots": 48
+  },
+  {
+    "city": "kuala_lumpur",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=3.139&longitude=101.687&hourly=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&current=apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day&timezone=auto&forecast_days=2",
+    "retrieved_at_utc": "2026-10-07T19:43:32.435739+00:00",
+    "bytes": 2557,
+    "current_time": "2026-10-08T03:30",
+    "timezone": "Asia/Kuala_Lumpur",
+    "utc_offset_seconds": 28800,
+    "hourly_slots": 48
+  }
+]
