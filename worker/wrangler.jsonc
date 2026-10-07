@@ -17,7 +17,8 @@
   ],
   "observability": { "enabled": true },
   "vars": {
-    "BRAIN_TIMEOUT_MS": "25000"
+    "BRAIN_TIMEOUT_MS": "25000",
+    "ALLOWED_ORIGINS": "https://truffle-web.ahmed-abied.workers.dev"
   }
   // Secrets (never here): MODAL_URL, MODAL_TOKEN -> .dev.vars locally, `wrangler secret put` in prod.
 }

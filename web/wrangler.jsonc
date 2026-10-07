@@ -5,7 +5,7 @@
 {
   "$schema": "../worker/node_modules/wrangler/config-schema.json",
   "name": "truffle-web",
-  "compatibility_date": "2026-10-01",
+  "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",
     // /demo and any other path serve index.html; main.ts routes by pathname.
