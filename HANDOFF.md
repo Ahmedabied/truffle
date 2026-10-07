@@ -1,32 +1,43 @@
-# HANDOFF -> Session 02 (build kickoff)
+# HANDOFF -> Session 03 (Thursday Oct 8, morning)
 
-Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this.
+Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this. Rules from Ahmed tonight: no co-author trailers on commits, only his identity; no Fable subagents (builders are Opus 5.5 with `model: "opus"`, research and spikes are GPT); the GPT plugin only runs when his message asks for GPT or astra.
 
 ## Ahmed's first message should say
 
-"Build Truffle. Use the astra fleet (GPT) for Wave A and the Opus builders." The gpt plugin only runs when his message asks for GPT/astra.
+"Continue the Truffle build. Use the astra fleet (GPT) for Wave B and red-team, Opus builders for code." Plus which of the morning items below are done.
 
-## First 30 minutes
+## Ahmed's 15 minutes (nothing else can start the fine-tune without these)
 
-1. Confirm Ahmed's sign-ins are done (DEV, promos, Modal, HF token, Cloudflare). Collect tokens via the `!` prefix, never pasted in chat. Put them in `worker/.dev.vars` and Modal secrets. Grep the repo for secrets before the first commit.
-2. Launch **Wave A** (S01 - S10) from `fleet/packets/`. S01 needs a Modal token: astra writes `brain-modal/modal_app.py`, the main session deploys and measures.
-3. Launch **B01** (engine + goldens) and **B02** (Worker routes/DO) Opus builders in parallel. B01 is pure code; B02 can stub the engine until B01 lands.
-4. Scaffold `worker/` with `npm create cloudflare@latest` (Hono template), `web/` with Vite vanilla-ts. Commit the scaffolds.
+1. Modal: https://modal.com/login, Continue with GitHub, add a card (GPU runs need one even with the free credit), then on the laptop: `uv tool install modal && modal setup`. Tell the session when done; do not paste tokens in chat.
+2. Hugging Face: create a read token at https://huggingface.co/settings/tokens and put it in `~/.config/truffle/hf_token` (mode 600). The session reads the file, never the chat.
+3. Seed lines: 30 lines in `finetune/seed/TRUFFLE_VOICE_SEED.md` by noon. Wave B waits on this.
+4. Phone: download the APK from the draft release `v0.1.0-feeder` (GitHub, Releases, drafts are visible to you), sideload, open https://truffle-web.ahmed-abied.workers.dev, copy the phrase from Settings, paste it in the feeder, grant Health Connect steps, tap Feed now. If Health Connect shows no steps, Samsung Health > Settings > Health Connect > allow. Fallback: Tasker recipe in `feeder-android/README.md`.
+5. Look at the web app on the phone for 2 minutes and tell the session what is ugly (fonts, speed, Arabic).
 
-## Thursday morning
+## Session's first hour
 
-- Read `fleet/outbox/S01/RESULT.md` first. Decide Plan A or B. Write `decisions/0011_serving_plan.md`.
-- Start B03 (web), B04 (feeder: build on the box per findings/02, not on the laptop), B05 (finetune pipeline).
-- Ahmed's seed lines due noon -> launch Wave B.
+1. Run S01 for real (packet result in `fleet/outbox/S01/RESULT.md`, commands in `brain-modal/README.md`): download weights to the Volume, make the dummy LoRA, deploy, bench. Estimate before running: weights download is CPU time, bench about 20 GPU minutes on L40S, about USD 1 to 2. Log in `fleet/costs.md`. Decide Plan A or B, write `decisions/0011_serving_plan.md`.
+2. `cd worker && wrangler secret put MODAL_URL` and `MODAL_TOKEN`, `wrangler deploy`, `scripts/smoke.sh https://truffle.ahmed-abied.workers.dev`, confirm `/health` says `modal:true` and a chat says `brain: modal`.
+3. When the seed lines land: launch Wave B (18 shards, GPT agents, one per mood x lang) with `finetune/data/schema.md`, `finetune/data/examples.jsonl` and the seed as inputs. The generator prompt must forbid em and en dashes (the filter drops them) and must use the exact system message format. Then one Opus reviewer runs `python3 -I finetune/filter.py` and reports.
+4. Launch B04 (Opus) to finish the feeder: decide compileSdk 36 plus Health Connect 1.1.0 stable, verify real Samsung counts against Samsung Health within 2 percent, keep location off.
+
+## Follow-ups from tonight (cut packets as needed)
+
+- S10 items not yet applied: feed admission caps (50,000 per day, 20 steps per second), coordinate move bounds and latching a protected day, sanitise weather text to a fixed vocabulary, facts as untrusted data with a 60 cap and wipe at death, uniform 401 for unknown phrase and wrong secret, demo chats bounded. Proposed goldens in `fleet/outbox/S10/proposed_goldens.json` (64 of 70 already pass; adopt after decisions).
+- S03: a high-tier Arabic reply once spent all its tokens thinking and produced nothing. Add a retry with thinking off when the visible reply is empty, and count it in the log.
+- B02 open point: the state block always shows the tier energy allows, even when the user asked for a lower one. Decide whether the block should show the charged tier.
+- Web: phone verification; HUD language decision; Arabic stage names; the demo page clears the heat toggle after time travel (by design, confirm).
+- Eval fairness: `finetune/eval/run_eval.py` builds its own system prompt from the schema; the Worker's `buildSystemPrompt` adds guidance lines after the canonical trio. For the base vs tuned table use the same builder, or evaluate through the Worker.
+- README still says pre-build; update after the Modal brain is live.
 
 ## Things that will bite
 
-- `request.cf` is undefined in `wrangler dev` locally; guard with defaults (Muscat, Asia/Muscat, OM, ar).
-- DO alarms: one per object; reschedule inside `alarm()`; test catch-up when multiple midnights were missed.
-- Health Connect auto-revokes permissions on unused apps. Feeder must handle `SecurityException` and prompt again.
-- Gemma 4 chat template on the 31B inserts empty reasoning blocks when thinking is off; parse with `--reasoning-parser gemma4`.
-- Don't let any agent download weights to the laptop (9GB free).
+- `request.cf` is undefined in `wrangler dev`: defaults are Muscat, Asia/Muscat, OM, ar.
+- Workers AI thinking counts against `max_tokens`; the router adds 1,024 tokens at high tier. Reasoning arrives in `reasoning_content` (and sometimes `reasoning`) and never reaches the client.
+- The per-IP spawn limit (5 per hour) hits repeated testing from one IP.
+- Never let an agent download weights to the laptop (9 GB free). Box has 77 GB.
+- DEV agent-session upload sends the raw transcript before redaction; slice and sanitise locally first (`fleet/outbox/S07/RESULT.md`).
 
 ## Deliverable for end of Thursday
 
-Truffle talks on Ahmed's phone with real steps (via Tasker), via the Workers AI fallback brain, with the ASCII world showing real energy and real Muscat weather. Diary day 1 happens.
+Real steps from Ahmed's Samsung arrive at `/feed`. The Modal brain answers at least one chat (`brain: modal`). Wave B shards filtered into `train.jsonl` and `eval_holdout.jsonl`. Diary day 1 written by Ahmed after an evening walk.

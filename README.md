@@ -31,7 +31,11 @@ Cloudflare Pages: the ASCII world  <--------------------------------------------
 
 ## Status
 
-Pre-build. Read `PLAYBOOK.md` for the plan, `STATE.md` for where things are, `docs/` for the specs.
+Build day 1 (night of Oct 7 to 8): the world, the chat and the energy engine are live with the Workers AI fallback brain. The Modal brain and the fine-tune come next.
+
+- Try it: https://truffle-web.ahmed-abied.workers.dev (judge mode: https://truffle-web.ahmed-abied.workers.dev/demo)
+- API: https://truffle.ahmed-abied.workers.dev
+- Read `PLAYBOOK.md` for the plan, `STATE.md` for where things are, `docs/` for the specs, `fleet/outbox/` for the spike results.
 
 ## Licence
 
