@@ -154,7 +154,8 @@ export function allowedTier(state: TruffleState): Tier {
  */
 export function decideTier(state: TruffleState, requested?: Tier): TierDecision {
   let tier = allowedTier(state);
-  if (requested !== undefined) tier = lowerTier(tier, requested);
+  // Unknown strings from clients are ignored, never looked up in TIERS.
+  if (requested !== undefined && TIER_ORDER.includes(requested)) tier = lowerTier(tier, requested);
   if (tier !== "asleep" && state.energy < TIERS[tier].cost) {
     tier = TIER_ORDER[TIER_ORDER.indexOf(tier) - 1];
   }

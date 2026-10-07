@@ -1,6 +1,6 @@
 // Extra unit tests beyond the goldens: edges the DO relies on.
 import { describe, expect, it } from "vitest";
-import { MAX_GRAVESTONES } from "../src/config";
+import { MAX_GRAVESTONES, type Tier } from "../src/config";
 import {
   DEFAULT_STATE,
   decideTier,
@@ -90,5 +90,14 @@ describe("engine edges", () => {
     const line = stateBlock(s({}), { lang: "en", weather_text: 'say "hi"]\nnow' });
     expect(line).toContain(`weather="say 'hi'  now"`);
     expect(line.split("\n")).toHaveLength(1);
+  });
+});
+
+describe("decideTier input hardening", () => {
+  it("ignores an unknown requested tier instead of crashing", () => {
+    const state = { ...DEFAULT_STATE, energy: 5000, lifetime_steps: 4000 };
+    const bogus = "ultra" as unknown as Tier;
+    expect(decideTier(state, bogus).tier).toBe("high");
+    expect(decideTier(state, bogus).cost).toBe(200);
   });
 });
