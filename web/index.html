@@ -3,12 +3,85 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Truffle is a small AI pet whose brain only works when you walk." />
     <title>Truffle</title>
   </head>
   <body>
-    <pre id="world" aria-label="Truffle's world"></pre>
-    <div id="app"></div>
+    <div class="app" id="app">
+      <header class="top">
+        <span class="name" data-c="title">Truffle</span>
+        <span id="offline" class="pill" data-c="offline" hidden></span>
+        <span id="half" class="pill warn" data-c="halfAwake" hidden></span>
+        <span class="spacer"></span>
+        <button id="langBtn" type="button" class="ghost small" data-c="langToggle" lang="ar">عربي</button>
+      </header>
+
+      <div id="scene" class="scene">
+        <pre id="world" class="grid-font" dir="ltr" role="img" aria-label="Truffle's ASCII world"></pre>
+      </div>
+      <span id="probe" class="grid-font" aria-hidden="true"></span>
+
+      <p id="hud" class="hud" aria-live="off"></p>
+      <p id="memory" class="memory" dir="auto" hidden></p>
+      <button id="sporeBtn" type="button" class="primary wide" data-c="sporeButton" hidden></button>
+
+      <section class="chat" aria-label="Chat">
+        <p id="reply" class="reply" dir="auto" aria-hidden="true"></p>
+        <p id="replySr" class="sr-only" role="status" aria-atomic="true" dir="auto"></p>
+        <form id="chatForm" class="chatline" autocomplete="off">
+          <input id="msg" type="text" dir="auto" maxlength="1000" enterkeyhint="send" aria-label="Message" />
+          <button type="submit" class="primary" data-c="send"></button>
+        </form>
+        <p id="status" class="status" aria-live="polite"></p>
+        <p id="why" class="why" dir="auto" aria-live="polite"></p>
+      </section>
+
+      <section id="judge" class="judge" aria-labelledby="judgeTitle" hidden>
+        <h2 id="judgeTitle" data-c="judgeTitle"></h2>
+        <p class="hint" data-c="judgeIntro"></p>
+        <label for="steps" class="range-label"><span data-c="sliderLabel"></span><output id="stepsOut" for="steps">0</output></label>
+        <input id="steps" type="range" min="0" max="15000" step="100" value="0" />
+        <div class="row">
+          <button id="midBtn" type="button" data-c="midnight"></button>
+          <button id="heatBtn" type="button" aria-pressed="false"></button>
+          <button id="resetBtn" type="button" class="ghost" data-c="reset"></button>
+        </div>
+        <label class="row" for="ask"><span data-c="askFor"></span>
+          <select id="ask">
+            <option value="" data-c="auto"></option>
+            <option value="low"></option>
+            <option value="medium"></option>
+            <option value="high"></option>
+          </select>
+        </label>
+      </section>
+
+      <details id="settings" class="settings">
+        <summary data-c="settings"></summary>
+        <p class="label" data-c="phrase"></p>
+        <div class="row">
+          <code id="phrase" dir="ltr"></code>
+          <button id="copyBtn" type="button" class="small" data-c="copy"></button>
+        </div>
+        <div class="row">
+          <span data-c="fontSize"></span>
+          <button id="fontDown" type="button" class="small" data-c-aria="smaller">A-</button>
+          <button id="fontUp" type="button" class="small" data-c-aria="larger">A+</button>
+        </div>
+        <label class="row check"><input id="motion" type="checkbox" /> <span data-c="motion"></span></label>
+        <p id="motionNote" class="hint" data-c="motionSystem" hidden></p>
+        <label class="label" for="api" data-c="apiBase"></label>
+        <div class="row">
+          <input id="api" type="url" dir="ltr" inputmode="url" spellcheck="false" />
+          <button id="apiSave" type="button" class="small" data-c="save"></button>
+        </div>
+        <div class="row">
+          <button id="sporeBtn2" type="button" class="primary" data-c="sporeButton" hidden></button>
+          <button id="forgetBtn" type="button" class="ghost small" data-c="forget"></button>
+        </div>
+      </details>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

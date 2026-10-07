@@ -1,0 +1,14 @@
+// Truffle web: static assets on Workers. Build first (npm run build), then
+// the integrator runs `npx wrangler deploy` from web/. Set VITE_API_BASE at
+// build time to the Worker URL, and add this site's origin to the Worker's
+// ALLOWED_ORIGINS so CORS lets it in.
+{
+  "$schema": "../worker/node_modules/wrangler/config-schema.json",
+  "name": "truffle-web",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // /demo and any other path serve index.html; main.ts routes by pathname.
+    "not_found_handling": "single-page-application"
+  }
+}
