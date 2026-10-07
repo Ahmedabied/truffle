@@ -1,0 +1,3 @@
+workerd/server/server.c++:8201: debug: [ TEST ] time-tests
+PASS: 15 exact fixtures, catch-up checks, 2569 calendar boundaries; h23 midnight=00
+workerd/server/server.c++:8215: debug: [ PASS ] time-tests (515.727609ms)

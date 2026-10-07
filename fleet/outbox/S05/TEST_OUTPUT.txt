@@ -1,0 +1,178 @@
+TAP version 13
+# Subtest: Muscat local parts, weekday, and day key use UTC+4
+ok 1 - Muscat local parts, weekday, and day key use UTC+4
+  ---
+  duration_ms: 9.80124
+  type: 'test'
+  ...
+# Subtest: Muscat midnight across ordinary dates, month ends, year ends, and leap day
+ok 2 - Muscat midnight across ordinary dates, month ends, year ends, and leap day
+  ---
+  duration_ms: 2.363733
+  type: 'test'
+  ...
+# Subtest: Exact midnight is excluded, including millisecond-adjacent inputs
+ok 3 - Exact midnight is excluded, including millisecond-adjacent inputs
+  ---
+  duration_ms: 0.702066
+  type: 'test'
+  ...
+# Subtest: Berlin DST start on 2026-03-29 creates a 23-hour local day
+ok 4 - Berlin DST start on 2026-03-29 creates a 23-hour local day
+  ---
+  duration_ms: 1.164207
+  type: 'test'
+  ...
+# Subtest: Berlin DST end on 2026-10-25 creates a 25-hour local day
+ok 5 - Berlin DST end on 2026-10-25 creates a 25-hour local day
+  ---
+  duration_ms: 1.364184
+  type: 'test'
+  ...
+# Subtest: New York DST end on 2026-11-01 creates a 25-hour day
+ok 6 - New York DST end on 2026-11-01 creates a 25-hour day
+  ---
+  duration_ms: 0.790759
+  type: 'test'
+  ...
+# Subtest: Kolkata uses a 30-minute UTC offset
+ok 7 - Kolkata uses a 30-minute UTC offset
+  ---
+  duration_ms: 0.695081
+  type: 'test'
+  ...
+# Subtest: Kathmandu uses a 45-minute UTC offset
+ok 8 - Kathmandu uses a 45-minute UTC offset
+  ---
+  duration_ms: 0.598541
+  type: 'test'
+  ...
+# Subtest: Lord Howe handles 30-minute DST shifts
+ok 9 - Lord Howe handles 30-minute DST shifts
+  ---
+  duration_ms: 0.81733
+  type: 'test'
+  ...
+# Subtest: Sao Paulo 2018-11-04 has no midnight, so use its first instant at 01:00
+ok 10 - Sao Paulo 2018-11-04 has no midnight, so use its first instant at 01:00
+  ---
+  duration_ms: 1.156109
+  type: 'test'
+  ...
+# Subtest: Kathmandu's 1986 midnight gap starts at 00:15, not a whole hour
+ok 11 - Kathmandu's 1986 midnight gap starts at 00:15, not a whole hour
+  ---
+  duration_ms: 1.128033
+  type: 'test'
+  ...
+# Subtest: Havana's repeated midnight is processed once, at its first occurrence
+ok 12 - Havana's repeated midnight is processed once, at its first occurrence
+  ---
+  duration_ms: 0.73562
+  type: 'test'
+  ...
+# Subtest: Apia's wholly skipped 2011-12-30 does not invent a midnight
+ok 13 - Apia's wholly skipped 2011-12-30 does not invent a midnight
+  ---
+  duration_ms: 0.748308
+  type: 'test'
+  ...
+# Subtest: Catch-up returns exactly three elapsed boundaries, oldest first
+ok 14 - Catch-up returns exactly three elapsed boundaries, oldest first
+  ---
+  duration_ms: 0.32453
+  type: 'test'
+  ...
+# Subtest: A 30-day catch-up returns the oldest 14 and retains debt for later batches
+ok 15 - A 30-day catch-up returns the oldest 14 and retains debt for later batches
+  ---
+  duration_ms: 0.699197
+  type: 'test'
+  ...
+# Subtest: Catch-up crosses Berlin's long day without adding fixed 24-hour periods
+ok 16 - Catch-up crosses Berlin's long day without adding fixed 24-hour periods
+  ---
+  duration_ms: 0.18283
+  type: 'test'
+  ...
+# Subtest: Catch-up crosses Berlin's short day
+ok 17 - Catch-up crosses Berlin's short day
+  ---
+  duration_ms: 0.200133
+  type: 'test'
+  ...
+# Subtest: Catch-up includes the first instant of a day without midnight
+ok 18 - Catch-up includes the first instant of a day without midnight
+  ---
+  duration_ms: 0.265464
+  type: 'test'
+  ...
+# Subtest: Catch-up skips absent dates and repeated midnight hours
+ok 19 - Catch-up skips absent dates and repeated midnight hours
+  ---
+  duration_ms: 0.413087
+  type: 'test'
+  ...
+# Subtest: Catch-up interval is open on lastTickMs and closed on nowMs
+ok 20 - Catch-up interval is open on lastTickMs and closed on nowMs
+  ---
+  duration_ms: 0.514701
+  type: 'test'
+  ...
+# Subtest: Changing from Muscat to Berlin recomputes the alarm in the new zone
+ok 21 - Changing from Muscat to Berlin recomputes the alarm in the new zone
+  ---
+  duration_ms: 0.323859
+  type: 'test'
+  ...
+# Subtest: Timezone-change day-key guard suppresses a repeated day after westward travel
+ok 22 - Timezone-change day-key guard suppresses a repeated day after westward travel
+  ---
+  duration_ms: 0.358738
+  type: 'test'
+  ...
+# Subtest: IANA validation accepts named zones and aliases, rejects bad or default zones
+ok 23 - IANA validation accepts named zones and aliases, rejects bad or default zones
+  ---
+  duration_ms: 0.832741
+  type: 'test'
+  ...
+# Subtest: Invalid instants and catch-up limits fail explicitly
+ok 24 - Invalid instants and catch-up limits fail explicitly
+  ---
+  duration_ms: 0.319059
+  type: 'test'
+  ...
+# Subtest: Intl hour 24 is normalized without incrementing its printed date
+ok 25 - Intl hour 24 is normalized without incrementing its printed date
+  ---
+  duration_ms: 0.653529
+  type: 'test'
+  ...
+# Subtest: Calendar arithmetic avoids the Date.UTC year 0..99 remap
+ok 26 - Calendar arithmetic avoids the Date.UTC year 0..99 remap
+  ---
+  duration_ms: 0.36446
+  type: 'test'
+  ...
+# Subtest: Negative epoch timestamps preserve the millisecond boundary
+ok 27 - Negative epoch timestamps preserve the millisecond boundary
+  ---
+  duration_ms: 0.33984
+  type: 'test'
+  ...
+# Subtest: Every 2026 boundary matches the next calendar date in seven representative zones
+ok 28 - Every 2026 boundary matches the next calendar date in seven representative zones
+  ---
+  duration_ms: 821.073578
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 931.935644
