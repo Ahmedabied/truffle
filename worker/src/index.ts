@@ -139,85 +139,27 @@ async function create(c: C, demo: boolean) {
 
 app.get("/health", (c) => c.json({ ok: true, service: "truffle", modal: Boolean(c.env.MODAL_URL) }));
 
-app.post("/pair", (c) => create(c, false));
-
-app.post("/feed", async (c) => {
-  const b = await body(c);
-  const phrase = parsePhrase(b.phrase);
-  if (!phrase) return bad(c, "phrase must be three words from the list, like sand-moon-fig");
-  if (!isNum(b.steps_today_total, 0, MAX_STEPS) || !Number.isInteger(b.steps_today_total)) {
-    return bad(c, `steps_today_total must be an integer 0..${MAX_STEPS}`);
-  }
-  const hasLat = b.lat !== undefined && b.lat !== null;
-  const hasLon = b.lon !== undefined && b.lon !== null;
-  if (hasLat !== hasLon || (hasLat && (!isNum(b.lat, -90, 90) || !isNum(b.lon, -180, 180)))) {
-    return bad(c, "lat and lon must come together, as numbers");
-  }
-  if (b.device_tz !== undefined && !isValidTimeZone(b.device_tz)) return bad(c, "device_tz must be an IANA zone");
-  if (b.day !== undefined && !isCalendarDay(b.day)) return bad(c, "day must be a real date, YYYY-MM-DD");
-  const stub = await stubFor(c.env, phrase);
-  return reply(
-    c,
-    await stub.feed({
-      total: b.steps_today_total,
-      lat: hasLat ? (b.lat as number) : undefined,
-      lon: hasLon ? (b.lon as number) : undefined,
-      device_tz: b.device_tz as string | undefined,
-      day: b.day as string | undefined
-    })
-  );
-});
-
-app.get("/state", async (c) => {
-  const o = await owned(c, {});
-  if ("error" in o) return o.error;
-  return reply(c, await o.stub.getState(o.secret));
-});
-
-app.post("/chat", async (c) => {
-  const b = await body(c);
-  const o = await owned(c, b);
-  if ("error" in o) return o.error;
-  const message = typeof b.message === "string" ? b.message.trim() : "";
-  if (!message || message.length > MAX_MESSAGE) return bad(c, `message must be 1..${MAX_MESSAGE} characters`);
-  if (b.requested_tier !== undefined && !TIERS_IN.includes(b.requested_tier as Tier)) {
-    return bad(c, "requested_tier must be asleep, low, medium or high");
-  }
-  if (b.lang !== undefined && !langOf(b.lang)) return bad(c, "lang must be ar or en");
-  const r = await o.stub.chat(o.secret, message, b.requested_tier as Tier | undefined, langOf(b.lang));
-  if (!r.ok) return c.json({ error: r.error }, r.status);
-  return new Response(r.value, {
-    headers: {
-      "content-type": "text/event-stream; charset=utf-8",
-      "cache-control": "no-cache"
-    }
-  });
-});
-
-app.post("/spore", async (c) => {
-  const b = await body(c);
-  const o = await owned(c, b);
-  if ("error" in o) return o.error;
-  return reply(c, await o.stub.spore(o.secret));
-});
-
-// ---------- judge mode ----------
-
-// S10-05: 5 demo spawns per hour and 20 per day per client IP, counted
-// before any Truffle object is created. Demo Truffles still self-delete after 24h.
-app.post("/demo/spawn", async (c) => {
+// S10-05: 5 spawns per hour and 20 per day per client IP for both /pair and
+// /demo/spawn, counted before any Truffle object is created. A real person pairs
+// once; the limit only stops scripts from allocating objects. Demo Truffles still
+// self-delete after 24h.
+async function spawnLimited(c: C, kind: "pair" | "demo-spawn", demo: boolean) {
   const ip = c.req.header("cf-connecting-ip") ?? "local";
-  const limiter = c.env.LIMITER.get(c.env.LIMITER.idFromName(`demo-spawn:${ip}`));
+  const limiter = c.env.LIMITER.get(c.env.LIMITER.idFromName(`${kind}:${ip}`));
   const r = await limiter.hit([
     { name: "hour", limit: DEMO_SPAWNS_PER_HOUR, windowMs: HOUR_MS },
     { name: "day", limit: DEMO_SPAWNS_PER_DAY, windowMs: DAY_MS }
   ]);
   if (!r.allowed) {
     const wait = r.rule === "hour" ? `${Math.ceil(r.retry_after_s / 60)} min` : `${Math.ceil(r.retry_after_s / 3600)} h`;
-    return c.json({ error: `Too many demo Truffles from here. Try again in ${wait}.` }, 429);
+    const what = demo ? "demo Truffles" : "new Truffles";
+    return c.json({ error: `Too many ${what} from here. Try again in ${wait}.` }, 429);
   }
-  return create(c, true);
-});
+  return create(c, demo);
+}
+
+app.post("/pair", (c) => spawnLimited(c, "pair", false));
+app.post("/demo/spawn", (c) => spawnLimited(c, "demo-spawn", true));
 
 app.post("/demo/slider", async (c) => {
   const b = await body(c);
