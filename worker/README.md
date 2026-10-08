@@ -54,7 +54,7 @@ npx wrangler deploy
 
 All bodies are JSON objects of at most 8 KiB. Errors look like `{"error": "...", "hint": "..."}` with a 4xx status. A rejected request changes nothing.
 
-Owner routes give one answer for an unknown phrase, a wrong secret and a missing secret: `401 {"error": "That phrase and secret do not match a Truffle."}`. The bodies are byte-identical. The response times are not equal, so failed lookups are rate-limited: 30 a minute per IP, then `429` with `retry_after_s` until the minute is up. The limit is checked before any Truffle is touched. A guessed phrase stores nothing and fetches no weather.
+Owner routes give one answer for an unknown phrase, a wrong secret and a missing secret: `401 {"error": "That phrase and secret do not match a Truffle."}`. The bodies are byte-identical. The response times are not equal, so failed lookups are rate-limited: 30 a minute per IP and phrase, reserved before the lookup and given back on success, then `429` with `retry_after_s` until the minute is up. The limit is checked before any Truffle is touched. A guessed phrase stores nothing and fetches no weather.
 
 The phrase names a Truffle. The secret proves you own it. `/pair` returns the secret once. Send it as the header `x-truffle-secret` (or a `secret` field in the body). `/feed` needs only the phrase, so a phone automation can call it. The worst a stranger with your phrase can do is feed your Truffle.
 
