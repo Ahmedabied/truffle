@@ -70,3 +70,32 @@ function round2(v: number): number {
   const r = Math.round(v * 100) / 100;
   return Object.is(r, -0) ? 0 : r;
 }
+
+export class BodyTooLarge extends Error {}
+
+/** Collect a request body up to `max` bytes. One byte more throws BodyTooLarge and cancels the stream. */
+export async function readBounded(stream: ReadableStream<Uint8Array> | null, max: number): Promise<string> {
+  if (!stream) return "";
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) throw new BodyTooLarge();
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+    if (size > max) await stream.cancel().catch(() => {});
+  }
+  const all = new Uint8Array(size);
+  let at = 0;
+  for (const ch of chunks) {
+    all.set(ch, at);
+    at += ch.byteLength;
+  }
+  return new TextDecoder().decode(all);
+}

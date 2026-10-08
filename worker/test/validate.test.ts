@@ -102,3 +102,35 @@ describe("coordinates", () => {
     it(`rejects lat=${String(lat)} lon=${String(lon)}`, () => expect(parseCoords(lat, lon).ok).toBe(false));
   }
 });
+
+import { readBounded } from "../src/validate";
+
+describe("readBounded", () => {
+  const stream = (parts: string[]) =>
+    new ReadableStream<Uint8Array>({
+      start(ctl) {
+        for (const p of parts) ctl.enqueue(new TextEncoder().encode(p));
+        ctl.close();
+      }
+    });
+
+  it("returns the text when it fits", async () => {
+    expect(await readBounded(stream(['{"a":', "1}"]), 16)).toBe('{"a":1}');
+  });
+
+  it("throws before buffering a body over the cap, even without content-length", async () => {
+    let pulled = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(ctl) {
+        pulled++;
+        ctl.enqueue(new Uint8Array(1024));
+      }
+    });
+    await expect(readBounded(endless, 8192)).rejects.toThrow();
+    expect(pulled).toBeLessThan(12);
+  });
+
+  it("empty body is empty text", async () => {
+    expect(await readBounded(null, 8)).toBe("");
+  });
+});

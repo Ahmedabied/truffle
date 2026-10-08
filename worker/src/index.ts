@@ -8,7 +8,7 @@ import { AUTH_FAILED, generatePhrase, generateSecret, hashPhrase, hashSecret, is
 import { DAY_MS, DEMO_SPAWNS_PER_DAY, DEMO_SPAWNS_PER_HOUR, HOUR_MS } from "./ratelimit";
 import { isValidTimeZone } from "./time";
 import type { Env, Lang, PairInput, Result } from "./types";
-import { MAX_BODY_BYTES, parseBodyText, parseCoords, parseMessage, stepTotalError } from "./validate";
+import { BodyTooLarge, MAX_BODY_BYTES, parseBodyText, parseCoords, parseMessage, readBounded, stepTotalError } from "./validate";
 import { sanitizeText } from "./weather";
 
 export { TruffleDO } from "./do";
@@ -68,10 +68,15 @@ async function body(c: C, hint = FIX_AND_RETRY): Promise<{ b: Record<string, unk
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     return { error: bad(c, `The request body is too large. The limit is ${MAX_BODY_BYTES} bytes.`, 400, hint) };
   }
+  // Read at most the cap plus one byte, then stop. A missing or false
+  // content-length must not make the Worker buffer an unbounded body.
   let text: string;
   try {
-    text = await c.req.text();
-  } catch {
+    text = await readBounded(c.req.raw.body, MAX_BODY_BYTES);
+  } catch (e) {
+    if (e instanceof BodyTooLarge) {
+      return { error: bad(c, `The request body is too large. The limit is ${MAX_BODY_BYTES} bytes.`, 400, hint) };
+    }
     return { error: bad(c, "The request body could not be read.", 400, hint) };
   }
   const r = parseBodyText(text);
