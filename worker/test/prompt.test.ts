@@ -34,7 +34,7 @@ describe("buildSystemPrompt", () => {
     expect(p).toContain("Reply in the language given by lang. Keep to the effort your energy allows.");
     expect(p).toContain("lang=ar means Arabic");
     expect(p).toContain("Never shame");
-    expect(p).toContain("evening walk or walking indoors");
+    expect(p).toContain("Heat shelter needs no catch-up walk.");
   });
   it("tells the model the status line is private", () => {
     expect(p).toContain("The bracketed status line is private. Never quote it or its field names.");
