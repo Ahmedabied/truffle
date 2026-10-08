@@ -629,14 +629,14 @@ export class TruffleDO extends DurableObject<Env> {
     // B10: when burrowed, the heat notice comes from code, not from the model.
     // Validated numbers and fixed words only. It is shown, never stored as a turn.
     // A demo Truffle's heat is a toggle, not a forecast: the line carries no number.
-    const heat = s.burrowed
-      ? heatLine(m.demo ? undefined : m.weather_now?.current_apparent_c, m.demo ? undefined : m.weather_days?.[today], lang)
-      : null;
+    const heatNow = m.demo ? undefined : m.weather_now?.current_apparent_c;
+    const heatMax = m.demo ? undefined : m.weather_days?.[today];
+    const heat = s.burrowed ? heatLine(heatNow, heatMax, lang) : null;
     let heatShown = false;
     const showHeat = async () => {
       if (!heat || heatShown) return;
       heatShown = true;
-      const h = heatTemp(m.weather_now?.current_apparent_c, m.weather_days?.[today]);
+      const h = heatTemp(heatNow, heatMax);
       this.log("heat_line", { lang, temp: h ? h.t : null });
       await send("token", { t: `${heat}\n` });
     };

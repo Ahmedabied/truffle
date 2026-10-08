@@ -169,9 +169,10 @@ describe("B10-2 heat notice from code when burrowed", () => {
       ai
     );
     const evs = await (await startChat(f, "low")).events!;
-    expect(visible(evs)).toBe("44C outside. Truffle is under the sand. Walk after sunset or indoors.\nToo hot. Stay cool.");
+    // Demo heat is a toggle, not a forecast, so the line carries no number.
+    expect(visible(evs)).toBe("Too hot outside today. Truffle is under the sand. Walk after sunset or indoors.\nToo hot. Stay cool.");
     await f.drain();
-    expect(f.logs("heat_line")).toEqual([{ lang: "en", temp: 44 }]);
+    expect(f.logs("heat_line")).toEqual([{ lang: "en", temp: null }]);
     // The stored assistant turn is the model's words only.
     expect(f.turns().at(-1)!.content).toBe("Too hot. Stay cool.");
   });
