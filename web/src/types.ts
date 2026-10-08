@@ -33,6 +33,8 @@ export interface StateSummary {
   next_midnight_ms: number | null;
   weather: WeatherSummary | null;
   expires_ms?: number;
+  /** Proud moments, the last 20, ascending id (decision 0017). Optional: an older Worker or the mock may omit it. */
+  moments?: import("../../worker/src/moments").Moment[];
 }
 
 export interface Creds {

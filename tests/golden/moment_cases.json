@@ -1,0 +1,1283 @@
+{
+ "$schema_note": "Spec-by-test for momentsFor (decision 0017). Each case: a before state, an after state, the context and the exact moments expected, in order. States merge over default_state; a missing stage is derived from lifetime_steps. Add cases with behaviour; never bend a case to fit code without a decision record.",
+ "constants": {
+  "max_moments": 20,
+  "best_day_min_steps": 2000,
+  "day_10k_steps": 10000,
+  "heat_day_min_steps": 2000,
+  "streak_min_steps": 3000,
+  "streak_values": [
+   3,
+   7,
+   14,
+   30
+  ],
+  "lifetime_values": [
+   10000,
+   50000,
+   100000,
+   250000,
+   500000
+  ],
+  "once_per_day": [
+   "best_day",
+   "beat_avg7",
+   "day_10k",
+   "heat_day_indoor"
+  ]
+ },
+ "default_state": {
+  "energy": 0,
+  "lifetime_steps": 0,
+  "stage": "Spore",
+  "zero_days": 0,
+  "affection": 0,
+  "age_days": 0,
+  "steps_today": 0,
+  "avg7": 0,
+  "history7": [],
+  "burrowed": false,
+  "dead": false
+ },
+ "cases": [
+  {
+   "id": "01_best_day_first_day_at_2000",
+   "before": {
+    "steps_today": 1500,
+    "lifetime_steps": 1500
+   },
+   "after": {
+    "steps_today": 2100,
+    "lifetime_steps": 2100
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "best_day",
+     "at_ms": 1760000000000,
+     "value": 2100
+    }
+   ],
+   "note": "Empty history7: every day is beaten, so the 2,000 floor decides."
+  },
+  {
+   "id": "02_best_day_beats_every_day_in_history7",
+   "before": {
+    "history7": [
+     3000,
+     4000,
+     2500
+    ],
+    "avg7": 3166.6666666666665,
+    "steps_today": 3900,
+    "lifetime_steps": 9000
+   },
+   "after": {
+    "history7": [
+     3000,
+     4000,
+     2500
+    ],
+    "avg7": 3166.6666666666665,
+    "steps_today": 4100,
+    "lifetime_steps": 9200
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "best_day",
+     "at_ms": 1760000000000,
+     "value": 4100
+    }
+   ],
+   "note": "beat_avg7 was already true before this feed, so it does not fire."
+  },
+  {
+   "id": "03_best_day_not_when_one_day_is_higher",
+   "before": {
+    "history7": [
+     5000
+    ],
+    "avg7": 5000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 8000
+   },
+   "after": {
+    "history7": [
+     5000
+    ],
+    "avg7": 5000.0,
+    "steps_today": 4500,
+    "lifetime_steps": 9500
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": []
+  },
+  {
+   "id": "04_best_day_needs_2000_but_beat_avg7_fires",
+   "before": {
+    "history7": [
+     1000,
+     1200
+    ],
+    "avg7": 1100.0,
+    "steps_today": 1000,
+    "lifetime_steps": 3200
+   },
+   "after": {
+    "history7": [
+     1000,
+     1200
+    ],
+    "avg7": 1100.0,
+    "steps_today": 1900,
+    "lifetime_steps": 4100
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "beat_avg7",
+     "at_ms": 1760000000000,
+     "value": 1900
+    }
+   ]
+  },
+  {
+   "id": "05_best_day_and_beat_avg7_once_per_day",
+   "before": {
+    "history7": [
+     1800
+    ],
+    "avg7": 1800.0,
+    "steps_today": 1500,
+    "lifetime_steps": 3300
+   },
+   "after": {
+    "history7": [
+     1800
+    ],
+    "avg7": 1800.0,
+    "steps_today": 2500,
+    "lifetime_steps": 4300
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": [
+     "best_day",
+     "beat_avg7"
+    ]
+   },
+   "expected": []
+  },
+  {
+   "id": "06_best_day_then_beat_avg7_in_order",
+   "before": {
+    "history7": [
+     4000,
+     4000
+    ],
+    "avg7": 4000.0,
+    "steps_today": 3900,
+    "lifetime_steps": 11900
+   },
+   "after": {
+    "history7": [
+     4000,
+     4000
+    ],
+    "avg7": 4000.0,
+    "steps_today": 4100,
+    "lifetime_steps": 12100
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "best_day",
+     "at_ms": 1760000000000,
+     "value": 4100
+    },
+    {
+     "id": 2,
+     "kind": "beat_avg7",
+     "at_ms": 1760000000000,
+     "value": 4100
+    }
+   ]
+  },
+  {
+   "id": "07_beat_avg7_equal_is_not_beating",
+   "before": {
+    "history7": [
+     3000,
+     5000
+    ],
+    "avg7": 4000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 11000
+   },
+   "after": {
+    "history7": [
+     3000,
+     5000
+    ],
+    "avg7": 4000.0,
+    "steps_today": 4000,
+    "lifetime_steps": 12000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": []
+  },
+  {
+   "id": "08_beat_avg7_needs_avg7_above_zero",
+   "before": {
+    "history7": [
+     0,
+     0
+    ],
+    "avg7": 0.0,
+    "steps_today": 0,
+    "lifetime_steps": 0
+   },
+   "after": {
+    "history7": [
+     0,
+     0
+    ],
+    "avg7": 0.0,
+    "steps_today": 1500,
+    "lifetime_steps": 1500
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": []
+  },
+  {
+   "id": "09_day_10k_crossing",
+   "before": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 9500,
+    "lifetime_steps": 20000
+   },
+   "after": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 10200,
+    "lifetime_steps": 20700
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "day_10k",
+     "at_ms": 1760000000000,
+     "value": 10200
+    }
+   ]
+  },
+  {
+   "id": "10_day_10k_once_per_day",
+   "before": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 9500,
+    "lifetime_steps": 20000
+   },
+   "after": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 10200,
+    "lifetime_steps": 20700
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": [
+     "day_10k"
+    ]
+   },
+   "expected": []
+  },
+  {
+   "id": "11_day_10k_does_not_fire_again_above_10k",
+   "before": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 10500,
+    "lifetime_steps": 21000
+   },
+   "after": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 11000,
+    "lifetime_steps": 21500
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [],
+   "note": "Every daily kind fires when its condition turns true. Already true before the feed means no moment."
+  },
+  {
+   "id": "12_stage_up_spore_to_sprout",
+   "before": {
+    "history7": [
+     6000
+    ],
+    "avg7": 6000.0,
+    "steps_today": 4800,
+    "lifetime_steps": 4800
+   },
+   "after": {
+    "history7": [
+     6000
+    ],
+    "avg7": 6000.0,
+    "steps_today": 5200,
+    "lifetime_steps": 5200
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "stage_up",
+     "at_ms": 1760000000000,
+     "value": 1
+    }
+   ]
+  },
+  {
+   "id": "13_stage_up_two_stages_in_one_feed",
+   "before": {
+    "history7": [
+     30000
+    ],
+    "avg7": 30000.0,
+    "steps_today": 0,
+    "lifetime_steps": 4000
+   },
+   "after": {
+    "history7": [
+     30000
+    ],
+    "avg7": 30000.0,
+    "steps_today": 27000,
+    "lifetime_steps": 31000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "stage_up",
+     "at_ms": 1760000000000,
+     "value": 1
+    },
+    {
+     "id": 2,
+     "kind": "stage_up",
+     "at_ms": 1760000000000,
+     "value": 2
+    },
+    {
+     "id": 3,
+     "kind": "day_10k",
+     "at_ms": 1760000000000,
+     "value": 27000
+    },
+    {
+     "id": 4,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 10000
+    }
+   ]
+  },
+  {
+   "id": "14_lifetime_60000_jump_from_zero_fires_10k_then_50k",
+   "before": {
+    "steps_today": 0,
+    "lifetime_steps": 0
+   },
+   "after": {
+    "steps_today": 60000,
+    "lifetime_steps": 60000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 41,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 41,
+     "kind": "stage_up",
+     "at_ms": 1760000000000,
+     "value": 1
+    },
+    {
+     "id": 42,
+     "kind": "stage_up",
+     "at_ms": 1760000000000,
+     "value": 2
+    },
+    {
+     "id": 43,
+     "kind": "best_day",
+     "at_ms": 1760000000000,
+     "value": 60000
+    },
+    {
+     "id": 44,
+     "kind": "day_10k",
+     "at_ms": 1760000000000,
+     "value": 60000
+    },
+    {
+     "id": 45,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 10000
+    },
+    {
+     "id": 46,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 50000
+    }
+   ],
+   "note": "Ids count up from next_id. Order: stage_up, best_day, beat_avg7, day_10k, lifetime, heat_day_indoor."
+  },
+  {
+   "id": "15_stage_up_to_elder_and_lifetime_100000",
+   "before": {
+    "history7": [
+     9000
+    ],
+    "avg7": 9000.0,
+    "steps_today": 5000,
+    "lifetime_steps": 99000
+   },
+   "after": {
+    "history7": [
+     9000
+    ],
+    "avg7": 9000.0,
+    "steps_today": 7000,
+    "lifetime_steps": 101000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "stage_up",
+     "at_ms": 1760000000000,
+     "value": 3
+    },
+    {
+     "id": 2,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 100000
+    }
+   ]
+  },
+  {
+   "id": "16_lifetime_250000",
+   "before": {
+    "history7": [
+     8000
+    ],
+    "avg7": 8000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 249000
+   },
+   "after": {
+    "history7": [
+     8000
+    ],
+    "avg7": 8000.0,
+    "steps_today": 4500,
+    "lifetime_steps": 250500
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 250000
+    }
+   ]
+  },
+  {
+   "id": "17_lifetime_500000_exact",
+   "before": {
+    "history7": [
+     8000
+    ],
+    "avg7": 8000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 499000
+   },
+   "after": {
+    "history7": [
+     8000
+    ],
+    "avg7": 8000.0,
+    "steps_today": 4000,
+    "lifetime_steps": 500000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 500000
+    }
+   ],
+   "note": "Reaching the threshold exactly counts as crossing it."
+  },
+  {
+   "id": "18_heat_day_indoor_burrowed_crosses_2000",
+   "before": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 1500,
+    "lifetime_steps": 9500,
+    "burrowed": true
+   },
+   "after": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 2500,
+    "lifetime_steps": 9500,
+    "burrowed": true
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "heat_day_indoor",
+     "at_ms": 1760000000000,
+     "value": 2500
+    }
+   ],
+   "note": "Burrowed: lifetime_steps does not grow, so no lifetime moment."
+  },
+  {
+   "id": "19_heat_day_indoor_needs_burrowed",
+   "before": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 1500,
+    "lifetime_steps": 9500
+   },
+   "after": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 2500,
+    "lifetime_steps": 10500
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "lifetime",
+     "at_ms": 1760000000000,
+     "value": 10000
+    }
+   ]
+  },
+  {
+   "id": "20_heat_day_indoor_once_per_day",
+   "before": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 1500,
+    "lifetime_steps": 9500,
+    "burrowed": true
+   },
+   "after": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 2500,
+    "lifetime_steps": 9500,
+    "burrowed": true
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": [
+     "heat_day_indoor"
+    ]
+   },
+   "expected": []
+  },
+  {
+   "id": "21_heat_day_indoor_below_2000",
+   "before": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 1000,
+    "lifetime_steps": 9500,
+    "burrowed": true
+   },
+   "after": {
+    "history7": [
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 1900,
+    "lifetime_steps": 9500,
+    "burrowed": true
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": []
+  },
+  {
+   "id": "22_other_kind_today_does_not_block_day_10k",
+   "before": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 9500,
+    "lifetime_steps": 20000
+   },
+   "after": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 10200,
+    "lifetime_steps": 20700
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": [
+     "best_day",
+     "beat_avg7"
+    ]
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "day_10k",
+     "at_ms": 1760000000000,
+     "value": 10200
+    }
+   ]
+  },
+  {
+   "id": "23_dead_truffle_feed_no_moments",
+   "before": {
+    "steps_today": 0,
+    "lifetime_steps": 4000,
+    "dead": true
+   },
+   "after": {
+    "steps_today": 0,
+    "lifetime_steps": 4000,
+    "dead": true
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "feed",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": []
+  },
+  {
+   "id": "24_dead_truffle_midnight_no_moments",
+   "before": {
+    "history7": [
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 0,
+    "lifetime_steps": 9000,
+    "dead": true
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 0,
+    "lifetime_steps": 9000,
+    "dead": true
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 2
+   },
+   "expected": []
+  },
+  {
+   "id": "25_death_at_midnight_drops_the_streak_moment",
+   "before": {
+    "history7": [
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 3500,
+    "lifetime_steps": 9500,
+    "zero_days": 3
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3500
+    ],
+    "avg7": 3166.6666666666665,
+    "steps_today": 0,
+    "lifetime_steps": 9500,
+    "zero_days": 4,
+    "dead": true
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 2
+   },
+   "expected": [],
+   "note": "Not reachable with real steps (3,500 steps feed energy). The rule still holds: a dead after state gives nothing."
+  },
+  {
+   "id": "26_spore_emits_nothing",
+   "before": {
+    "steps_today": 0,
+    "lifetime_steps": 0,
+    "dead": true
+   },
+   "after": {
+    "steps_today": 0,
+    "lifetime_steps": 0
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "spore",
+    "next_id": 1,
+    "already_today": [
+     "best_day",
+     "day_10k"
+    ]
+   },
+   "expected": []
+  },
+  {
+   "id": "27_midnight_streak_3_from_history7",
+   "before": {
+    "history7": [
+     3200,
+     4000
+    ],
+    "avg7": 3600.0,
+    "steps_today": 3000,
+    "lifetime_steps": 10200
+   },
+   "after": {
+    "history7": [
+     3200,
+     4000,
+     3000
+    ],
+    "avg7": 3400.0,
+    "steps_today": 0,
+    "lifetime_steps": 10200
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "streak",
+     "at_ms": 1760000000000,
+     "value": 3
+    }
+   ],
+   "note": "No streak_before: counted from before.history7 (2 days), then the closed day makes 3."
+  },
+  {
+   "id": "28_midnight_streak_7_from_history7",
+   "before": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 5000,
+    "lifetime_steps": 23000
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     5000
+    ],
+    "avg7": 3285.714285714286,
+    "steps_today": 0,
+    "lifetime_steps": 23000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "streak",
+     "at_ms": 1760000000000,
+     "value": 7
+    }
+   ]
+  },
+  {
+   "id": "29_midnight_streak_8_is_silent_when_history7_is_full",
+   "before": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 24000
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 0,
+    "lifetime_steps": 24000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [],
+   "note": "history7 holds 7 days, so the count from history alone stops at 8. The DO passes streak_before for longer streaks."
+  },
+  {
+   "id": "30_midnight_streak_14_fires_once",
+   "before": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 50000
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 0,
+    "lifetime_steps": 50000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 13
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "streak",
+     "at_ms": 1760000000000,
+     "value": 14
+    }
+   ],
+   "note": "A 14 day streak fires 14 only. 3 and 7 fired on their own midnights."
+  },
+  {
+   "id": "31_midnight_streak_15_is_silent",
+   "before": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 53000
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 0,
+    "lifetime_steps": 53000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 14
+   },
+   "expected": []
+  },
+  {
+   "id": "32_midnight_streak_30",
+   "before": {
+    "history7": [
+     4000,
+     4000,
+     4000,
+     4000,
+     4000,
+     4000,
+     4000
+    ],
+    "avg7": 4000.0,
+    "steps_today": 4000,
+    "lifetime_steps": 120000
+   },
+   "after": {
+    "history7": [
+     4000,
+     4000,
+     4000,
+     4000,
+     4000,
+     4000,
+     4000
+    ],
+    "avg7": 4000.0,
+    "steps_today": 0,
+    "lifetime_steps": 120000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 29
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "streak",
+     "at_ms": 1760000000000,
+     "value": 30
+    }
+   ]
+  },
+  {
+   "id": "33_midnight_streak_4_is_silent",
+   "before": {
+    "history7": [
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 3000,
+    "lifetime_steps": 12000
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 0,
+    "lifetime_steps": 12000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 3
+   },
+   "expected": []
+  },
+  {
+   "id": "34_midnight_streak_broken_by_2999",
+   "before": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 2999,
+    "lifetime_steps": 50000
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     3000,
+     2999
+    ],
+    "avg7": 2999.8571428571427,
+    "steps_today": 0,
+    "lifetime_steps": 50000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 13
+   },
+   "expected": [],
+   "note": "No shaming. A broken streak simply fires nothing."
+  },
+  {
+   "id": "35_midnight_never_fires_daily_kinds",
+   "before": {
+    "steps_today": 12000,
+    "lifetime_steps": 12000
+   },
+   "after": {
+    "history7": [
+     12000
+    ],
+    "avg7": 12000.0,
+    "steps_today": 0,
+    "lifetime_steps": 12000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": [],
+    "streak_before": 0
+   },
+   "expected": []
+  },
+  {
+   "id": "36_midnight_burrowed_day_counts_for_streak",
+   "before": {
+    "history7": [
+     3000,
+     3000
+    ],
+    "avg7": 3000.0,
+    "steps_today": 3100,
+    "lifetime_steps": 6000,
+    "burrowed": true
+   },
+   "after": {
+    "history7": [
+     3000,
+     3000,
+     3100
+    ],
+    "avg7": 3033.3333333333335,
+    "steps_today": 0,
+    "lifetime_steps": 6000
+   },
+   "ctx": {
+    "now_ms": 1760000000000,
+    "event": "midnight",
+    "next_id": 1,
+    "already_today": []
+   },
+   "expected": [
+    {
+     "id": 1,
+     "kind": "streak",
+     "at_ms": 1760000000000,
+     "value": 3
+    }
+   ]
+  }
+ ]
+}

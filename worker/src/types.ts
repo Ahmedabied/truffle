@@ -59,6 +59,14 @@ export interface Meta {
   coords_rev?: number;
   /** Forecast failure backoff (S11-11). Unset after a good fetch. */
   weather_fail?: { until_ms: number; backoff_ms: number };
+  /** Proud moments (decision 0017): the last 20, ascending id. Never cleared on read. */
+  moments?: import("./moments").Moment[];
+  /** Id the next moment gets. Only grows. */
+  next_moment_id?: number;
+  /** Once-per-day moment kinds already fired today. Cleared at local midnight and at a new spore. */
+  moments_today?: import("./moments").MomentKind[];
+  /** Completed days in a row at or above the streak floor. Kept here because history7 holds only 7. */
+  streak_days?: number;
 }
 
 export interface ChatTicket {
@@ -107,6 +115,8 @@ export interface StateSummary {
   } | null;
   /** Demo Truffles only: when the DO deletes itself. */
   expires_ms?: number;
+  /** Proud moments, the last 20, ascending id (decision 0017). */
+  moments: import("./moments").Moment[];
 }
 
 /** Reduced view returned by the phrase-only /feed. */

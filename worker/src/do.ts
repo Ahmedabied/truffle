@@ -24,6 +24,7 @@ import {
   plausibleTotal,
   unreserve
 } from "./ratelimit";
+import { markToday, momentsFor, nextStreak, pushMoments, trailingStreak } from "./moments";
 import { AUTH_FAILED, ownerMatches } from "./pairing";
 import { daysBetween, isValidTimeZone, localDayKey, missedMidnights, nextLocalMidnight } from "./time";
 import type { ChatTicket, Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
@@ -161,6 +162,46 @@ export class TruffleDO extends DurableObject<Env> {
     return m.demo && now >= m.created_ms + DEMO_TTL_MS;
   }
 
+  // ---------- proud moments (decision 0017) ----------
+
+  /** Moments from one feed. Demo slider and real feeds both come through here. */
+  private feedMoments(m: Meta, before: TruffleState, after: TruffleState, now: number): void {
+    this.keepMoments(m, momentsFor(before, after, this.momentCtx(m, before, "feed", now)));
+  }
+
+  /** Moments from one midnight. Also clears the day's once-per-day list and moves the streak. */
+  private midnightMoments(m: Meta, before: TruffleState, after: TruffleState, at: number): void {
+    if (before.dead) return; // a dead Truffle's midnight changes nothing
+    const ctx = this.momentCtx(m, before, "midnight", at);
+    this.keepMoments(m, momentsFor(before, after, ctx));
+    m.streak_days = nextStreak(ctx.streak_before ?? 0, before.steps_today);
+    m.moments_today = [];
+  }
+
+  /** New life: the once-per-day list and the streak start over. The ring is kept. */
+  private resetMomentDay(m: Meta): void {
+    m.moments_today = [];
+    m.streak_days = 0;
+  }
+
+  private momentCtx(m: Meta, before: TruffleState, event: "feed" | "midnight", now: number) {
+    return {
+      now_ms: now,
+      event,
+      next_id: m.next_moment_id ?? 1,
+      already_today: m.moments_today ?? [],
+      streak_before: m.streak_days ?? trailingStreak(before.history7)
+    };
+  }
+
+  private keepMoments(m: Meta, fired: ReturnType<typeof momentsFor>): void {
+    if (!fired.length) return;
+    m.moments = pushMoments(m.moments ?? [], fired);
+    m.next_moment_id = fired[fired.length - 1].id + 1;
+    m.moments_today = markToday(m.moments_today ?? [], fired);
+    this.log("moments", fired.map((x) => ({ kind: x.kind, value: x.value })));
+  }
+
   // ---------- time and weather ----------
 
   /** Run every local midnight missed since the last tick. Idempotent per day key. */
@@ -182,7 +223,9 @@ export class TruffleDO extends DurableObject<Env> {
       const burrowTomorrow = typeof max === "number" ? engine.shouldBurrow(max) : false;
       if (typeof max !== "number") this.log("catchup_weather_missing", { day: key, tz: m.tz });
       const wasDead = s.dead;
+      const before = s;
       s = engine.midnight(s, burrowTomorrow, this.favouriteMemory());
+      this.midnightMoments(m, before, s, mid);
       if (!wasDead && s.dead) this.wipeMemory(m);
       m.last_midnight_key = key;
       ticks++;
@@ -289,7 +332,8 @@ export class TruffleDO extends DurableObject<Env> {
             weather_code: w.weather_code
           }
         : null,
-      ...(m.demo ? { expires_ms: m.created_ms + DEMO_TTL_MS } : {})
+      ...(m.demo ? { expires_ms: m.created_ms + DEMO_TTL_MS } : {}),
+      moments: m.moments ?? []
     };
   }
 
@@ -422,8 +466,10 @@ export class TruffleDO extends DurableObject<Env> {
     }
     if (input.lat !== undefined || input.lon !== undefined) this.moveTo(m, input, now);
     const before = s.steps_today;
+    const prev = s;
     s = engine.feed(s, input.total);
     if (s.steps_today > before) m.feed_accept = { day: today, ms: now };
+    this.feedMoments(m, prev, s, now);
     this.save(s, m);
     this.log("feed", { total: input.total, delta: Math.max(0, s.steps_today - before), energy: s.energy });
     return ok({ ...this.feedSummary(s), ...envelope });
@@ -470,6 +516,7 @@ export class TruffleDO extends DurableObject<Env> {
     let next = engine.newSpore(s);
     if (!m.demo) next = { ...next, burrowed: this.burrowToday(m, now) ?? false };
     this.wipeMemory(m);
+    this.resetMomentDay(m); // a new spore emits nothing
     this.save(next, m);
     this.log("spore", { gravestones: next.gravestones.length });
     return ok(this.summary(next, m, now));
@@ -813,6 +860,7 @@ export class TruffleDO extends DurableObject<Env> {
     const o = await this.openDemo(secret, now);
     if (!o.ok) return o;
     const s = engine.feed(o.value.s, total);
+    this.feedMoments(o.value.m, o.value.s, s, now);
     this.save(s, o.value.m);
     this.log("demo_steps", { total });
     return ok(this.summary(s, o.value.m, now));
@@ -825,6 +873,7 @@ export class TruffleDO extends DurableObject<Env> {
     if (!o.ok) return o;
     const wasDead = o.value.s.dead;
     const s = engine.midnight(o.value.s, false, this.favouriteMemory());
+    this.midnightMoments(o.value.m, o.value.s, s, now);
     if (!wasDead && s.dead) this.wipeMemory(o.value.m);
     this.save(s, o.value.m);
     this.log("demo_midnight", { energy: s.energy, zero_days: s.zero_days, dead: s.dead });
@@ -848,6 +897,7 @@ export class TruffleDO extends DurableObject<Env> {
     if (!o.ok) return o;
     const s = structuredClone(engine.DEFAULT_STATE);
     this.wipeMemory(o.value.m);
+    this.resetMomentDay(o.value.m);
     this.save(s, o.value.m);
     this.log("demo_reset", {});
     return ok(this.summary(s, o.value.m, now));

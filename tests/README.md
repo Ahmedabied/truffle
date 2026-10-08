@@ -15,6 +15,26 @@ Rules:
 
 Run (once the engine exists): `cd worker && npm test`. Use Vitest. The runner lives at `worker/test/golden.test.ts`.
 
+## Moment cases (decision 0017)
+
+`golden/moment_cases.json` is the executable spec of `momentsFor` in `worker/src/moments.ts`. The runner is `worker/test/moments.golden.test.ts`.
+
+Each case has `before`, `after`, `ctx` and `expected`:
+
+- `before` and `after` merge over `default_state`. A missing `stage` is derived from `lifetime_steps`.
+- `ctx` is `{ now_ms, event, next_id, already_today }`. `event` is `feed`, `midnight` or `spore`. Midnight cases may add `streak_before`, the streak the DO counted before this midnight.
+- `expected` is the exact list of moments, in order, with ids counting up from `next_id`.
+- The `constants` block must match the code. The runner checks it.
+- The runner also checks that every live `after` state is one the engine really produces from `before`, so a case cannot describe an impossible day.
+
+Rules the cases pin down:
+
+- A daily kind (`best_day`, `beat_avg7`, `day_10k`, `heat_day_indoor`) fires when its condition turns true in one feed, and only if it is not in `already_today`.
+- `value` is the stage index for `stage_up`, the threshold for `lifetime`, the streak length for `streak`, and `steps_today` for the daily kinds.
+- One feed can emit several moments. Order: `stage_up`, `best_day`, `beat_avg7`, `day_10k`, `lifetime`, `heat_day_indoor`.
+- `streak` fires only at midnight, only at 3, 7, 14 and 30.
+- A dead Truffle gets nothing. `spore` emits nothing.
+
 ## What else must have tests before Saturday
 
 - Pairing phrase: generate, parse, reject bad input.
