@@ -1,12 +1,15 @@
 package dev.truffle.feeder
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.JsResult
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -35,6 +38,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     }
     private val pairStatus = TextView(activity).apply { textSize = 15f }
     private val make = Button(activity).apply { text = "make my truffle" }
+    private var pageDialog: AlertDialog? = null
     private var web: WebView = newWebView()
     private var loaded = false
     private var loadedOrigin = ""
@@ -42,7 +46,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     init {
         pairPanel.addView(TextView(activity).apply {
-            text = "No truffle on this phone yet. Make one here. It eats your steps."
+            text = "Open your existing Truffle from Chrome, or make a new one here. Your steps can feed it."
             textSize = 16f
         })
         pairPanel.addView(make)
@@ -66,6 +70,28 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
             javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
             userAgentString = userAgentString + USER_AGENT_SUFFIX
+        }
+        // A WebView without WebChromeClient silently returns false from JS
+        // confirm(). Ownership imports require a real, deliberate confirmation.
+        webChromeClient = object : WebChromeClient() {
+            override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult): Boolean {
+                if (!AppLink.isInsideWeb(url, prefs.webOrigin) || activity.isFinishing || activity.isDestroyed) {
+                    result.cancel()
+                    return true
+                }
+                pageDialog?.cancel()
+                pageDialog = AlertDialog.Builder(activity)
+                    .setTitle("Truffle · ${Uri.parse(prefs.webOrigin).host}")
+                    .setMessage(message.take(1_000))
+                    .setPositiveButton(android.R.string.ok) { _, _ -> result.confirm() }
+                    .setNegativeButton(android.R.string.cancel) { _, _ -> result.cancel() }
+                    .setOnCancelListener { result.cancel() }
+                    .create().also { dialog ->
+                        dialog.setOnDismissListener { if (pageDialog === dialog) pageDialog = null }
+                        dialog.show()
+                    }
+                return true
+            }
         }
         webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -92,6 +118,8 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     }
 
     private fun replaceWebView() {
+        pageDialog?.cancel()
+        pageDialog = null
         val index = root.indexOfChild(web)
         root.removeView(web)
         web.destroy()
@@ -103,6 +131,9 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     /** First show in this process: hand the credentials over in the fragment. */
     fun ensureLoaded() {
+        // Pairing belongs to the native button. Never let an unpaired embedded
+        // page silently create a second pet behind the native pairing panel.
+        if (prefs.creds == null) return
         if (loaded) return
         loaded = true
         loadedOrigin = prefs.webOrigin
@@ -135,6 +166,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     fun renderPairing() {
         pairPanel.isVisible = prefs.creds == null
+        web.isVisible = prefs.creds != null
     }
 
     /** Called after the person confirmed. The secret goes straight to private storage. */
@@ -176,6 +208,8 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
         cancelPendingPair()
         // Stop the old document before clearing its storage so it cannot write
         // old credentials back while the new pet is loading.
+        pageDialog?.cancel()
+        pageDialog = null
         web.stopLoading()
         root.removeView(web)
         web.destroy()
@@ -189,5 +223,5 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     fun onResume() = web.onResume()
     fun onPause() = web.onPause()
-    fun destroy() = web.destroy()
+    fun destroy() { pageDialog?.cancel(); pageDialog = null; web.destroy() }
 }
