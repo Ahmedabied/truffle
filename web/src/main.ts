@@ -3,6 +3,8 @@
 import "./style.css";
 import { ApiError, apiBase, connect, setApiBase } from "./api";
 import { Chat } from "./chat";
+import { Cooldown, describeError, waitText, type ErrorCtx } from "./errors";
+import { FpsMeter, fpsEnabled, fpsText } from "./fps";
 import { COPY, MOOD_WORD, STAGE_WORD, TIER_WORD, explainGrew, explainMidnight, explainSteps, type CopyKey, type Lang } from "./copy";
 import { makeFitter } from "./scene/grid";
 import { World } from "./scene/world";
@@ -91,7 +93,9 @@ const chat = new Chat(
     },
     onSummary: (s) => render(s),
     onExplain: (t) => explain(t),
-    afterChat: () => void poll()
+    afterChat: () => void poll(),
+    demo: DEMO,
+    openSettings: () => openSettings()
   }
 );
 
@@ -169,7 +173,7 @@ function render(s: StateSummary): void {
     const steps = st.gravestones[st.gravestones.length - 1]?.lifetime_steps ?? st.lifetime_steps;
     hud.push(lang === "ar" ? `عاش ${days.toLocaleString("en-US")} يوم و ${steps.toLocaleString("en-US")} خطوة` : `lived ${days.toLocaleString("en-US")} days and ${steps.toLocaleString("en-US")} steps`);
   }
-  $("hud").textContent = hud.join(sep);
+  $("hudText").textContent = hud.join(sep);
   $("world").setAttribute(
     "aria-label",
     `${MOOD_WORD.en[s.mood]} ${st.stage}. Energy ${s.energy_pct} percent. ${st.steps_today} steps today. Effort ${s.tier}.` +
@@ -202,22 +206,57 @@ function isAuthLoss(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 401 || e.status === 404);
 }
 
-function failed(e: unknown): void {
-  const status = (e as { status?: number }).status ?? 0;
-  // 429 carries a readable server message (demo spawn limits). Others get the calm generic line.
-  explain(status === 0 ? t("networkError") : status === 429 ? (e as Error).message : `${t("chatError").split(".")[0]}. (${(e as Error).message})`);
+function openSettings(): void {
+  const d = $<HTMLDetailsElement>("settings");
+  d.open = true;
+  d.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
 }
 
+// Judge controls and the spore buttons share one countdown after a 429 or a 400 with retry_after_s.
+const ACT_BUTTONS = "#judge button, #judge input, #sporeBtn, #sporeBtn2";
+let actFailText = "";
+const actCooldown = new Cooldown(
+  (left) => explain(`${actFailText} ${waitText(lang, left)}`),
+  () => {
+    explain(actFailText);
+    setActDisabled(false);
+  }
+);
+function setActDisabled(on: boolean): void {
+  document.querySelectorAll<HTMLButtonElement | HTMLInputElement>(ACT_BUTTONS).forEach((b) => (b.disabled = on));
+}
+
+/** Show a failed call as the Worker's calm text in the UI language. Returns the view for callers that need it. */
+function failed(e: unknown, ctx: ErrorCtx) {
+  const v = describeError(e, lang, ctx, DEMO);
+  actFailText = v.text;
+  explain(v.text);
+  if (v.retryS && ctx !== "pair" && ctx !== "state") {
+    setActDisabled(true);
+    actCooldown.start(v.retryS);
+  }
+  if (v.openSettings) openSettings();
+  return v;
+}
+
+let authLost = false;
+
 async function poll(): Promise<void> {
-  if (!creds || document.hidden) return;
+  if (!creds || document.hidden || authLost) return;
   try {
     render(await backend.state(creds));
   } catch (e) {
     if (isAuthLoss(e) && !backend.mock) {
-      // The Truffle is gone (demo expired, or storage from another server). Start again.
-      store.del(DEMO ? K.demo : K.creds);
-      creds = null;
-      await ensurePaired();
+      if (DEMO) {
+        // Demo Truffles expire after 24 hours. Plant a fresh one.
+        store.del(K.demo);
+        creds = null;
+        await ensurePaired();
+      } else {
+        // A real Truffle is never replaced behind your back. Say so and show Settings.
+        authLost = true;
+        failed(e, "state");
+      }
     }
   }
 }
@@ -240,6 +279,11 @@ async function ensurePaired(): Promise<void> {
       return;
     } catch (e) {
       if (!isAuthLoss(e)) throw e;
+      // Demo: expired, plant a fresh one. Real: keep the saved phrase and let the person decide in Settings.
+      if (!DEMO && e instanceof ApiError && e.status === 401) {
+        authLost = true;
+        throw e;
+      }
       store.del(key);
     }
   }
@@ -252,8 +296,12 @@ async function ensurePaired(): Promise<void> {
   render(r);
 }
 
-async function act(fn: () => Promise<StateSummary>, why: (before: StateSummary, after: StateSummary) => string): Promise<void> {
-  if (!creds || !summary) return;
+async function act(
+  fn: () => Promise<StateSummary>,
+  why: (before: StateSummary, after: StateSummary) => string,
+  ctx: ErrorCtx = "demo"
+): Promise<void> {
+  if (!creds || !summary || actCooldown.active()) return;
   const before = summary;
   const buttons = document.querySelectorAll<HTMLButtonElement>("#judge button, #sporeBtn, #sporeBtn2");
   buttons.forEach((b) => (b.disabled = true));
@@ -266,9 +314,9 @@ async function act(fn: () => Promise<StateSummary>, why: (before: StateSummary, 
     }
     explain(text);
   } catch (e) {
-    failed(e);
+    failed(e, ctx);
   } finally {
-    buttons.forEach((b) => (b.disabled = false));
+    if (!actCooldown.active()) buttons.forEach((b) => (b.disabled = false));
   }
 }
 
@@ -277,7 +325,8 @@ async function act(fn: () => Promise<StateSummary>, why: (before: StateSummary, 
 const plantSpore = () =>
   act(
     () => backend.spore(creds!),
-    () => t("newSporeDone")
+    () => t("newSporeDone"),
+    "spore"
   );
 $("sporeBtn").addEventListener("click", plantSpore);
 $("sporeBtn2").addEventListener("click", plantSpore);
@@ -391,11 +440,26 @@ function setupJudge(): void {
 
 // ---------- boot ----------
 
+// ---------- phone prep: ?fps=1 ----------
+
+function setupFps(): void {
+  if (!fpsEnabled(params)) return;
+  const meter = new FpsMeter();
+  const out = $("fps");
+  out.hidden = false;
+  world.timing = (compose, paint) => meter.add(compose, paint);
+  setInterval(() => {
+    const r = meter.flush();
+    if (r) out.textContent = fpsText(r);
+  }, 1000);
+}
+
 async function boot(): Promise<void> {
+  setupFps();
   applyLang();
   syncMotion();
   world.start();
-  $("hud").textContent = t("loading");
+  $("hudText").textContent = t("loading");
   if (DEMO) setupJudge();
 
   backend = await connect(params, DEMO);
@@ -404,8 +468,8 @@ async function boot(): Promise<void> {
     await ensurePaired();
     if (backend.mock && creds) render(await backend.state(creds));
   } catch (e) {
-    failed(e);
-    $("hud").textContent = t("networkError");
+    const v = failed(e, "pair");
+    $("hudText").textContent = v.kind === "network" ? t("networkError") : v.text;
     return;
   }
   $("phrase").textContent = creds?.phrase ?? "";

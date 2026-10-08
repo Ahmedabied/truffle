@@ -3,6 +3,7 @@
 
 import type { Backend, ChatEvent, Creds, Lang, PairResult, StateSummary, Tier } from "./types";
 import { MockBackend } from "./mock";
+import { ApiError, apiErrorFrom } from "./errors";
 
 const KEY_API = "truffle.api";
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -30,11 +31,7 @@ export function setApiBase(url: string): void {
   }
 }
 
-export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
+export { ApiError };
 
 async function withTimeout(url: string, init: RequestInit, ms = REQUEST_TIMEOUT_MS): Promise<Response> {
   const ctl = new AbortController();
@@ -48,15 +45,15 @@ async function withTimeout(url: string, init: RequestInit, ms = REQUEST_TIMEOUT_
   }
 }
 
+/** Read the Worker's {error, hint?, retry_after_s?} body (B06) into an ApiError. */
 async function errorOf(res: Response): Promise<ApiError> {
-  let msg = res.statusText || "error";
+  let text = "";
   try {
-    const j = (await res.json()) as { error?: string };
-    if (j.error) msg = j.error;
+    text = await res.text();
   } catch {
-    /* not json */
+    /* body unreadable: status only */
   }
-  return new ApiError(res.status, msg);
+  return apiErrorFrom(res.status, res.statusText, text);
 }
 
 /** Parse an SSE byte stream into {event, data} pairs. Handles \r\n and split chunks. */

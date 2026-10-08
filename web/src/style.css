@@ -68,6 +68,8 @@ body {
 #probe { position: fixed; left: -20000px; top: 0; visibility: hidden; pointer-events: none; }
 
 .hud { margin: 8px 0 4px; font-size: 0.85em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fps:not([hidden]) { display: inline-block; margin-inline-start: 0.5em; font-family: ui-monospace, monospace; font-size: 0.9em; }
+.fps::before { content: "| "; }
 .memory { margin: 4px 0; font-style: italic; color: var(--muted); }
 
 .chat { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }

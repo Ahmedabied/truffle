@@ -6,6 +6,7 @@ import * as engine from "../../worker/src/engine";
 import { TIERS, type Tier } from "../../worker/src/config";
 import type { TruffleState } from "../../worker/src/engine";
 import type { Backend, ChatEvent, Creds, Lang, PairResult, StateSummary, WeatherSummary } from "./types";
+import { ApiError } from "./errors";
 
 const PHRASE = "sand-moon-fig";
 const SECRET = "offline-demo";
@@ -178,7 +179,7 @@ export class MockBackend implements Backend {
 
   async *chat(_c: Creds, message: string, lang: Lang, requested?: Tier): AsyncGenerator<ChatEvent> {
     this.lang = lang;
-    if (this.s.dead) throw Object.assign(new Error("truffle is dead; POST /spore to plant a new one"), { status: 409 });
+    if (this.s.dead) throw new ApiError(409, "truffle is dead; POST /spore to plant a new one");
     const decision = engine.decideTier(this.s, requested);
     const half = this.cold || (decision.model_call && ++this.turn % 5 === 0);
     await wait(decision.model_call ? (half ? 3400 : 700) : 150);

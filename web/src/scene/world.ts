@@ -673,6 +673,8 @@ export class World {
   private prev: number | null = null;
   private paletteKey = "";
   frames = 0;
+  /** ?fps=1 hook: compose ms and paint ms (DOM write plus a forced layout) per frame. Null when off. */
+  timing: ((composeMs: number, paintMs: number) => void) | null = null;
 
   constructor(private root: HTMLElement) {
     root.textContent = "";
@@ -733,8 +735,10 @@ export class World {
 
   /** Render one frame now (used once at boot and by the loop). */
   draw(): void {
+    const t0 = this.timing ? performance.now() : 0;
     const hour = this.hour();
     const { layers, env } = composeAll(this.view, this.t, this.cloudPhase, hour, new Date(), this.reduced);
+    const t1 = this.timing ? performance.now() : 0;
     this.applyPalette(env);
     let wrote = false;
     for (const name of LAYERS) {
@@ -746,6 +750,10 @@ export class World {
       }
     }
     if (wrote) this.frames++;
+    if (this.timing) {
+      void this.root.offsetHeight; // force style and layout so they count in paint
+      this.timing(t1 - t0, performance.now() - t1);
+    }
   }
 
   start(): void {

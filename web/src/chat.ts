@@ -4,6 +4,7 @@
 import { decideTier } from "../../worker/src/engine";
 import { TIERS, type Tier } from "../../worker/src/config";
 import { COPY, explainChat, type Lang } from "./copy";
+import { Cooldown, describeError, waitText, type ErrorView } from "./errors";
 import type { Backend, Creds, StateSummary } from "./types";
 
 /** ms per grapheme by tier (asleep shows its one line at once). */
@@ -23,6 +24,10 @@ export interface ChatDeps {
   onSummary: (s: StateSummary) => void;
   onExplain: (text: string) => void;
   afterChat: () => void;
+  /** The judge page: the demo reply cap is said in Truffle's voice. */
+  demo: boolean;
+  /** 401: the phrase was not recognised. */
+  openSettings: () => void;
 }
 
 function graphemes(text: string, lang: Lang): string[] {
@@ -102,6 +107,9 @@ class Typer {
 export class Chat {
   private busy = false;
   private typer: Typer | null = null;
+  private sendBtn: HTMLButtonElement | null;
+  /** Set after a 429 or a 400 with retry_after_s: input and Send stay off until it ends. */
+  private cooldown: Cooldown;
 
   constructor(
     private form: HTMLFormElement,
@@ -111,10 +119,20 @@ export class Chat {
     private status: HTMLElement,
     private d: ChatDeps
   ) {
+    this.sendBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    this.cooldown = new Cooldown(
+      (left) => {
+        this.status.textContent = waitText(this.d.lang(), left);
+      },
+      () => {
+        this.status.textContent = "";
+        this.refresh();
+      }
+    );
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const msg = input.value.trim();
-      if (msg && !this.busy) void this.send(msg);
+      if (msg && !this.busy && !this.cooldown.active()) void this.send(msg);
     });
   }
 
@@ -125,7 +143,8 @@ export class Chat {
     const c = COPY[lang];
     this.input.placeholder = s?.state.dead ? c.placeholderDead : s?.tier === "asleep" ? c.placeholderAsleep : c.placeholder;
     this.input.lang = lang;
-    this.input.disabled = this.busy || !s || s.state.dead;
+    this.input.disabled = this.busy || !s || s.state.dead || this.cooldown.active();
+    if (this.sendBtn) this.sendBtn.disabled = this.input.disabled;
   }
 
   /** Finish any running reveal at once (reduced motion switched on). */
@@ -157,6 +176,7 @@ export class Chat {
     typer.delay = TIER_SPEED[tier] * slow;
     this.typer = typer;
 
+    let failure: ErrorView | null = null;
     let finished = false;
     let yawnUntil = 0;
     let gotToken = false;
@@ -223,16 +243,24 @@ export class Chat {
       }
     } catch (e) {
       typer.stop();
-      const status = (e as { status?: number }).status ?? 0;
-      this.reply.classList.add("error");
-      this.reply.textContent = status === 0 ? c.networkError : status === 409 ? c.sporeButton + "." : c.chatError;
-      this.replySr.textContent = this.reply.textContent;
+      // The Worker's calm text, in the UI language. The demo reply cap is Truffle talking, not an error box.
+      failure = describeError(e, lang, "chat", this.d.demo);
+      if (failure.voice) {
+        this.reply.classList.add("asleep");
+        this.reply.textContent = failure.text;
+      } else {
+        this.reply.classList.add("error");
+        this.reply.textContent = failure.text;
+      }
+      this.replySr.textContent = failure.text;
     } finally {
       clearTimeout(yawnTimer);
       this.d.onYawn(false);
       this.status.textContent = "";
       this.busy = false;
       this.typer = null;
+      if (failure?.retryS) this.cooldown.start(failure.retryS); // status shows the countdown
+      if (failure?.openSettings) this.d.openSettings();
       this.refresh();
       this.d.afterChat();
     }
