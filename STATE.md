@@ -1,10 +1,10 @@
 # STATE
 
-Updated: 2026-10-08, 11:45 Oman. Session 02 (overnight build kickoff, then the art pass in the morning), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
+Updated: 2026-10-08, 13:15 Oman. Session 03 (hardening and fleet prep while waiting on Ahmed's accounts), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
 
 ## Phase
 
-**Build, day 1 done overnight.** Truffle talks on the web through the Workers AI fallback brain with real Muscat weather and real energy rules. Fine-tune and the Modal brain are not started (need Ahmed's Modal account).
+**Build, day 2 midday.** Truffle talks on the web through the Workers AI fallback brain with real Muscat weather and real energy rules. Two red-team rounds applied or in progress. Wave B pipeline proven with a dry shard. Eval prompt set fixed. Fine-tune and the Modal brain are not started (need Ahmed's Modal account, HF token and seed lines).
 
 ## Live
 
@@ -20,7 +20,8 @@ Updated: 2026-10-08, 11:45 Oman. Session 02 (overnight build kickoff, then the a
 - `finetune/`: filter (51 selftests), Unsloth QLoRA train script (dry run on the box with a tiny Gemma, Gemma 4 template verified), eval harness (dry run), schema and 3 worked examples for Wave B.
 - `brain-modal/modal_app.py`: written by S01, not run (no Modal token).
 - Wave A spikes S01 to S10 all landed in `fleet/outbox/` with RESULT.md each. Highlights: Muscat hit 43.9C apparent on Oct 7 (would burrow); un-tuned Gemma quotes the state block back 18/20 and told a user to go walk at 44C (S09); Workers AI thinking is on by default and `chat_template_kwargs.enable_thinking=false` turns it off (S03); Modal needs a card on file for GPU even with the USD 30 credit (S06); DEV uploads the raw transcript before redaction (S07); S10 found 6 high-severity holes, 4 fixed tonight, rest listed in HANDOFF.
-- Git history has no co-author trailers (Ahmed's rule). 23 commits, all pushed.
+- Session 03 (Oct 8 midday): B06 hardening live (feed caps, bounded body read, uniform 401, fixed weather vocabulary, facts as untrusted JSON section, coordinate bounds, demo chat cap, empty-reply retry), 238 worker tests. Decision 0012 (memory section at the end of the prompt, English weather in the block) and 0013 (block shows the charged tier). Web reads the error contract, `?fps=1` readout, 54 web tests, deployed. Feeder on SDK 36 with Health Connect 1.1.0 stable and the day envelope, 27 tests, APK refreshed in the draft release (sha256 ed70f2c7...). Filter validates the exact training layout and memory section (59 selftests). S13 Wave B template `fleet/packets/D_template.md` and a 30 row dry shard with 0 drops. S12 eval set `finetune/eval/prompts.jsonl` (90 prompts, never trained on). S11 red-team round 2: 11 findings, 7 in packet B09 (running), 4 need decisions.
+- Git history has no co-author trailers (Ahmed's rule). All pushed.
 
 ## Not done (blocking)
 
@@ -28,12 +29,15 @@ Updated: 2026-10-08, 11:45 Oman. Session 02 (overnight build kickoff, then the a
 - Ahmed: Hugging Face read token (none exists on the box). Gemma licence looks accepted (no gate banner while logged in).
 - Ahmed: 30 seed lines (`finetune/seed/TRUFFLE_VOICE_SEED.md`) by Thursday noon, then Wave B.
 - Ahmed: install the feeder APK on the Samsung, pair, feed. Or the Tasker bridge (see `feeder-android/README.md`; note the TaskerHealthConnect 1.0.4 aggregate bug).
-- Phone verification of the web app (fonts, frame rate, Arabic keyboard, TalkBack).
+- Phone verification of the web app (fonts, frame rate with `?fps=1`, Arabic keyboard, TalkBack).
+- B09 (Opus, running): chat id and generation fencing, visible-text predicate, rolling memory eviction, charged tier in the block, weather single flight, failed-lookup rate limit.
 
 ## Open decisions (write a record in decisions/ before changing code)
 
 - 0011 serving plan A or B (after S01 runs).
-- Missing forecast on a caught-up midnight: spec says burrowed=false, docs/02 says keep yesterday, S10-06 proposes a protected day. Code does burrowed=false.
+- Missing forecast on a caught-up midnight: spec says burrowed=false, docs/02 says keep yesterday, S10-06 and S11-03 propose a protected day. Code does burrowed=false. Recommendation: protected day.
+- Honest long days (S11-10): the 50,000 feed cap rejects a real long hike. Recommendation: keep the cap, show "capped" honestly.
+- Day envelope required (S11-04): the feeder now sends `day` and `day_tz`; the Worker still accepts feeds without `day`. Make it required once Ahmed's phone runs the new APK. The Worker ignores `day_tz` today.
 - Timezone migration after pairing (tz is pinned now; moving needs an owner action and a rule).
 - Web: HUD line inside the grid stays English (Arabic cannot sit in the monospace grid); Arabic HUD is a line under the world. Arabic stage names chosen by B03: بذرة، برعم، فقعة، معمّرة. Ahmed to confirm.
 - Health Connect stable 1.1.0 needs compileSdk 36; feeder uses 1.1.0-beta01 on 35 for now.
