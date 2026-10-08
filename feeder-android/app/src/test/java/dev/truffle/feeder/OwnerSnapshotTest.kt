@@ -17,12 +17,23 @@ class OwnerSnapshotTest {
         assertFalse(snapshot.weatherSafe)
     }
     @Test fun `weather requires both known temperatures below heat threshold`() {
-        val weather = JSONObject().put("fetched_ms", now.toEpochMilli()).put("apparent_c", 30).put("daytime_max_c", 34)
+        val weather = JSONObject().put("fetched_ms", now.toEpochMilli()).put("apparent_c", 30).put("daytime_max_c", 34).put("weather_code", 1).put("wind_kmh", 8).put("precipitation_mm", 0)
         assertTrue(parseOwnerSnapshot(body().put("weather", weather).toString(), now).weatherSafe)
         weather.put("daytime_max_c", 35)
         assertFalse(parseOwnerSnapshot(body().put("weather", weather).toString(), now).weatherSafe)
         weather.remove("daytime_max_c")
         assertFalse(parseOwnerSnapshot(body().put("weather", weather).toString(), now).weatherSafe)
+    }
+    @Test fun `storm rain wind and incomplete observations suppress walking note`() {
+        fun weather() = JSONObject().put("fetched_ms", now.toEpochMilli()).put("apparent_c", 27)
+            .put("daytime_max_c", 29).put("weather_code", 0).put("wind_kmh", 4).put("precipitation_mm", 0)
+        for (code in listOf(45, 61, 95, 96, 99)) {
+            assertFalse(parseOwnerSnapshot(body().put("weather", weather().put("weather_code", code)).toString(), now).weatherSafe)
+        }
+        assertFalse(parseOwnerSnapshot(body().put("weather", weather().put("wind_kmh", 30)).toString(), now).weatherSafe)
+        assertFalse(parseOwnerSnapshot(body().put("weather", weather().put("precipitation_mm", 1)).toString(), now).weatherSafe)
+        val missing = weather().apply { remove("wind_kmh") }
+        assertFalse(parseOwnerSnapshot(body().put("weather", missing).toString(), now).weatherSafe)
     }
     @Test(expected = IllegalArgumentException::class) fun `stale day cannot become feed baseline`() {
         parseOwnerSnapshot(body().put("local_day", "2026-10-08").toString(), now)

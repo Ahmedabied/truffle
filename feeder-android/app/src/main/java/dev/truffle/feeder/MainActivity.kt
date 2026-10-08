@@ -40,6 +40,12 @@ class MainActivity : ComponentActivity() {
     private val tabs = mutableMapOf<Tab, TextView>()
     private var current = Tab.WORLD
 
+    private val nativeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key in setOf("counter", "status", "enabled", "paused")) {
+            if (current == Tab.WALK) walk.load()
+            if (key == "enabled" || key == "paused") lifecycleScope.launch { feed.refreshAccess() }
+        }
+    }
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "status" || key == "needs_permission") feed.renderStatus()
     }
@@ -207,6 +213,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         feederPreferences(this).registerOnSharedPreferenceChangeListener(preferenceListener)
+        nativeWalkPreferences(this).registerOnSharedPreferenceChangeListener(nativeListener)
     }
 
     override fun onResume() {
@@ -226,6 +233,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         feederPreferences(this).unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        nativeWalkPreferences(this).unregisterOnSharedPreferenceChangeListener(nativeListener)
         super.onStop()
     }
 

@@ -6,9 +6,11 @@ import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
 
+fun nativeWalkPreferences(context: Context) = context.getSharedPreferences("native_walk", Context.MODE_PRIVATE)
+
 /** One serialized counter state; baseline and totals are written in the same preference edit. */
 class NativeWalkStore(context: Context) {
-    private val prefs = context.getSharedPreferences("native_walk", Context.MODE_PRIVATE)
+    private val prefs = nativeWalkPreferences(context)
     val paused: Boolean get() = prefs.getBoolean("paused", false)
     val directSelected: Boolean get() = enabled || paused
     val enabledAt: Long get() = prefs.getLong("enabled_at", 0)

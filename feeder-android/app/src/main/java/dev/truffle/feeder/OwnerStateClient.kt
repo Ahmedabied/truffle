@@ -30,10 +30,16 @@ fun parseOwnerSnapshot(body: String, now: Instant): OwnerSnapshot {
     val stamp = (weather?.opt("fetched_ms") as? Number)?.toLong()?.takeIf { it > 0 }?.let(Instant::ofEpochMilli)
     val apparent = weather?.opt("apparent_c") as? Number
     val maximum = weather?.opt("daytime_max_c") as? Number
+    val wind = weather?.opt("wind_kmh") as? Number
+    val precipitation = weather?.opt("precipitation_mm") as? Number
+    val code = weather?.opt("weather_code") as? Number
     return OwnerSnapshot(day, zone, steps, state.getBoolean("dead"), state.getBoolean("burrowed"),
         root.getInt("energy_pct").coerceIn(0, 100), stamp,
         apparent != null && maximum != null && apparent.toDouble().isFinite() && maximum.toDouble().isFinite() &&
-            apparent.toDouble() < 35 && maximum.toDouble() < 35)
+            apparent.toDouble() < 35 && maximum.toDouble() < 35 &&
+            wind != null && wind.toDouble().isFinite() && wind.toDouble() in 0.0..<30.0 &&
+            precipitation != null && precipitation.toDouble().isFinite() && precipitation.toDouble() in 0.0..<1.0 &&
+            code != null && code.toDouble() in setOf(0.0, 1.0, 2.0, 3.0))
 }
 
 object OwnerStateClient {

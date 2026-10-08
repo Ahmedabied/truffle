@@ -2,8 +2,8 @@
 
 A small Kotlin app with plain Android Views. Android 9 or newer is required.
 The directory is still `feeder-android/`. The application ID is still
-`dev.truffle.feeder`, so version 0.2.0 installs over the 0.1 feeder in place.
-Decision record: `decisions/0016_truffle_phone_app.md`.
+`dev.truffle.feeder`, so version 0.3.0 installs over the earlier feeder in place.
+Decision records: `decisions/0016_truffle_phone_app.md` and `decisions/0021_walking_companion_and_keepsakes.md`.
 
 ## Three screens
 
@@ -18,18 +18,18 @@ A bottom bar switches between them. One Activity, three plain views.
   stores them and strips the fragment. There is no query token, no cookie and no
   JavaScript bridge. **refresh** reloads the page. Back moves through the page's
   own history first.
-- **Walk.** Health Connect steps drawn as monospace text in the Truffle palette:
+- **Walk.** A walking notebook with Today, 7 days and 30 days views. Choose Health Connect or the direct phone counter. Steps are drawn as monospace text in the Truffle palette:
   today by hour, the last 30 days by day, today's total, the 7 day average, the
   best day in 30, the streak of days at or above 3,000 steps, and today's distance
   when that grant exists. Steps and distance only. No calories, weight, heart rate
   or sleep. The numbers stay on the phone. The text builders live in
   `WalkChart.kt` and are unit tested.
-- **Feed.** The 0.1 feeder, same behaviour. The phrase comes from the app's
+- **Feed.** Sends the selected walking source, with connection and privacy settings under an expandable control. The phrase comes from the app's
   credentials and is read-only while the app owns the pet. Settings for the API
   origin and the web origin sit here. **Forget this truffle** removes the phrase,
   the secret and the page's stored data from the phone. The pet stays on the server.
 
-The app reads only aggregated totals. Feed sends today's absolute total to
+Health Connect reads only aggregated totals; direct mode observes hardware counter increments. Feed sends today's absolute total to
 `POST /feed`. It never sends raw step records.
 
 ### Moving a web pet into the app
@@ -45,7 +45,7 @@ link is dropped after one use, so recents cannot replay it.
 
 JavaScript and DOM storage on. File and content access off. Mixed content never
 allowed. Geolocation off. No pop-up windows. No JavaScript interface. The user
-agent is the default plus ` TruffleApp/0.2`, so the page can hide its own pairing
+agent is the default plus ` TruffleApp/0.3`, so the page can hide its own pairing
 UI and the app link. Only HTTPS pages on the configured web origin load inside.
 A tapped link to any other web address opens in the browser. Other schemes are
 dropped. WebView remote debugging is off even in this debug build, so USB
@@ -61,7 +61,7 @@ including 23 and 25 hour days. Today's total comes from the same hourly snapshot
 as the chart. Missing distance records stay unavailable instead of showing zero.
 The 30 day chart and its streak are limited to the displayed window.
 
-## Samsung first run
+## Health Connect first run (optional alternative)
 
 1. Update Samsung Health. Set the phone's date and time zone correctly.
 2. Open **Samsung Health > Settings > Health Connect**. Allow Samsung Health to
@@ -85,7 +85,7 @@ The 30 day chart and its streak are limited to the displayed window.
 7. Tap **Feed now**. The status should show the sent total, the Truffle's day and
    the returned pet state.
    Check today's total against Samsung Health after it finishes syncing. Target
-   a difference below 2%. No phone comparison has been performed by this packet.
+   a difference below 2%. The physical zero-step check and its limits are recorded in `docs/reviews/android-qa.md`.
 8. For hourly sync, set **Settings > Apps > Truffle > Battery >
    Unrestricted**. Remove it from Samsung's sleeping and deep sleeping app lists.
    Keep Samsung Health able to run too. No battery exemption permission is
@@ -100,9 +100,10 @@ feature leaves **Feed now** working while the app is open. The app does not assu
 support from the OS version alone. Revoking either grant makes the red
 **Grant steps permission** button appear on the next check or failed read.
 
-**Coarse location is a disabled, OFF-by-default TODO.** This build permits only
-Steps read, Distance read, background health read, and INTERNET. There is no location permission
-or location dependency. `lat` and `lon` are omitted. The Worker can use its
+This app has no location permission or location dependency. Health Connect uses
+Steps read, optional Distance read and background health read. Direct walking adds
+activity recognition and the health foreground-service permissions; optional
+notifications use POST_NOTIFICATIONS. INTERNET sends the absolute daily total. `lat` and `lon` are omitted. The Worker can use its
 city-level `request.cf` fallback.
 
 ## Build on the workstation only
@@ -113,6 +114,7 @@ compared with Gradle's published checksum. The distribution checksum is pinned.
 The `all` distribution reuses the workstation's existing Gradle 8.12 cache.
 
 ```sh
+# Example checkout location; the QA clone is /home/tamlik/truffle-source/review-20261008.
 # Commit and push the reviewed source first. GitHub is the only source link
 # between machines. Do not rsync or copy a checkout.
 ssh workstation 'git clone https://github.com/Ahmedabied/truffle.git ~/Truffle'
