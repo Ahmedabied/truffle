@@ -9,7 +9,8 @@ Updated: 2026-10-08, 18:30 Oman. Session 03 (hardening and fleet prep while wait
 ## Live
 
 - Web (ASCII world, chat, judge mode at `/demo`): https://truffle-web.ahmed-abied.workers.dev
-- API (Worker + Durable Objects): https://truffle.ahmed-abied.workers.dev (`/health` says `modal:false` until the Modal brain exists)
+- API (Worker + Durable Objects): https://truffle.ahmed-abied.workers.dev (`/health` says `modal:true` since Oct 8 21:30)
+- Brain: Modal app `truffle-brain-nosnap`, https://ahmedabied--truffle-brain-nosnap-brain-serve.modal.run (bearer token in `~/.config/truffle/brain_token`, never in chat), L40S, FP8 31B, 8K context, scale to zero after 300 s idle, cold start about 10 min, warm about 4 s. GPU snapshots off (the snapshot mode died silently at weight load).
 - Feeder APK (debug, sideload): draft GitHub release `v0.1.0-feeder` (not public until published)
 
 ## Done (all verified, all on main)
@@ -27,8 +28,7 @@ Updated: 2026-10-08, 18:30 Oman. Session 03 (hardening and fleet prep while wait
 
 ## Not done (blocking)
 
-- Ahmed: Modal account (Continue with GitHub), card on file, `modal setup` on the laptop. Then S01 runs for real and Plan A/B gets decided.
-- Ahmed: Hugging Face read token (none exists on the box). Gemma licence looks accepted (no gate banner while logged in).
+- Ahmed: rotate the Hugging Face token (it was pasted into a chat on Oct 8) and tell the session; the file and the Modal secret get updated from the new file.
 - Ahmed: 30 seed lines (`finetune/seed/TRUFFLE_VOICE_SEED.md`), then the seed-anchored pass D19 to D21 (decision 0014).
 - Ahmed: install the feeder APK on the Samsung, pair, feed. Or the Tasker bridge (see `feeder-android/README.md`; note the TaskerHealthConnect 1.0.4 aggregate bug).
 - Phone verification of the web app (fonts, frame rate with `?fps=1`, Arabic keyboard, TalkBack).

@@ -19,7 +19,8 @@ Truffle's mechanic leans on things an open model lets us do ourselves:
 
 | Date | Live brain | Fine-tuned adapter | Notes |
 |---|---|---|---|
-| 2026-10-08 | Workers AI `gemma-4-26b-a4b-it`, un-tuned, flagged "half-awake" in the UI | not trained yet | Modal serving of `gemma-4-31B-it` (FP8) is deployed but its first cold start failed in vLLM. Being debugged. Training data: 1,800 rows, 0 drops (`finetune/data/generated/REPORT.md`). |
+| 2026-10-08 21:30 | Modal: vLLM + `RedHatAI/gemma-4-31B-it-FP8-dynamic` on one L40S, 8K context, model name `truffle` loads a rank-16 adapter that is still a placeholder (random noise). Workers AI `gemma-4-26b-a4b-it` answers when the GPU is asleep, flagged "half-awake" | not trained yet | Cold start about 10 minutes including the GPU queue, warm replies about 4 s. Training data: 1,800 rows, 0 drops (`finetune/data/generated/REPORT.md`). |
+| 2026-10-08 12:00 | Workers AI `gemma-4-26b-a4b-it`, un-tuned | not trained yet | Modal serving deployed, first cold start failed in snapshot mode, then 16K context did not fit beside the weights. |
 
 This table is updated whenever the live brain changes. Claims in the DEV post will match it.
 
