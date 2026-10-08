@@ -1,0 +1,135 @@
+{
+  "phase": "after",
+  "at": "2026-10-08T20:45:29.506Z",
+  "revision": "5b5dde7586759240012e72f75a2653127e2c20d4",
+  "note": "Working-tree loaded browser scenes, simulated state, Chrome CPU throttle; not a handset measurement.",
+  "browser": "155.0.8059.39",
+  "reduced_motion_pixels": "identical across 1.1s",
+  "results": [
+    {
+      "scene": "day",
+      "viewport": [
+        412,
+        915
+      ],
+      "device_scale_factor": 2,
+      "cpu_throttle": 4,
+      "frames": 479,
+      "duration_ms": 8003,
+      "fps": 59.86,
+      "readings": [
+        "60 fps · compose 1.3 ms · paint 1.2 ms",
+        "60 fps · compose 1.3 ms · paint 1.2 ms",
+        "60 fps · compose 1.2 ms · paint 1.3 ms",
+        "60 fps · compose 1.3 ms · paint 1.5 ms",
+        "60 fps · compose 1.3 ms · paint 1.5 ms",
+        "60 fps · compose 1.1 ms · paint 1.2 ms",
+        "59 fps · compose 1.0 ms · paint 1.1 ms",
+        "60 fps · compose 1.1 ms · paint 1.4 ms"
+      ],
+      "hud": "4,120 steps today60 fps · compose 1.1 ms · paint 1.4 ms",
+      "mock": true,
+      "errors": []
+    },
+    {
+      "scene": "night",
+      "viewport": [
+        412,
+        915
+      ],
+      "device_scale_factor": 2,
+      "cpu_throttle": 4,
+      "frames": 480,
+      "duration_ms": 8004,
+      "fps": 59.97,
+      "readings": [
+        "60 fps · compose 1.4 ms · paint 1.3 ms",
+        "60 fps · compose 1.4 ms · paint 1.6 ms",
+        "60 fps · compose 1.4 ms · paint 1.6 ms",
+        "60 fps · compose 1.3 ms · paint 1.5 ms",
+        "60 fps · compose 1.2 ms · paint 1.4 ms",
+        "60 fps · compose 1.2 ms · paint 1.4 ms",
+        "60 fps · compose 1.1 ms · paint 1.2 ms",
+        "60 fps · compose 1.1 ms · paint 1.2 ms"
+      ],
+      "hud": "0 steps today60 fps · compose 1.1 ms · paint 1.2 ms",
+      "mock": true,
+      "errors": []
+    },
+    {
+      "scene": "fresh-night",
+      "viewport": [
+        412,
+        915
+      ],
+      "device_scale_factor": 2,
+      "cpu_throttle": 4,
+      "frames": 481,
+      "duration_ms": 8008,
+      "fps": 60.06,
+      "readings": [
+        "60 fps · compose 1.2 ms · paint 1.3 ms",
+        "60 fps · compose 1.2 ms · paint 1.3 ms",
+        "60 fps · compose 0.9 ms · paint 1.0 ms",
+        "60 fps · compose 0.8 ms · paint 1.1 ms",
+        "60 fps · compose 0.8 ms · paint 1.1 ms",
+        "60 fps · compose 0.8 ms · paint 1.1 ms",
+        "60 fps · compose 0.8 ms · paint 1.1 ms",
+        "60 fps · compose 0.8 ms · paint 1.1 ms"
+      ],
+      "hud": "0 steps today60 fps · compose 0.8 ms · paint 1.1 ms",
+      "mock": true,
+      "errors": []
+    },
+    {
+      "scene": "heat",
+      "viewport": [
+        412,
+        915
+      ],
+      "device_scale_factor": 2,
+      "cpu_throttle": 4,
+      "frames": 480,
+      "duration_ms": 8004,
+      "fps": 59.97,
+      "readings": [
+        "60 fps · compose 1.0 ms · paint 1.5 ms",
+        "60 fps · compose 1.0 ms · paint 1.6 ms",
+        "60 fps · compose 1.0 ms · paint 1.6 ms",
+        "60 fps · compose 0.8 ms · paint 1.4 ms",
+        "60 fps · compose 0.8 ms · paint 1.6 ms",
+        "60 fps · compose 0.8 ms · paint 1.6 ms",
+        "60 fps · compose 0.8 ms · paint 1.5 ms",
+        "60 fps · compose 0.8 ms · paint 1.6 ms"
+      ],
+      "hud": "4,120 steps today60 fps · compose 0.8 ms · paint 1.6 ms",
+      "mock": true,
+      "errors": []
+    },
+    {
+      "scene": "storm",
+      "viewport": [
+        412,
+        915
+      ],
+      "device_scale_factor": 2,
+      "cpu_throttle": 4,
+      "frames": 442,
+      "duration_ms": 8067,
+      "fps": 54.79,
+      "readings": [
+        "41 fps · compose 4.0 ms · paint 7.2 ms",
+        "43 fps · compose 3.4 ms · paint 6.5 ms",
+        "43 fps · compose 3.4 ms · paint 6.5 ms",
+        "59 fps · compose 2.3 ms · paint 4.2 ms",
+        "59 fps · compose 2.3 ms · paint 4.2 ms",
+        "56 fps · compose 2.6 ms · paint 4.7 ms",
+        "56 fps · compose 2.6 ms · paint 4.7 ms",
+        "60 fps · compose 2.2 ms · paint 4.0 ms"
+      ],
+      "hud": "4,120 steps today60 fps · compose 2.2 ms · paint 4.0 ms",
+      "mock": true,
+      "errors": []
+    }
+  ]
+}

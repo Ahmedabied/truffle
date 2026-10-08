@@ -1,6 +1,6 @@
 # 04 - Research facts (hardened 2026-10-07)
 
-Everything here was checked against a primary source today. Dates are 2026 unless stated. Re-check anything marked **verify** before relying on it in code.
+This is the October 7 research snapshot. The Gemma licensing entries were corrected against publisher sources on October 9. Dates are 2026 unless stated. Re-check anything marked **verify** before relying on it in code.
 
 ## The challenge
 
@@ -23,12 +23,12 @@ Everything here was checked against a primary source today. Dates are 2026 unles
 ## Gemma 4
 
 - Sizes: E2B, E4B, 12B, **31B dense**, 26B-A4B (MoE, 4B active). 31B is the most accurate (MMLU-Pro 85.2 vs 82.6 for 26B-A4B). Context 256K. Thinking mode built in.
-- HF: `google/gemma-4-31B-it` (gated, accept licence). Mirrors: `unsloth/gemma-4-31B-it`.
+- HF: [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it). Training mirror: [unsloth/gemma-4-31B-it](https://huggingface.co/unsloth/gemma-4-31B-it). Check current repository access requirements separately from the model license.
 - Quantized checkpoints for vLLM: `RedHatAI/gemma-4-31B-it-FP8-dynamic` (99.9% MMLU-Pro recovery, ~31GB), `QuantTrio/gemma-4-31B-it-AWQ` (needs vllm >= 0.19, transformers >= 5.5), `nvidia/Gemma-4-31B-IT-NVFP4`.
 - **verify**: at least one report that some pre-quantized FP8 checkpoints failed to load in a vLLM build (issue #38912, "weight_scale" KeyError). Workaround that worked: BF16 base + `--quantization fp8` at runtime (needs ~62GB to load, so A100-80GB/H100). Spike S01 tests the RedHat checkpoint on current vLLM first.
 - vLLM recipe: `vllm serve google/gemma-4-31B-it --reasoning-parser gemma4 --tool-call-parser gemma4 --chat-template examples/tool_chat_template_gemma4.jinja`. Thinking per request: `chat_template_kwargs: {"enable_thinking": true}`; reasoning comes back in `message.reasoning`. The 31B template inserts empty reasoning blocks when thinking is off.
 - Recommended sampling: temperature 1.0, top_p 0.95, top_k 64.
-- Licence: Gemma Terms of Use. Fine-tunes and data generated with Gemma are Model Derivatives; redistribution must carry the use restrictions and a copy of the terms (section 3.1). Prohibited Use Policy applies.
+- Licence, corrected October 9: **Apache 2.0**, as published by the [Google base](https://huggingface.co/google/gemma-4-31B-it), [Unsloth mirror](https://huggingface.co/unsloth/gemma-4-31B-it) and [Red Hat FP8 checkpoint](https://huggingface.co/RedHatAI/gemma-4-31B-it-FP8-dynamic). Google links the [Apache 2.0 license](https://ai.google.dev/gemma/apache_2). The earlier claim applying older Gemma Terms and their “Model Derivatives” wording to these checkpoints and all generated training data was incorrect. Preserve dataset provenance and artifact-specific licensing; see [NOTICE-GEMMA.md](../NOTICE-GEMMA.md).
 
 ## Fine-tuning
 

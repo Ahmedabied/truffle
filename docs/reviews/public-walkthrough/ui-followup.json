@@ -1,0 +1,71 @@
+{
+  "checked_at": "2026-10-08T21:15:41.153Z",
+  "url": "https://truffle-web.ahmed-abied.workers.dev/demo",
+  "web_commit": "f388eef",
+  "checks": [
+    {
+      "name": "fresh demo provenance",
+      "visible": true
+    },
+    {
+      "name": "errand return free",
+      "pass": true
+    },
+    {
+      "name": "actual canvas gift tap",
+      "pass": true
+    },
+    {
+      "name": "heat midnight protects stored food",
+      "pass": true,
+      "before": {
+        "energy": 3980,
+        "steps": 4000,
+        "tier": "high",
+        "burrowed": true,
+        "day": "2026-10-09",
+        "age_days": 0
+      },
+      "after": {
+        "energy": 3980,
+        "steps": 0,
+        "tier": "high",
+        "burrowed": false,
+        "day": "2026-10-09",
+        "age_days": 1
+      }
+    }
+  ],
+  "page_errors": [],
+  "offline_mock": false,
+  "walk": {
+    "energy": 4000,
+    "steps": 4000,
+    "tier": "high",
+    "burrowed": false,
+    "day": "2026-10-09",
+    "age_days": 0
+  },
+  "first_visible_ms": 26676,
+  "completed_ms": 45058,
+  "reply": "The moon is a bit of a wanderer. Even during the day, it is still out there in space, just like the sun. Sometimes, its position in the sky lines up perfectly so that it reflects enough sunlight to shine through the blue atmosphere of the earth. It is basically just hanging out in the daytime sky waiting for its turn to be the star of the night.\n\nI am feeling a little sleepy from those 4000 steps, so that is as much explaining as I can manage right now!",
+  "reply_metadata": {
+    "tier": "low",
+    "brain": "workers-ai",
+    "half_awake": true,
+    "partial": false,
+    "spent": 20
+  },
+  "half_awake_visible": true,
+  "after_chat": {
+    "energy": 3980,
+    "steps": 4000,
+    "tier": "high",
+    "burrowed": false,
+    "day": "2026-10-09",
+    "age_days": 0
+  },
+  "success": false,
+  "error": "AssertionError [ERR_ASSERTION]: The input did not match the regular expression /indoors/. Input:\n\n'Wherever you are, notice one small thing: a sound, a shadow, a change in the air. No need to keep this screen open.'\n\n    at file:///tmp/truffle-public-ui-followup.mjs:34:46",
+  "harness_failure": "The follow-up correctly verified protected midnight preserves energy, then incorrectly expected the next demo day to remain burrowed. Demo midnight intentionally turns forced heat off for the new day. The final UI-only follow-up explicitly enables heat again before checking indoor pause text."
+}

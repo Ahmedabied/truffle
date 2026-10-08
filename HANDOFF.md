@@ -1,40 +1,62 @@
-# HANDOFF -> Session 05 (Friday Oct 9)
+# Truffle handoff, October 9
 
-Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this. Rules from Ahmed: no co-author trailers on commits, only his identity; no Fable subagents (builders are Opus 5.5 with `model: "opus"`, research and spikes are GPT); the GPT plugin only runs when his message asks for GPT or astra; never play sound on the laptop; do not use the desktop control while he is away from it.
+Read CLAUDE.md, STATE.md, decisions 0019–0022 and the latest session report.
+Continue from the verified checkpoints; preserve the selected Chrome pet.
 
-## Where things stand (23:00 Oman, Oct 8)
+## User direction
 
-The core is complete: steps to energy to the fine-tuned Gemma 4 31B brain on Modal, ASCII world, feeder, judge mode, hardened Worker. See `sessions/2026-10-08_session-04_brain_and_finetune.md`. The base vs tuned eval was running at close; if `finetune/eval/RESULTS.md` exists, it is done. If not, rerun `finetune/eval/run_live.sh <run-id>` (brain must be warm: one health call first, about 10 min).
+Ahmed authorized dated/time-zone-matched feeds, retained heat shelter during a
+weather outage, direct phone walking independent of Samsung Health, optional
+quiet reminders, and small away gifts. The world should fill most of the phone,
+with chat directly below and other controls in Pocket. A full mushroom sleeps
+with smooth facial emotion; effort adds cap freckles and slight size changes.
+The target is 60 fps. Keep the revised ASCII walking notebook.
 
-## Ahmed's list
+The newest request is to **explore and test energy consumption/carryover** so a
+busy walking day still feeds Truffle after midnight and energy funds something
+useful. Two Astra reviews and an executable simulation now exist. They recommend
+gentle continuous consumption and real conversational work. This is not a live
+rule change. Read docs/reviews/energy-carryover-exploration.md before proposing
+an implementation; current goldens remain authoritative until a decision record.
+Do not weaken dated feeds to recover historical unsent steps.
 
-1. Pair the feeder on the Samsung (it is installed): web app Settings, copy the phrase, paste in the feeder, grant Health Connect, Feed now. Report the status line. Unblocks real steps and the `day` envelope decision.
-2. Rotate the Hugging Face token (it was pasted into a chat on Oct 8). Save the new one to `~/.config/truffle/hf_token`; the session updates the Modal secret from the file.
-3. Optional: a Cloudflare API token with Workers AI read at `~/.config/truffle/cf_api_token` so the eval judge is Gemma 26B on Workers AI, not the base model.
-4. 30 seed lines, then the seed-anchored pass D19 to D21 and a second adapter r16b trained with those rows repeated three times.
-5. Two minutes on the phone with `?fps=1` (first numbers: 12 fps, compose 4.8 ms, paint 3.7 ms).
-6. Four yes or no answers (recommend yes to all): Arabic stage names; protected day on a missing forecast; keep the 50,000 cap with an honest message; make `day` required. Plus one new: lower the low tier cap from 120 to 90 tokens (Wave C showed 100-word low-tier replies from the fallback).
-7. Diary day 1 after an evening walk: steps screenshot, weather line, two Truffle replies, how it felt.
+## Verified delivery
 
-## Session 05 order of work
+Web f388eef is live; API 1f86536 is live. Final checks: 428 Worker tests,
+177 web unit tests, 40 browser cases, and 101 Android tests. The public
+walkthrough passed. Earlier harness failures remain documented. Two real
+fallback replies took about 53 and 27 seconds to show text; neither was a
+trained-adapter serving proof. Later prompt guidance is code-tested only.
 
-1. Read `finetune/eval/RESULTS.md`. If the judge was the base model, rerun with the Cloudflare token when it exists. Put the table in the README brain status row.
-2. Warm the brain before any demo: `curl -L -m 900 -H "Authorization: Bearer $(cat ~/.config/truffle/brain_token)" https://ahmedabied--truffle-brain-nosnap-brain-serve.modal.run/health`. For the judging window consider `min_containers=1` for a few hours (about USD 2 an hour).
-3. Drop the EXTRAS guidance lines in `worker/src/prompt.ts` when the brain is Modal (the tuned model was trained on the trio only). Small Opus packet with a test.
-4. Decisions from Ahmed's answers: records plus one Opus packet (protected day latch, capped-feed message, `day` required, low tier cap).
-5. Real walk: verify the feeder's count against Samsung Health within 2 percent, then publish the APK release.
-6. Writeup: `docs/06_writeup_plan.md` with the judge reads (C06 to C08) folded in: the walk as the opening scene, a dated brain status table, a care and safety box, a simulated judge walkthrough labelled as such. Draft the post Friday night, publish Saturday night.
-7. DEV agent session: slice and sanitise locally first (`fleet/outbox/S07/RESULT.md`). The HF token appears in this session's transcript; redact before any upload.
+Android 0.3 from 4c86a68 is installed. Native World, Walk and Feed showed the
+chosen 81-step pet after the ownership fix. No manually counted accuracy
+reference exists. Chrome on the Samsung has a short 60 fps sample. The phone
+is now disconnected by the user's choice; stop requesting more physical
+checks unless needed for a new task. The last final-web reload was triggered
+but disconnected before readback, so do not claim that particular recheck.
 
-## Things that will bite
+All specialist ownership has returned to root; no agent has unfinished source
+edits. Reports and reviewed captures live under docs/reviews and docs/assets.
+The user requested exploration of energy, not a silent migration of living pets.
+The current energy goldens remain unchanged.
 
-- `request.cf` is undefined in `wrangler dev`: defaults are Muscat, Asia/Muscat, OM, ar.
-- Per-IP spawn limit (5 an hour) and the new failed-lookup limit (30 a minute per IP and phrase) hit repeated testing from one IP. The smoke script tolerates the first.
-- Never let an agent download weights to the laptop (9 GB free). Box has 77 GB. GPU work is Modal.
-- `finetune/data/generated/` is gitignored. Regenerate with the filter command in the session log.
-- The Worker ignores `day_tz` today; the feeder sends it. Making `day` required is a one-line change in `worker/src/index.ts` plus a test, after Ahmed's yes.
-- DEV agent-session upload sends the raw transcript before redaction; slice and sanitise locally first (`fleet/outbox/S07/RESULT.md`).
+## Finish safely
 
-## Deliverable for end of Friday
+Build Android only by pulling committed GitHub source on the workstation.
+Upgrade with install-r, preserving private preferences and the recorded diary.
+Pause tracking before an upgrade, resume explicitly, and verify repeated Feed is
+idempotent. Do not bypass the phone's keyguard or change lock settings.
 
-Eval table in the README. Real steps from Ahmed's Samsung at `/feed` verified against Samsung Health. Diary day 1 and 2. Post draft in `docs/post_draft.md`. Seed-anchored adapter if the lines exist.
+Commit and deploy final web code, then verify the anonymous public demo and
+native World together. Public demo replies must retain trained/fallback/sample
+provenance. Publish a clearly labelled test APK only after ownership matches;
+a draft release alone is not a public download. Never publish the DEV article
+without an explicit publication instruction. Energy redesign is a separate
+spec/migration task; do not quietly replace balances or golden cases.
+
+The current record is sessions/2026-10-09_session-05_companion_finish.md.
+For a later energy implementation, first write a decision/spec, then add v2
+goldens and migration/settlement reservation tests. Keep existing owner, history
+and memories. DEV publication still requires a publication instruction.
+Review artifacts before staging; keep raw/private fleet outputs out of git.
+MemPalace promotion is blocked by another writer; do not override its lock.

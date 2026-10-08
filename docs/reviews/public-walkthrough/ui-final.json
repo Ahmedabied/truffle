@@ -1,0 +1,63 @@
+{
+  "checked_at": "2026-10-08T21:17:29.469Z",
+  "url": "https://truffle-web.ahmed-abied.workers.dev/demo",
+  "web_commit": "f388eef",
+  "checks": [
+    {
+      "name": "fresh demo provenance",
+      "visible": true
+    },
+    {
+      "name": "errand return free",
+      "pass": true
+    },
+    {
+      "name": "actual canvas gift tap",
+      "pass": true
+    },
+    {
+      "name": "heat midnight protects stored food",
+      "pass": true,
+      "before": {
+        "energy": 4000,
+        "steps": 4000,
+        "tier": "high",
+        "burrowed": true,
+        "day": "2026-10-09",
+        "age_days": 0
+      },
+      "after": {
+        "energy": 4000,
+        "steps": 0,
+        "tier": "high",
+        "burrowed": false,
+        "day": "2026-10-09",
+        "age_days": 1
+      }
+    },
+    {
+      "name": "Arabic public layout",
+      "pass": true
+    }
+  ],
+  "page_errors": [],
+  "offline_mock": false,
+  "walk": {
+    "energy": 4000,
+    "steps": 4000,
+    "tier": "high",
+    "burrowed": false,
+    "day": "2026-10-09",
+    "age_days": 0
+  },
+  "after_chat": {
+    "energy": 4000,
+    "steps": 4000,
+    "tier": "high",
+    "burrowed": false,
+    "day": "2026-10-09",
+    "age_days": 0
+  },
+  "chat": "No model call in this UI-only continuation. Live reply proofs are in chat-and-gift.json and ui-followup.json.",
+  "success": true
+}

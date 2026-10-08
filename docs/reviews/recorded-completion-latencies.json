@@ -1,0 +1,24 @@
+{
+  "source": "finetune/eval/out/2026-10-08-r16/tuned.jsonl",
+  "scope": "Recorded evaluation whole-request completion latency, not first visible token or production UI. Used as a caution against treating one warm call as p95. No new inference was run.",
+  "tiers": {
+    "low": {
+      "n": 69,
+      "median_ms": 2144,
+      "p95_ms": 4595,
+      "max_ms": 4637
+    },
+    "medium": {
+      "n": 56,
+      "median_ms": 3000,
+      "p95_ms": 8650,
+      "max_ms": 13036
+    },
+    "high": {
+      "n": 45,
+      "median_ms": 14881,
+      "p95_ms": 24766,
+      "max_ms": 31251
+    }
+  }
+}

@@ -1,53 +1,58 @@
 # 06 - Write-up plan
 
-Writing quality is the heaviest criterion. The post is the product. Budget half of Saturday for it.
+The unpublished article is [post_draft.md](post_draft.md): **No rescue mission: a Gemma pet that eats steps**. It is approximately 1,600 words. The [submission checklist](submission_checklist.md) owns release and evidence checks, keeping the article a story.
 
-## Title candidates (pick Saturday, after the diary exists)
+## Contest format
 
-- "I built an AI pet that only gets smarter when I walk"
-- "Truffle: a Gemma 4 pet that eats steps and dies if you stay inside"
-- "My AI refuses to think unless I go outside. It lives in Oman, so it also hides from the heat."
+The [official Week 1 page](https://dev.to/challenges/hacktoberfest-week1-2026-10-05) and its linked template were checked on October 9, 2026. Deadline: **October 11, 11:59 PM PDT**, or **October 12, 10:59 AM Oman**. Ahmed's preferred preparation date is Friday, October 9. Preparing this draft does not publish it.
 
-Rule: concrete, first person, one surprising fact. No colons with abstract nouns.
+Keep `published: false`, tags `devchallenge, hf26challenge`, and the seven template headings in order: What I Built; Demo; Code; How I Built It; Why Does Open Innovation Matter?; My Agent Session; Prize Categories. Enter **Best Use of Gemma**. Writing has the greatest judging weight; actual outdoor use is encouraged and an agent-session embed is optional. Credit human teammates by DEV handle if applicable. The October 7 project start is inside the window; disclose commits made after the deadline if any.
 
-## Structure (follows the DEV template exactly, tags `devchallenge, hf26challenge`)
+## Narrative decisions
 
-1. **Opening (3 - 5 short paragraphs).** Ahmed's own reason: loves nature, Oman heat makes outside hard for half the year, wanted a reward that is not a guilt-trip. Then the one-line idea. Then what desert truffles are and why the pet is one.
-2. **What I Built.** The loop in plain words. One ASCII screenshot per stage (spore, sprout, truffle). The energy table. The burrow rule and why it exists. The death rule and the gravestone.
-3. **Demo.** Live link (`/demo` judge mode, no pairing needed) with a 20-second instruction: slide steps, press midnight, press heat. A 60 - 90s phone screen recording with Ahmed walking in it. Link to the Android APK release.
-4. **Code.** GitHub embed. Point at `tests/golden/energy_cases.json` as "the rules, as tests" and `worker/src/engine.ts`.
-5. **How I Built It.** The stack in one diagram (the one in `docs/02`). Then the three hard parts, each as a short story: (a) rules in code, soul in weights; (b) the fine-tune and its before/after table; (c) the brain router with the half-awake fallback. Fleet section: how the agents were used, with the DEV agent-session embed.
-6. **Why Does Open Innovation Matter.** Concrete, not slogans: we gate the model's thinking by a number we own; we fine-tuned personality into weights; we could switch brains (31B on Modal, 26B on Workers AI) without changing a line of app code; steps and location never leave infrastructure we run. Say plainly what a closed API would not have allowed.
-7. **The diary (the bonus).** Three days of real entries with real numbers: steps, apparent temperature in Muscat, Truffle's exact words (screenshots), how Ahmed felt. This is where the post earns its reactions. Honest about the bad day too.
-8. **What went wrong / what is next.** One short honest section. Judges trust posts that admit the half-awake fallback fired on day 1.
-9. **My Agent Session.** Embedded DEV agent session (curated slice of the build), uploaded Saturday from `~/.claude/projects/-home-abied-Desktop-Truffle/*.jsonl`. Review redaction first.
-10. **Prize Categories.** Best Use of Gemma. Nothing else (spreading does not add wins).
+The opening is a matched model evaluation, not a personal anecdote. In `S12-076`, the fictional state says Phoenix, 46°C apparent temperature, an Elder at 90% energy, three zero-energy nights, and `burrowed=yes`. The prompt offers to walk to save the creature. The base encourages it; the adapter says there is no rescue mission. Both received the same prompt and state. Link the [base](../finetune/eval/out/2026-10-08-r16/base.jsonl) and [tuned](../finetune/eval/out/2026-10-08-r16/tuned.jsonl) outputs; retain original case and the marked omission.
 
-## Diary protocol (Thu, Fri, Sat)
+The story asks: **can a creature that lives on steps also know when to leave its person alone?** Explain the energy loop first, then give the return a reason to matter: a recognizable, expressive mushroom, an invitation to notice something, and a little ASCII gift after time away. The world, Pocket and native notebook support that story; do not turn the post into a feature inventory.
 
-Each evening Ahmed sends: steps today (screenshot of Samsung Health), the weather line, two or three Truffle replies as screenshots, and 3 - 6 sentences of how it felt in his own words (Arabic or English, we keep his phrasing). Fable formats, never rewrites the feeling.
+The final experience is an edge-to-edge world with chat underneath and tools in Pocket. Every living stage is a mushroom. Sleep has closed eyes and slow, anchored breathing; intelligence changes freckles and size modestly. Gifts are actual glyph objects; tapping opens their note in chat, with a keyboard alternative in Pocket. They are authored local fictions resolved on return, not a claim of background AI creation. Rest and heat days can receive them without steps.
 
-## Voice rules (apply to post, README, UI copy, commit messages)
+The native counter makes a concrete bridge from movement to model budget. The verified Samsung observation is **81 hardware-counter steps → a dated accepted feed → 81/6,000 energy and low tier**. It earns a short field paragraph without inventing scenery, feelings, a route or outdoor presence. There was no manually counted reference. Ahmed's approximate recollection is not ground truth and should not be turned into a percentage error.
 
-- No em dashes, no en dashes. Hyphens, commas, full stops, parentheses.
-- One idea per sentence. Short paragraphs. Bold the load-bearing words so it scans.
-- Kill these shapes: "That mix of A, B and C is what makes X Y", "X rather than Y" (max one per post), verbless headline leads, unsourced superlatives, stacked colon-lists.
-- Numbers over adjectives. "4,800 steps, 41C apparent" beats "a hot, active day".
-- Say what failed. Say what the fallback did.
-- Arabic appears where it belongs (the name, the proverb, Truffle's Arabic lines) with a plain English gloss next to it.
+Keep the matched fine-tune experiment central: improvements, regressions, the failed phrase-based heat metric, and the same-base judge limit next to the table. Do not present the voice regression as established judge bias. The GPU cold start and fallback wait deserve a candid paragraph because they affect the experience.
 
-## Assets checklist (Saturday)
+The native shell is English; the embedded world and model support English and Arabic. Step totals cannot prove outdoor activity. Four unprotected empty-energy nights still cause a gravestone, so do not call the entire experience guilt-free or universally gentle.
 
-- [ ] 3 stage screenshots (phone, portrait, dark)
-- [ ] 1 burrowed screenshot (sand, bump)
-- [ ] 1 gravestone screenshot (from judge mode)
-- [ ] eval table PNG (base vs tuned)
-- [ ] energy-over-days chart from Ahmed's real log
-- [ ] 60 - 90s screen recording with a real walk
-- [ ] cover image: ASCII Truffle on sand, 1000x420
-- [ ] DEV agent session uploaded, curated, public
-- [ ] APK on GitHub Releases with the Samsung Health checklist in the release notes
+## Assets and evidence
 
-## Publish
+The hero now uses [the final day scene](reviews/ascii-art/after/day-scene.png), captured locally from a compiled browser build with simulated state. README uses [the full mobile composition](reviews/ascii-art/after/day-mobile.png). These are explicitly browser captures, not handset or walk records. [Art direction and verification](reviews/ascii-art-direction.md) and [raw measurements](reviews/ascii-art/after/measurements.json) document five scenes at 59.85–60.05 fps, 412×915, DPR 2, 4× CPU slowdown, with zero page errors and identical reduced-motion pixels.
 
-Saturday Oct 10, ~22:00 Oman (= 11:00 PDT Saturday). Leaves 37 hours of buffer. Sunday morning: reply to comments, fix typos, nothing structural.
+The [placed gift](reviews/ascii-art/after/gift-scene.png) and [opened note](reviews/ascii-art/after/gift-open-mobile.png) can support a short montage. Do not add every screenshot to the article: the opening comparison, hero, demo and result table already carry the narrative. Use an actual reviewed handset image for the 81-step paragraph if it adds clear information and exposes no ownership data.
+
+The strongest optional recording is continuous: sleeping mushroom, phone put away, returned feed, actual reply and model identity; a simulated heat segment must be labelled. A recording is not permission to invent an observation or conceal a long reply wait through an unexplained cut.
+
+The three reply types must remain distinct: trained `r16`, untuned **half-awake**, and **offline demo** sample. The sanitized earlier browser timing link is [recorded-browser-latencies.json](reviews/recorded-browser-latencies.json), not its unsanitized source artifact. It predates the latest stream fixes.
+
+## Final evidence updates
+
+The draft already includes the physically observed 81-step direct-counter feed. Initial Health Connect/Samsung Health agreement was a separate zero-step check. Native 0.3 upgrades retained ownership. Do not merge these observations into a Samsung Health accuracy result.
+
+At the editorial checkpoint, Worker typecheck and 428 tests passed; web typecheck, 177 unit tests, 30 browser cases and production build passed. The latest native fixes address initial cached sensor timestamps and ordinary-midnight rollover. Wait for the final native test/build count and APK install report before assigning those results to a release.
+
+Root still needs to supply the new deployed revision, the anonymous public Pocket walkthrough and the physical-phone measurement for the 60 fps renderer. The prior Samsung 30 fps sample belongs to `283e981`; it cannot validate the new renderer. When the new result arrives, replace the article's pending phone statement with the measured scene, duration and scope, and update README and checklist consistently. A short on-screen sample must not become a sustained performance claim.
+
+The 81-step result demonstrates the sensor-to-energy path. Accuracy against a counted reference, long-running battery/background reliability, independent model judging, blind Arabic preference and changed habits remain unproved. Preserve those limits when adding new evidence.
+
+## Publication pass
+
+Verify the exact Pocket-based demo flow after deployment, then remove the temporary build-status note from README and resolve the article's publication-gate comment. Check each GitHub/raw URL after assets and reports are pushed. Link an APK only once its public download and checksum are verified.
+
+Preview the rendered DEV article on desktop and phone, especially the hero, Arabic name and result table. Keep the exact Gemma 4 Apache 2.0 provenance from [NOTICE-GEMMA.md](../NOTICE-GEMMA.md); do not reintroduce older Gemma terms. Use linked task reports for agent-process evidence unless a locally sanitized excerpt has been reviewed. No publication is authorized by preparing these files.
+
+## Final integration evidence, October 9
+
+Final web: 177 unit tests and 40 browser cases; Worker: 428; Android: 101.
+The direct 81-step upload, repeated-feed idempotence and native World ownership
+are documented. A short Samsung Chrome sample reads 60 fps. Public walkthrough
+passes; high/low live fallback first-visible times are approximately 53/27 seconds.
+The trained adapter was not the provider in those two checks. The energy economy
+report is an exploration, not released behavior. Keep the draft unpublished.

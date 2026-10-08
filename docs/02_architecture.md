@@ -36,7 +36,7 @@ Status: **settled 2026-10-07**. Ahmed's instruction: all app infrastructure on C
 - **Runtime**: Workers, TypeScript, Hono for routing (small). `wrangler.jsonc` with a Durable Object binding `TRUFFLE` (class `TruffleDO`, SQLite backend), an AI binding for the fallback, and secrets `MODAL_URL`, `MODAL_TOKEN`.
 - **Routes**:
   - `POST /pair` -> creates a Truffle, returns `{phrase, tz, country, lang}`. Timezone, country and lang defaults from `request.cf.timezone / country`. Coordinates from `request.cf.latitude/longitude` until the feeder sends better ones.
-  - `POST /feed` `{phrase, steps_today_total, lat?, lon?, device_tz?}` -> engine `feed`. Rate limit 60/hour per phrase. Returns the new state summary so the feeder can show it.
+  - `POST /feed` `{phrase, steps_today_total, day, day_tz, lat?, lon?, device_tz?}` -> engine `feed`. Rate limit 60/hour per phrase. Returns the new state summary so the feeder can show it.
   - `POST /chat` `{phrase, message, requested_tier?, lang?}` -> engine decides tier -> brain router -> reply + state. Streams via SSE so the typing effect is real.
   - `GET /state?phrase=` -> full world state for rendering.
   - `POST /demo/spawn`, `POST /demo/slider`, `POST /demo/midnight`, `POST /demo/heat`, `POST /demo/reset` -> judge mode. Demo DOs carry a `demo=true` flag and a 24h self-delete alarm.
@@ -49,7 +49,7 @@ Status: **settled 2026-10-07**. Ahmed's instruction: all app infrastructure on C
 
 ### web/ (Cloudflare Pages)
 
-- Vanilla TypeScript + Vite. One page. `<pre>` ASCII grid sized to the viewport (portrait first).
+- Vanilla TypeScript + Vite. A cached glyph-atlas canvas sized to the viewport, with a full-width mobile world, chat directly underneath, and secondary Pocket controls.
 - Scene layers and timing in `web/src/scene/*`. The world is a 100 x 68 luminance raster dithered into glyphs (decision 0011); the Truffle is a lit model in `web/src/scene/pet.ts`, shaded per cell for every stage and mood.
 - State polling every 30s plus after each chat. SSE for chat.
 - Sky colour from local hour (the user's tz from `/state`). Clouds drift with Open-Meteo wind speed. Rain glyphs when precipitation > 0.
@@ -60,7 +60,7 @@ Status: **settled 2026-10-07**. Ahmed's instruction: all app infrastructure on C
 
 - Minimal app: pairing phrase field, "Feed now" button, status line, hourly background sync.
 - Health Connect: `aggregate(StepsRecord.COUNT_TOTAL)` from local midnight to now. Permissions: `READ_STEPS` plus `READ_HEALTH_DATA_IN_BACKGROUND` (Android 15+) for the WorkManager hourly job. Rationale activity declared (required by Health Connect).
-- Posts `steps_today_total` with device tz and (optional, user-enabled) coarse location.
+- Posts `steps_today_total` with required local `day` and aggregation `day_tz`, device zone, and optional coarse location. A mismatched day or aggregation zone earns no steps and returns the active zone for a fresh read (decision 0019).
 - Sideloaded APK via GitHub Release. Not on Play, so no Play declaration form.
 - **Day-1 bridge**: Tasker + the TaskerHealthConnect plugin (sideloaded from its GitHub releases) reading aggregated steps and firing an HTTP Request action to `/feed` every hour and on screen-on. This gets real steps flowing Thursday while the Kotlin app is built.
 - Samsung Health must be allowed to write to Health Connect (Samsung Health > Settings > Health Connect > Allow all). First-run checklist in the README.
@@ -103,3 +103,18 @@ Status: **settled 2026-10-07**. Ahmed's instruction: all app infrastructure on C
 | Health Connect permission revoked (auto-revoke after unuse) | Feeder shows a red line and a button to re-grant; Truffle says it is hungry, never that it is "broken" |
 | Phrase guessed | Rate limit + the worst someone can do is feed your Truffle |
 | DO alarm missed | Alarm handler catches up: runs as many midnights as were missed, each with that day's cached weather or `burrowed=false` |
+
+## Companion extension (decision 0021)
+
+Android can use an explicitly enabled hardware step-counter foreground service
+instead of Health Connect. Source switching must fence old uploads, establish
+the credited day's baseline, and preserve the required pinned day/zone envelope.
+Pure counter and reminder policies cover reset, reboot, rollover and suppression.
+The web resolves authored keepsakes on return using elapsed absence, storing a
+bounded per-pet, per-origin collection locally. No background model or GPS is
+introduced. Heading-out intent is explicit and costs no conversation energy.
+
+Decision 0022 raises the animation target to 60 fps without altering game rules.
+The glyph atlas and cached depth layers remain; smooth facial state is renderer
+state. Visible scene keepsakes expose hit regions and an accessible Pocket list.
+The direct phone measurement must distinguish target from observed frame rate.

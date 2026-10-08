@@ -44,6 +44,16 @@ Avoid a parallel-provider race until measured latency and budget justify it. It 
 - Browser regression run first: 10 failures out of 12 tests, then all 12 passed after the fixes.
 - Outgoing-backpressure regressions first: both new Durable Object tests failed because the deadline left background work pending. All 40 object tests passed after replacing the blocking output writer.
 - Web checkpoint: full suite 160 tests passed; `tsc --noEmit` passed; Vite production build passed.
-- Worker checkpoint: full suite 426 tests passed before the two outgoing-backpressure regressions; focused brain suite 23 passed and object suite 40 passed. TypeScript checks passed. A final suite run belongs with the integrating agent's combined changes.
+- Final worker checkpoint: full suite 428 tests passed, including 23 brain tests and 40 object tests. TypeScript checks passed. The integrating agent should verify its combined changes before deployment.
 
 Existing tooling warnings: Vite warns that the test configuration's `__dirname` needs modernization for a future config loader; Node labels its SQLite API experimental. Neither produced a test failure.
+
+## Integration follow-up
+
+The view now owns an AbortController and passes its signal to the browser API.
+Clearing or replacing a conversation aborts the request as well as fencing stale
+UI completions. Browser tests cover cancellation before and after visible text.
+The default provider-selection wait remains 25 seconds. The recorded evaluation
+shows substantial tier variation in whole-request latency; see
+[completion latency artifact](recorded-completion-latencies.json). These figures
+are not first-token timings and do not establish a new production timeout.

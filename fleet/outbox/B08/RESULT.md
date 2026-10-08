@@ -140,7 +140,7 @@ PASS 429 Arabic: Arabic countdown: جرّب بعد 12 دقيقة.
 PASS 401 chat: phrase not recognised
 PASS 401 chat: Settings opened
 PASS 401 chat: no new Truffle paired behind the user
-  saved docs/assets/2026-10-08_web_errors_401_settings.png
+  401 settings capture withheld from the current public tree during final privacy review: its visible pairing phrase has unconfirmed test provenance. Historical capture claim is retained here; no replacement screenshot was fabricated.
 PASS 401 boot: HUD says phrase not recognised
 PASS 401 boot: Settings open, no new pair
 PASS 401 boot: saved phrase kept for the person to decide

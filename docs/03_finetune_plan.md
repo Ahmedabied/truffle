@@ -31,7 +31,7 @@ Target **1,500 - 2,000 examples**, generated in shards by `(mood) x (tier) x (la
 
 Every example is a full chat: system prompt with a **realistic state block**, 1 - 3 user turns, Truffle replies that match the tier's length budget. Length budgets are enforced by the generator and re-checked by a filter (low <= 60 words, medium <= 200, high free but on-task).
 
-Generator model: Gemma 4 26B-A4B on Workers AI or the un-tuned 31B on a Modal pod. Using Gemma to make Gemma data keeps everything under one licence (data made with Gemma is itself a Model Derivative, see `NOTICE-GEMMA.md`).
+Planned generator model: Gemma 4 26B-A4B on Workers AI or the un-tuned 31B on a Modal pod. Record the actual generator and source for each shard. The training base and serving checkpoints publish Apache 2.0 licenses; this does not determine the license of every generated dataset. The earlier derivative-data assertion was incorrect. See [NOTICE-GEMMA.md](../NOTICE-GEMMA.md) for the exact publisher sources, checked October 9.
 
 ### Filters (Opus reviewer, Thursday night)
 
@@ -49,7 +49,7 @@ Generator model: Gemma 4 26B-A4B on Workers AI or the un-tuned 31B on a Modal po
 - 2 epochs over ~1,700 examples, `lr=2e-4`, batch 2 x grad-accum 8, `max_seq_length=4096`, `train_on_responses_only`.
 - Expected wall time: 60 - 120 minutes. Expected cost: **$1 - 4**.
 - Save: LoRA adapter (safetensors) -> Modal Volume. Also `save_pretrained_merged` 16-bit to a private HF repo **only if Plan B is needed** (62GB upload, do not do it by default).
-- Base weights come from Hugging Face. `google/gemma-4-31B-it` is gated: Ahmed accepts the Gemma licence on HF and creates a read token (Thursday). Unsloth's mirror `unsloth/gemma-4-31B-it` can be used for training if gating is slow.
+- Base weights come from Hugging Face: [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) or the training mirror [unsloth/gemma-4-31B-it](https://huggingface.co/unsloth/gemma-4-31B-it). Both publish Apache 2.0 licenses. Check current access requirements before downloading; attach a read token only when the chosen repository requires one.
 
 ## Eval (the numbers that go in the post)
 

@@ -1,5 +1,21 @@
 # Android integration QA, 2026-10-09
 
+Latest installed candidate: **0.3.0/code 3**, source **`4c86a68`**. Workstation
+build, **101 JVM tests**, and lint passed; **zero errors, 62 lint warnings**.
+Samsung native counter recorded **81** and the Worker accepted **81**. Repeated
+feeding did not add credit. After the final WebView correction, embedded World
+visibly shows that same chosen 81-step pet. Step accuracy was not independently
+measured. Native tracking is enabled; optional companion notes remain off.
+
+Final debug APK: `fleet/outbox/B14/raw/codex-qa/app-0.3.0-debug.apk`.
+SHA-256: `aa312a365866ae2c5895e3ecf60d9718a1968ca308c6f99e0f84fc5310cc0eab`.
+[Native World proof](../assets/android-native-world-81.png),
+[native Walk proof](../assets/android-walk-native-81.png),
+[Samsung Chrome 60-fps sample](../assets/android-world-samsung-60fps.png).
+
+The older checkpoints below document what was tested before later fixes; they are
+not alternative release artifacts.
+
 Source checkpoint: `0ab59b5`. Built from a clean GitHub clone at
 `workstation:/home/tamlik/truffle-source/review-20261008`. No source checkout
 was copied between machines. No build ran on the laptop.
@@ -125,3 +141,116 @@ Walk also showed **0**. The historical 30-day chart contained nonzero records;
 distance denial correctly omitted distance. This confirms the actual source,
 calendar and upload path after midnight. It does **not** verify positive new
 walking increments. No synthetic health records or pet were put on the Samsung.
+
+## 0.3 direct walking and device evidence
+
+The native 0.3 checkpoint through `9a78562` was built from GitHub checkout
+`5cf5465` on the workstation. `assembleDebug testDebugUnitTest lintDebug` all
+passed: **101 tests in 13 suites, zero failures/errors; zero lint errors and 60
+warnings**. Warnings: 35 text/localization, 19 Kotlin extension suggestions,
+3 SAM-instance notices, 2 dependency versions, and 1 obsolete SDK guard.
+The checked APK SHA-256 was
+`7290763a658b5198c0bdf7a04d2636d29615f735a16ed7ad5734192292465e20`.
+This is a debug build. A subsequent WebView ownership correction is described
+below and supersedes that candidate; it must be verified before publication.
+
+The Samsung's hardware step counter is present. The physical activity and
+notification permission flow completed, and its foreground step service ran.
+Health Connect Steps/background grants survived the upgrade. Optional companion
+notes remained **off**. During Ahmed's actual indoor walk, the native counter
+recorded **81 steps for 2026-10-09, Asia/Muscat**. Private state and the running
+service independently confirmed that the selected source was the phone counter.
+The source had briefly been switched to Health Connect during setup, so the
+final source check was required rather than inferred from an earlier screenshot.
+
+At 00:54 the app uploaded the native **81**, and the Worker returned steps **81**,
+energy **81/6000**, tier **low**. After pausing, upgrading in place, and resuming,
+the entire native tracking preference snapshot and the chosen pet's key/origin/
+zone were unchanged. A repeat feed at 01:02 still returned steps **81** and energy
+**81**: no duplicate credit. Ahmed did not count the walk independently, so this
+proves live hardware counting and the upload path, **not step-count accuracy**.
+
+The real sensor exposed an important timestamp edge: the initial cumulative
+callback carried the timestamp of yesterday's last step. `CounterObservation`
+now anchors only the first baseline to its actual observation time; later batched
+callbacks retain event time. Three pure regressions cover this edge. Independent
+review also found that first daily sync discarded safe steps accumulated after
+the midnight anchor. Eight `SensorBaselinePolicy` regressions now preserve those
+steps using the maximum of overlapping totals, with durable baseline storage
+before upload. An uncertain crossing delta is still excluded.
+
+Reviewed public evidence, containing no pairing phrase or ownership key:
+
+- [Samsung native counter, 81 steps](../assets/android-walk-native-81.png)
+- [Samsung Chrome world, 60 fps](../assets/android-world-samsung-60fps.png)
+
+The second image shows the deployed `5cf5465` world on the physical Samsung:
+**60 fps, compose 0.9 ms, paint 1.0 ms**, with its full-width night scene and chat
+below. It is an on-screen Chrome sample, **not** a sustained battery/performance
+trace or a direct WebView frame-time measurement.
+
+## Final ownership gate
+
+Final native World inspection caught a real integration defect: the native feeder
+and Chrome held the selected 81-step pet, while embedded World displayed another
+zero-step pet. Android suppresses JavaScript confirmation when no
+`WebChromeClient` is installed. The newly required web import confirmation was
+therefore silently declined. See [Android WebChromeClient documentation](https://developer.android.com/reference/android/webkit/WebChromeClient).
+
+`4c86a68` installs an explicit, origin-checked confirmation dialog, cancels it when
+the WebView is replaced/destroyed, leaves an unpaired native World unloaded until
+an explicit native pairing action, and reoffers native-owned credentials on
+**Reload World**. The web side separately fails closed after a declined/failed
+import. Publication was held until the corrected installed World was observed
+showing the same selected pet. The successful physical result is recorded below.
+
+Remaining limits: no independently counted accuracy trial, overnight physical
+rollover, reboot/task-manager-stop endurance trial, sustained battery test,
+TalkBack session, or positive distance record was run. Reset, rollover, overlap
+and reminder suppression have pure regression coverage; this is not a substitute
+for those longer device checks. The native shell remains English.
+
+## Final installed ownership result
+
+Exact source `4c86a68` built successfully on the workstation with
+`assembleDebug testDebugUnitTest lintDebug`: **101 tests, zero failures/errors;
+zero lint errors and 62 warnings** (35 text/localization, 21 Kotlin extension
+suggestions, 3 SAM notices, 2 dependency versions, 1 obsolete SDK guard).
+
+The Samsung was paused through Walk before `adb install -r`. The complete native
+tracking preference snapshot, including all 81 steps, and its chosen ownership
+key/origin/zone survived unchanged. On opening World, the JavaScript confirmation
+was visibly presented. Its candidate matched the app-owned phrase, and no secret
+was displayed. Accepting the already-authorized chosen pet produced embedded
+World's **81 steps today / 1% energy / low effort** state. The screenshot above
+records the actual native shell, not a browser approximation. This closes the
+positive ownership handoff gate. The new web refusal/retry paths are covered by
+the separately coordinated browser integration checks.
+
+Phone counting was explicitly resumed after that upgrade: native source enabled,
+foreground service present, **81 steps retained**, optional companion reminders
+still off. No new pet was deliberately created on the Samsung, no app data was
+cleared, and no user ownership secret was written into the report or screenshots.
+The earlier embedded auto-pair behavior was an unintended product defect; the
+unpaired native screen now keeps WebView unloaded until explicit pairing.
+
+## Final deployment boundary and emulator recheck
+
+After web source `f388eef` was deployed, the Samsung received **Feed now** and
+**Reload World** through the installed native UI. USB disconnected before their
+result could be inspected. Therefore the observed positive ownership proof above
+belongs to the installed `4c86a68` APK against the web deployment immediately
+before `f388eef`; this report does **not** claim a physical readback of the latest
+web deployment. The user then confirmed the phone would be disconnected, and no
+further device actions were taken. The latest web refusal/retry behavior has its
+separate 40-browser-test evidence recorded by the integration reviewer.
+
+The final `4c86a68` APK was also installed on Android 16 emulator `emulator-5556`.
+Its native credentials were absent; World showed the explicit **Make my Truffle**
+action, with no visible WebView and no web world canvas. No pairing action was
+taken. This directly checks the final unpaired-screen guard against hidden web
+auto-pairing.
+
+The artifact is ready for a clearly labelled **debug test prerelease**, within
+the device-test limits above. Public evidence consists of the three linked
+credential-free screenshots; raw private preferences are not release artifacts.

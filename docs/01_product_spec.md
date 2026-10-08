@@ -48,16 +48,16 @@ All numbers are constants in one config file. Tune them with a decision record.
 
 | Stage | lifetime_steps | energy_max | daily burn | ASCII |
 |---|---|---|---|---|
-| Spore | 0 - 4,999 | 6,000 | 1,500 | a dot under the sand |
-| Sprout | 5,000 - 29,999 | 12,000 | 3,000 | small bump, one leaf |
-| Truffle | 30,000 - 99,999 | 20,000 | 5,000 | round truffle, face |
-| Elder | 100,000+ | 30,000 | 7,000 | big truffle, cracks, a flower |
+| Spore | 0 - 4,999 | 6,000 | 1,500 | small full mushroom |
+| Sprout | 5,000 - 29,999 | 12,000 | 3,000 | growing mushroom |
+| Truffle | 30,000 - 99,999 | 20,000 | 5,000 | full mushroom, expressive face |
+| Elder | 100,000+ | 30,000 | 7,000 | elder mushroom, larger cap and base |
 
 "The bigger it grows the more it eats" is the burn column.
 
 ### Feeding
 
-- `/feed` carries `steps_today_total` (absolute total since local midnight, not a delta). Engine computes `delta = max(0, total - steps_today)`.
+- `/feed` carries `steps_today_total` (absolute total since local midnight, not a delta), a required `day` and the aggregation zone `day_tz`. Only the pinned zone and current local day are accepted (decision 0019). Engine computes `delta = max(0, total - steps_today)`.
 - `energy = min(energy_max, energy + delta)`. Overflow is lost.
 - `steps_today = total`.
 - If not `burrowed`: `lifetime_steps += delta`. Stage is re-derived (growth happens the moment the threshold is crossed).
@@ -144,7 +144,7 @@ The fine-tune teaches Truffle to behave like this block says, in its own voice. 
 
 ## The ASCII world
 
-- A `<pre>` grid, mobile-first (portrait, ~100 columns of tiny glyphs, dithered like an engraving), 10 - 12 fps, no WebGL. See decision 0011.
+- A cached glyph-atlas canvas, mobile-first, with 100 columns and 68 rows of real character cells. Target 60 fps, with reduced motion and independently measured phone results. See decisions 0018 and 0022.
 - Layers: sky (tinted by local time of day, from the user's timezone), drifting clouds, sun or moon, horizon, grass or sand depending on `burrowed` and country (Oman and Gulf: sand and a few grass tufts; elsewhere: grass), Truffle itself. The HUD line (energy, stage, steps today) sits under the grid in HTML.
 - Rain falls only when Open-Meteo says precipitation now. Wind speed nudges cloud drift.
 - Reduced motion: respect `prefers-reduced-motion` (stop drift, keep state).
@@ -173,3 +173,21 @@ The fine-tune teaches Truffle to behave like this block says, in its own voice. 
 - Truffle never shames. Low energy is sleepy and funny, never cruel. No weight, calories or body talk. The fine-tune data must not contain any of that.
 - Heat days are protected. The app must never encourage going out when `burrowed` is true; it suggests evening or indoor walking instead.
 - Steps from any source count (mall, gym, home). We do not try to detect "real" outdoor walking.
+
+## Walking companion extension (decision 0021, Oct 9)
+
+A richer nostalgic ASCII world surrounds the same energy engine. Direct Android
+step sensing is an optional alternative to Health Connect, with an explicit
+foreground tracking service and one feed source at a time. Quiet reminders are
+separately opt-in and suppressed for heat, missing weather and a well-fed pet.
+A manual heading-out action welcomes walks and errands without guessing plans.
+Returning after ten minutes may reveal one fictional ASCII keepsake per local
+day, including on rest days. Keepsakes stay on the current browser, isolated by
+pet and server. They do not change energy or require a model call. See decision
+0021 for source accounting, interruption, privacy and reminder rules.
+
+Decision 0022 supersedes earlier world presentation: edge-to-edge mobile ASCII,
+conversation directly underneath, and secondary Pocket controls. The renderer
+target is now 60 fps. Truffle always has a mushroom silhouette, including sleep,
+with smooth facial emotion, still sleeping posture and effort-linked cap dots
+and subtle size changes. Keepsakes also appear as tappable scene objects.

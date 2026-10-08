@@ -1,0 +1,18 @@
+{
+  "source": "fleet/outbox/U06/bilingual-chat-timing.json",
+  "scope": "Recorded browser timing from the earlier U06 review. Message content and request paths removed. This predates the October 9 stream fixes.",
+  "chats": [
+    {
+      "started": "2026-10-08T19:34:19.806Z",
+      "visibleMs": 25989,
+      "streamEndMs": 26441,
+      "uiDoneMs": 29313
+    },
+    {
+      "started": "2026-10-08T19:35:20.853Z",
+      "visibleMs": 26302,
+      "streamEndMs": 26817,
+      "uiDoneMs": 31381
+    }
+  ]
+}

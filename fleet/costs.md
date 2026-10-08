@@ -23,4 +23,8 @@ Cap: $50 total ($20 loaded + Modal $30 free credit). Log every paid run.
 | 2026-10-08 | Fine-tune r16: Unsloth QLoRA, 1,720 rows, 2 epochs, 216 steps at about 10 s, eval loss 1.364 | Modal | L40S | 41 | est. 1.81 (credit) |
 | 2026-10-08 | Brain redeploy with adapter r16, cold start 495 s plus warm compare | Modal | L40S | about 10 | est. 0.35 (credit) |
 
-Running total: $0.00
+| 2026-10-09 | Final anonymous public demo: one high-tier chat, Modal first-visible timeout then Workers AI fallback; about 53 seconds to visible reply | Modal + Cloudflare Workers AI | L40S may cold-start | usage pending | provisionally up to 0.50 credit for wake/idle tail, following earlier measured wake; provider bill not yet reconciled |
+
+| 2026-10-09 | Final public requested-low reply: one additional Modal attempt then Workers AI fallback; about 27 seconds to visible reply | Modal + Cloudflare Workers AI | possible existing L40S instance | usage pending | additional wake/idle extension not reconciled; provisionally allow up to 0.50 credit, not a measured charge |
+
+Cash paid is not reconciled here. The table includes estimated Modal credit usage; it must not be read as zero compute cost.

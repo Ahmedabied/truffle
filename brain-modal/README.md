@@ -21,7 +21,8 @@ cd /home/abied/Desktop/Truffle
 uv tool install 'modal==1.6.1'
 modal setup
 
-# For the gated Google fallback, first accept its Gemma terms on Hugging Face.
+# Check the chosen Hugging Face repository's current access requirements.
+# These Gemma 4 checkpoints publish Apache 2.0; see NOTICE-GEMMA.md.
 # Input is hidden. The shell history records variable references, not token values.
 read -r -s -p 'Hugging Face read token: ' HF_TOKEN; printf '\n'
 export HF_TOKEN
@@ -133,7 +134,7 @@ L40S is Ada and supports W8A8 FP8. A100 is Ampere. The [FP8 guide](https://docs.
 
 ### If quantized LoRA itself is rejected
 
-Changing checkpoints may not fix that. Merge the real adapter into BF16 weights on the training GPU. Publish those merged weights to a private HF repo with the required Gemma terms. This file does not implement the training-side merge. It can serve the merged result without applying LoRA a second time:
+Changing checkpoints may not fix that. Merge the real adapter into BF16 weights on the training GPU. A private HF repository for merged weights must preserve accurate provenance, the applicable Apache 2.0 license and required upstream notices; see [NOTICE-GEMMA.md](../NOTICE-GEMMA.md). This file does not implement the training-side merge. It can serve the merged result without applying LoRA a second time:
 
 ```bash
 export TRUFFLE_PLAN_B=1

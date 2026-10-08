@@ -27,9 +27,9 @@ Fable (this harness, main production line) integrates and decides. Opus 5.5 agen
 
 - App infra: Cloudflare Workers + Durable Objects (SQLite, alarms) + Pages. Geo from `request.cf`. Weather from Open-Meteo.
 - Brain: Gemma 4 31B IT + Truffle LoRA on vLLM on Modal (serverless, scale to zero). Fallback brain: Workers AI `@cf/google/gemma-4-26b-a4b-it` when Modal is cold or down, flagged in UI as "half-awake".
-- Steps: Android (Samsung) via Health Connect. Day 1 bridge = Tasker + TaskerHealthConnect plugin. Real deliverable = small Kotlin feeder app, sideloaded.
+- Steps: Kotlin Android companion with opt-in hardware step counting or Health Connect, one source at a time. Tasker remains an optional legacy bridge (decision 0021).
 - Fine-tune: Unsloth QLoRA on a 48GB GPU, eval harness base vs tuned.
-- Web: vanilla TypeScript, ASCII rendered in a `<pre>` grid, mobile-first, no framework.
+- Web: vanilla TypeScript, genuine ASCII glyph atlas rendered on canvas, mobile-first, no framework. Decision 0022 targets 60 fps with the world above conversation and secondary controls in Pocket.
 
 ## Commands you will want
 

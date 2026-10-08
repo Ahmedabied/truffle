@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-10-08T21:04:52.280Z",
+  "url": "https://truffle-web.ahmed-abied.workers.dev/demo",
+  "web_commit": "5cf5465",
+  "checks": [
+    {
+      "name": "fresh demo provenance",
+      "visible": true
+    },
+    {
+      "name": "errand return free",
+      "pass": true
+    },
+    {
+      "name": "actual canvas gift tap",
+      "pass": true
+    }
+  ],
+  "page_errors": [],
+  "offline_mock": false,
+  "walk": {
+    "energy": 4000,
+    "steps": 4000,
+    "tier": "high",
+    "burrowed": false,
+    "day": "2026-10-09"
+  },
+  "first_visible_ms": 52907,
+  "completed_ms": 55908,
+  "reply": "I have enough energy to help you weigh a few tiny ideas. How about one of these: drink a glass of water right when you wake up, spend five minutes looking at the sky, or tidy up just one small surface. Pick whichever one feels the easiest to do.",
+  "reply_metadata": {
+    "tier": "high",
+    "brain": "workers-ai",
+    "half_awake": true,
+    "partial": false,
+    "spent": 200
+  },
+  "half_awake_visible": true,
+  "after_chat": {
+    "energy": 3800,
+    "steps": 4000,
+    "tier": "high",
+    "burrowed": false,
+    "day": "2026-10-09"
+  },
+  "success": false,
+  "error": "page.waitForFunction: Timeout 30000ms exceeded.\n    at /tmp/truffle-public-walkthrough.mjs:32:192",
+  "harness_failure": "The script incorrectly expected demo local_day to advance. Demo midnight increments age_days while summary local_day remains the actual calendar date. Follow-up verifies age_days and energy instead."
+}

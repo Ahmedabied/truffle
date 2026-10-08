@@ -31,3 +31,14 @@ case failed against the deployed implementation, then passed after the repair.
 A pending return now preserves last-seen time until a fresh backend state arrives;
 local language rendering cannot resolve that pending absence. All 31 browser
 scenarios, TypeScript checking and the production build passed after the change.
+
+## Native import follow-up
+
+Physical testing exposed a second integration defect: embedded Android WebView
+had no JavaScript confirmation handler, and the browser could fall through a
+declined import into another pet. Native 4c86a68 supplies a real confirmation
+and explicit retry. Web f388eef retains a credential-free pending marker,
+keeps the one-time candidate only in memory until verification, and blocks old,
+new or sample pets after a canceled/failed import. Ownerless native World does
+not pair silently. Root reran the final complete suite: **40/40 browser cases**,
+with 177 web unit tests, typecheck and build also passing.

@@ -37,7 +37,7 @@ Options: `--glob` (repeatable), `--holdout 80`, `--jaccard 0.8`, `--seed`, `--ou
 
 ### Real run: 31B on one 48GB GPU (integrator only)
 
-On a RunPod A40 or L40S (48GB) or Modal L40S. Needs an HF read token in the environment (`HF_TOKEN`, never in git) if you use the gated `google/` repo. The Unsloth mirror is the default.
+On a RunPod A40 or L40S (48GB) or Modal L40S. Check the selected repository's current access requirements; provide a read token in the environment (`HF_TOKEN`, never in git) only when required. The Unsloth mirror is the default.
 
 ```
 uv venv --python 3.12 .venv && . .venv/bin/activate
@@ -94,4 +94,4 @@ BRAIN_TOKEN=... TUNED_TOKEN=... JUDGE_TOKEN=... python3 -I finetune/eval/run_eva
 
 ## Licence
 
-Gemma 4 is provided under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). The Truffle LoRA, any merged weights, **and any training data generated with a Gemma model** are Model Derivatives. Keep `NOTICE-GEMMA.md` with them and follow the [Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy).
+The exact [Google base](https://huggingface.co/google/gemma-4-31B-it), [Unsloth training mirror](https://huggingface.co/unsloth/gemma-4-31B-it) and [Red Hat serving checkpoint](https://huggingface.co/RedHatAI/gemma-4-31B-it-FP8-dynamic) publish **Apache 2.0** licenses, checked October 9, 2026. See [NOTICE-GEMMA.md](../NOTICE-GEMMA.md). Distributed adapters or merged weights need accurate provenance, their own licensing information and any required upstream notices. Preserve each dataset's source and license information; generated examples do not inherit the older Gemma Terms merely because a Gemma model generated them.

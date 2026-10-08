@@ -1,0 +1,19 @@
+{
+  "checked_at": "2026-10-08T21:22:19.994Z",
+  "worker_commit": "1f86536",
+  "health": {
+    "ok": true,
+    "service": "truffle",
+    "modal": true
+  },
+  "spawn_status": 200,
+  "chat_status": 200,
+  "reply": "A sleepy little hello. Nothing you need to do for me right now.",
+  "done": {
+    "brain": "none",
+    "tier": "asleep",
+    "spent": 0,
+    "energy": 0
+  },
+  "success": true
+}

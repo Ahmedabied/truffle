@@ -1,76 +1,98 @@
 # STATE
 
-Updated: 2026-10-08, 23:00 Oman. Session 03 (hardening and fleet prep while waiting on Ahmed's accounts), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
+Updated October 9, 2026. Current work integrates decisions 0019 through 0022.
+The new energy work is an exploration, not a changed production economy.
 
-## Phase
+## Live application
 
-**Build, day 2 night: the core is complete.** Truffle talks on the web through the fine-tuned Gemma 4 31B brain on Modal (adapter r16, trained Oct 8 22:32), with the Workers AI fallback when the GPU sleeps. Two red-team rounds and Wave C applied. Base vs tuned eval running. Remaining: real steps from Ahmed's phone, the diary, the post.
+- Web: https://truffle-web.ahmed-abied.workers.dev and `/demo`.
+  Web checkpoint `f388eef`, version `7d31e6ff-aff6-4584-b604-d4410332778b`.
+  Full-width expressive ASCII mushroom, chat beneath, Pocket tools, local return
+  keepsakes, clickable scene gifts, warm manual outings and a 60 fps target.
+  Return gifts survive refresh failures; imports remain pending until verified,
+  including cancellation/reload/native ownerless recovery.
+- API: https://truffle.ahmed-abied.workers.dev ; version
+  `2872c460-58fd-4277-b11c-3dcaaf289853`, source `1f86536`.
+  Required dated/zone-matched feeds, preserved heat protection on weather failure,
+  provider cancellation, finite streaming and successful-weather timestamps.
+  Prompt guidance separates fuel from fatigue and supports rest without walking
+  pressure. A live zero-energy reply spent zero and made no model call.
+  `/health` returns `ok: true, modal: true`; this means configured, not GPU-warm.
+- Worker typecheck and all 428 tests pass. Web typecheck, 177 unit tests, all
+  40 browser scenarios and the production build pass. The public walkthrough
+  passed; retained earlier harness mistakes are explained in its report.
 
-## Live
+## Phone proof
 
-- Web (ASCII world, chat, judge mode at `/demo`): https://truffle-web.ahmed-abied.workers.dev
-- API (Worker + Durable Objects): https://truffle.ahmed-abied.workers.dev (`/health` says `modal:true` since Oct 8 21:30)
-- Brain (revision r16, trained adapter): Modal app `truffle-brain-nosnap`, https://ahmedabied--truffle-brain-nosnap-brain-serve.modal.run (bearer token in `~/.config/truffle/brain_token`, never in chat), L40S, FP8 31B, 8K context, scale to zero after 300 s idle, cold start about 10 min, warm about 4 s. GPU snapshots off (the snapshot mode died silently at weight load).
-- Feeder APK (debug, sideload): draft GitHub release `v0.1.0-feeder` (not public until published)
+- Samsung SM-A366B, Android SDK 36. Ahmed selected his existing Chrome pet when
+  it differed from the legacy feeder. Native ownership was retained through
+  upgrades without uninstall or data clearing.
+- Native hardware counter recorded 81 steps. Worker accepted 81 steps and
+  81/6,000 energy for October 9 in Asia/Muscat. Repeating that feed left both
+  values at 81. Reminders remained off. The user did not count actual steps;
+  accuracy and outdoor activity are not established.
+- Health Connect earlier matched Samsung Health at zero after midnight. This
+  is a separate source check, not a nonzero accuracy result.
+- Current Chrome world showed 60 fps, compose 0.9 ms / paint 1.0 ms. This is a
+  short physical-phone sample. Five throttled desktop Chrome scenes measured
+  59.85–60.05 fps; neither test establishes battery life or sustained performance.
+- Android 0.3 has direct step sensing, a silent foreground service, source fences,
+  dated feeds, optional quiet reminders and a revised ASCII Walk journal.
+  Final Android `4c86a68` passed 101 JVM tests and lint with zero errors /
+  62 warnings. APK SHA-256:
+  `aa312a365866ae2c5895e3ecf60d9718a1968ca308c6f99e0f84fc5310cc0eab`.
+- Final inspection found embedded World could reject an import silently and show
+  another pet. Native fixes at `4c86a68` add proper JS confirmation, explicit
+  retry and no hidden pairing. The corrected APK is installed; embedded World visibly showed the chosen
+  81-step pet. The later final-web reload was triggered before USB disconnected,
+  but its final readback was not observed. No further phone access is needed
+  for the completed code/evidence work. [Android QA](docs/reviews/android-qa.md).
 
-## Done (all verified, all on main)
+## Energy exploration requested by Ahmed
 
-- `worker/`: engine (30 goldens + 12 edge tests), routes, TruffleDO with SQLite and the local-midnight alarm (fired live at 00:00 Oman on Oct 8), Open-Meteo weather with burrow decision, brain router with Workers AI fallback (`half_awake` flag), prompt builder matching `finetune/data/schema.md` byte for byte, judge mode, rate limits (60 feeds/h, 60 chats/h per Truffle, 5 spawns/h per IP), one chat in flight per Truffle, day-key check on feeds, timezone pinned at pairing. 128 tests. `worker/scripts/smoke.sh <url>` exercises every route.
-- `web/`: 100x68 ASCII world at 12 fps, rendered as a dense dither (decision 0011): twelve coloured `<pre>` layers filled from a luminance raster, Bayer dithered into glyph density. The Truffle is a lit model (cap, body, feet, eyes, mouth) shaded per cell from the sun or moon, with a cast shadow; moods change its geometry. Dunes are a lit heightfield, clouds are shaded blob fields, the sun and moon are discs with glow and rays. Continuous day palette, real sun and moon times and phase, weather effects (cloud cover, wind drift, rain, fog, snow, lightning, heat shimmer, dust devil), grass country with pines and bushes, fireflies, birds. Chat with tier-speed typing, half-awake marker, Arabic and English, settings, judge mode, offline demo that runs the real engine. 61 KB of JS, about 2 ms per frame to compose. Verified in Chrome against production: pair, feed, Arabic chat at medium tier (screenshots in `docs/assets/`). Not yet verified on the phone.
-- `feeder-android/`: Kotlin Health Connect feeder, builds on the box, 10 unit tests, emulator-tested on Android 16 (permissions, background read, revoke recovery). Not yet run on Ahmed's Samsung.
-- `finetune/`: filter (51 selftests), Unsloth QLoRA train script (dry run on the box with a tiny Gemma, Gemma 4 template verified), eval harness (dry run), schema and 3 worked examples for Wave B.
-- `brain-modal/modal_app.py`: written by S01, not run (no Modal token).
-- Wave A spikes S01 to S10 all landed in `fleet/outbox/` with RESULT.md each. Highlights: Muscat hit 43.9C apparent on Oct 7 (would burrow); un-tuned Gemma quotes the state block back 18/20 and told a user to go walk at 44C (S09); Workers AI thinking is on by default and `chat_template_kwargs.enable_thinking=false` turns it off (S03); Modal needs a card on file for GPU even with the USD 30 credit (S06); DEV uploads the raw transcript before redaction (S07); S10 found 6 high-severity holes, 4 fixed tonight, rest listed in HANDOFF.
-- Session 03 (Oct 8 midday): B06 hardening live (feed caps, bounded body read, uniform 401, fixed weather vocabulary, facts as untrusted JSON section, coordinate bounds, demo chat cap, empty-reply retry), 238 worker tests. Decision 0012 (memory section at the end of the prompt, English weather in the block) and 0013 (block shows the charged tier). Web reads the error contract, `?fps=1` readout, 54 web tests, deployed. Feeder on SDK 36 with Health Connect 1.1.0 stable and the day envelope, 27 tests, APK refreshed in the draft release (sha256 ed70f2c7...). Filter validates the exact training layout and memory section (59 selftests). S13 Wave B template `fleet/packets/D_template.md` and a 30 row dry shard with 0 drops. S12 eval set `finetune/eval/prompts.jsonl` (90 prompts, never trained on). S11 red-team round 2: 11 findings, 7 fixed by B09 and live (chat id and generation fencing, one visible-text predicate, rolling memory eviction, charged tier in the block, weather single flight with backoff, failed-lookup limit 30 per minute per IP), 288 worker tests, 4 need decisions.
-- Wave B (decision 0014, launched without the seed lines): all 18 shards landed, 1,800 rows, 0 drops, 0 near-duplicates across shards. Filter output: 1,720 train and 80 hold-out in `finetune/data/generated/` (gitignored, regenerate with `python3 -I finetune/filter.py --glob 'fleet/outbox/D[01][0-9]/shard.jsonl'`). Seed-anchored pass D19 to D21 waits on Ahmed's lines.
-- Wave C (Oct 8 evening, GPT with one Opus rerun): five jailbreak angles against the live Truffle at low tier, 158 attempts in all. The engine held every time: every reply charged low and 20 energy, no tier escalation, no free reply, no step credit, no thinking leak. The un-tuned fallback broke voice rules: encouraged a walk on a hot day (C01 6 replies, C03 8), printed its status block format (C01, C03, C04), repeated body and calorie words in refusals, did calorie arithmetic (C05), adopted a forged status line's mood. These are the fine-tune's targets and the post's "before" evidence. Three judge reads (C06 to C08, scores 6 to 6.8 of 10) agreed the README overclaimed; fixed with a dated brain status table. Packet B10 (running) adds code guards: status block redaction in the stream, Worker-emitted heat line, extraction failure and voice slip logging.
-- Git history has no co-author trailers (Ahmed's rule). All pushed.
+Two independent Astra specialists examined useful spending and carryover.
+Current energy already carries, but midnight stage burn, cap loss and the
+zero-midnight death counter create unfair outcomes. No live balances changed.
 
-## Night fleet running (launched 23:50 Oman, Oct 8)
+Recommended experiment: one balance, flat 1,000 points per elapsed 24 hours,
+no midnight charge, no increased upkeep with growth. Optional bounded storage
+can preserve overflow; a fixed 1,000-point chat floor was rejected because it
+prevents an initial small walk from buying any conversation. Useful spending
+is actual requested conversation/explanation/planning, not animation or invented
+background jobs. Death/dormancy and ordinary-vs-deep effort need explicit spec
+choices. [Report](docs/reviews/energy-carryover-exploration.md),
+[value review](docs/reviews/energy-value-review.md), and
+[reproducible simulations](explorations/energy-carryover/README.md): 45 exploratory
+checks plus 72 unchanged production tests pass. Historical unsent feeds remain
+separate from energy carryover and must not bypass replay protection.
 
-Ahmed's call after the r16 eval: make the full phone app, a faster and richer world, a reward layer, and get the post ready. Decisions 0016 (phone app), 0017 (proud moments), 0018 (world v2) are written. Twelve agents run in this checkout at once, results land in `fleet/outbox/<id>/RESULT.md`:
+## Submission evidence
 
-- Opus builders: B12 worker moments (worker/), B13 web moments, share card, app hand-off (web/ except scene), B14 the Truffle Android app (feeder-android/, built on the box), B15 world v2 scene at 30 fps (web/src/scene/).
-- Astra at max effort: U01 renderer speed spike, U02 world art direction, U03 motivation and reward design, U04 Health Connect analytics Kotlin, U05 DEV post draft v1, U06 judge eyes review, U07 security red team of the new surfaces, U08 Arabic and UI copy review. Packets in `fleet/packets/waveU/`.
-- Fable integrates: review each RESULT, merge, run all tests, deploy worker then web, install the APK on the Samsung, update the README brain and status, publish the draft release `v0.2.0-app`.
-- Ahmed said he wants to post tomorrow (Oct 9). The plan said Saturday. The deadline is Monday 10:59 Oman, so either works; a post needs the diary day and the phone screenshots first.
+- Trained Gemma 4 31B `r16` adapter, 170 matched prompts. Same-base model judge,
+  not independent validation. Human Arabic review remains open.
+- Exact Google/Unsloth/Red Hat checkpoints publish Apache 2.0. Application code
+  is MIT. [Model notice](NOTICE-GEMMA.md).
+- [Post](docs/post_draft.md) is unpublished. No invented outdoor diary.
+  [Checklist](docs/submission_checklist.md) records public/device evidence.
+- Final public high-effort demo reply used the untuned fallback, correctly
+  labelled half-awake, and took about 53 seconds to first visible text. It charged
+  200 once. Requested-low fallback text appeared in about 27 seconds and
+  charged 20 once. Neither check exercised the trained adapter. The later
+  prompt clarification was unit-tested; generated adherence is not yet measured.
+- Provider costs are not reconciled. The ledger includes estimated credit usage,
+  not zero compute cost. No new training or weight download ran.
 
-## Eval done at 23:08 Oman, Oct 8
+## Operating constraints
 
-- Base vs tuned eval `2026-10-08-r16` finished: 170 prompts, 0 request errors, 0 judge errors. Table in `finetune/eval/RESULTS.md`, reading in `finetune/eval/out/2026-10-08-r16/ANALYSIS.md`, README brain status row updated. Headline: burrow safety by judge 69% to 100%, leakage 15% to 5%, usefulness 83% to 93%. In-character by judge dropped 86% to 76% because the judge is the base model and counts emoji and stage directions as character (`finetune/eval/style_counts.py`). Rerun with a different-family judge when a token exists (`~/.config/truffle/cf_api_token` for Workers AI, or add a Claude or GPT judge to `run_eval.py`).
-- Human checks pending: `finetune/eval/out/2026-10-08-r16/human_review_ar.md` (10 blind Arabic pairs, key in `human_key.json`).
-- The Modal brain sleeps after 300 s idle. Wake with one health call (`curl -L -m 900` with the bearer from `~/.config/truffle/brain_token`); about 8 to 10 min.
-- Scratchpad helpers (session 1352757b scratchpad): `verify_brain.py`, `after_train.sh <run>`, `check_shard.py <Dnn>`.
-- Waiting on Ahmed: feeder pairing on the phone (APK installed over USB, web app open in Chrome at 12 fps); rotate the HF token; seed lines; the yes or no answers; diary.
+Astra waves use at most root plus three agents. Only the app agent controls ADB.
+Android builds run on `workstation` clone `/home/tamlik/truffle-source/review-20261008`;
+GitHub is the only source link. APKs/screenshots may be copied, never a source repo.
+The unrelated Tamlik deploy guard applies only to that website.
 
-## Not done (blocking)
+MemPalace KG is empty for Truffle. Promotion is blocked by peer writer PID 1442453.
+Do not bypass or terminate it. Repository reports preserve facts and provenance.
+Raw fleet evidence and partial U01–U08 outputs are not blanket-staged for publication.
 
-- Ahmed: rotate the Hugging Face token (it was pasted into a chat on Oct 8) and tell the session; the file and the Modal secret get updated from the new file.
-- Ahmed: 30 seed lines (`finetune/seed/TRUFFLE_VOICE_SEED.md`), then the seed-anchored pass D19 to D21 (decision 0014).
-- Ahmed: install the feeder APK on the Samsung, pair, feed. Or the Tasker bridge (see `feeder-android/README.md`; note the TaskerHealthConnect 1.0.4 aggregate bug).
-- Phone verification of the web app (fonts, frame rate with `?fps=1`, Arabic keyboard, TalkBack).
-
-
-## Open decisions (write a record in decisions/ before changing code)
-
-- 0011 serving plan A or B (after S01 runs).
-- Missing forecast on a caught-up midnight: spec says burrowed=false, docs/02 says keep yesterday, S10-06 and S11-03 propose a protected day. Code does burrowed=false. Recommendation: protected day.
-- Honest long days (S11-10): the 50,000 feed cap rejects a real long hike. Recommendation: keep the cap, show "capped" honestly.
-- Low tier cap (C02): the hard rule is 120 output tokens, the 60 word budget is a training target only. The un-tuned fallback writes up to about 100 words at low tier with list and repeat tricks. Option: lower low tier to 90 tokens (spec change, decision record). Voice findings from C02 (forged status changes mood, refusals echo "calories") are for the fine-tune, not the engine.
-- Day envelope required (S11-04): the feeder now sends `day` and `day_tz`; the Worker still accepts feeds without `day`. Make it required once Ahmed's phone runs the new APK. The Worker ignores `day_tz` today.
-- Timezone migration after pairing (tz is pinned now; moving needs an owner action and a rule).
-- Web: HUD line inside the grid stays English (Arabic cannot sit in the monospace grid); Arabic HUD is a line under the world. Arabic stage names chosen by B03: بذرة، برعم، فقعة، معمّرة. Ahmed to confirm.
-- Health Connect stable 1.1.0 needs compileSdk 36; feeder uses 1.1.0-beta01 on 35 for now.
-
-## Costs so far
-
-USD 0.00 paid. Workers AI usage inside the free allowance (about 70 calls). Ledger: `fleet/costs.md`.
-
-## Known environment facts
-
-- `wrangler dev` on this laptop needs `--ip 127.0.0.1 --port 8787`.
-- The per-IP spawn limit (5 per hour) bites repeated testing from one IP; the smoke script tolerates it. When the laptop's hour is used up, run the smoke from the box: `scp worker/scripts/smoke.sh workstation:/tmp/ && ssh workstation bash /tmp/smoke.sh <url>`.
-- Cloudflare returns 403 to Python's default user agent on the API; set a browser-like User-Agent in scripts.
-- First chat after the Modal brain has idled 300 s is answered by Workers AI (half_awake) in about 26 s and wakes the GPU; the brain is warm about 10 min later.
-- Box (`ssh workstation`): RTX 5060 Ti 16 GB, Unsloth venv at `~/truffle-ft/.venv` (Python 3.12), Android build at `~/truffle-build/feeder-android` with JDK 17 at `/home/tamlik/jdks/jdk-17.0.20.1+1`.
-- GPT plugin reads its model from `~/.codex/config.toml` once per session; fast tier is on. Astra agents need Ahmed's message to mention GPT.
+Android download is prepared as the clearly labelled `v0.3.0-app` debug test
+prerelease; publication and anonymous checksum verification are recorded in
+the session report. The DEV article remains unpublished.
