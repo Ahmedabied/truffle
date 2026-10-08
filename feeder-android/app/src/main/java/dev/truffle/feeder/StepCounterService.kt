@@ -102,9 +102,7 @@ class StepCounterService : Service(), SensorEventListener {
         // SensorEvent timestamp shares elapsedRealtime's timebase. Batching cannot
         // move yesterday's observation into today's diary at callback delivery.
         val eventElapsed = event.timestamp / 1_000_000
-        val lag = nowElapsed - eventElapsed
-        if (lag < 0) return
-        val at = Instant.now().minusMillis(lag)
+        val at = counterRecordedAt(eventElapsed, nowElapsed, Instant.now(), store.state().baseline == null) ?: return
         val boot = runCatching { Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, -1).toLong() }.getOrDefault(-1)
         if (boot < 0) { store.status("Android could not identify this counter session. Pause and use Health Connect."); store.pause(); stopSelf(); return }
         val zone = activeZone(FeedSettings(this).activeTz, ZoneId.systemDefault())
