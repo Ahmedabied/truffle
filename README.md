@@ -2,24 +2,33 @@
 
 **An AI pet that only eats steps.**
 
-Truffle is a desert truffle (فقع) that lives in your pocket. Its brain is Gemma 4 31B, fine-tuned to be Truffle. It can only think when you have walked. Walk a lot and it thinks hard, remembers everything you told it, and gets clingy. Stop walking and it gets sleepy, forgets things, and eventually dies.
+Truffle is a desert truffle (فقع) that lives in your pocket. Its brain is Gemma 4. It can only think when you have walked. Walk a lot and it thinks hard, remembers what you told it, and gets clingy. Stop walking and it gets sleepy, forgets things, and eventually dies.
 
 Built for the [Hacktoberfest Open-Source AI Challenge, Week 1: Touch Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05) on DEV. Repo opened 2026-10-07, inside the challenge window (Oct 5 - 11, 2026).
 
 ## Why open weights
 
-Truffle's whole mechanic is impossible on a closed API:
+Truffle's mechanic leans on things an open model lets us do ourselves:
 
-- **The rules live in code, the soul lives in the weights.** The energy engine (steps in, thinking out) is plain code and cannot be talked out of. Truffle's voice, moods and the way it reads its own energy state come from a LoRA fine-tune of Gemma 4 31B. You cannot fine-tune a closed model's personality like this, and you cannot gate its effort by a number you control.
-- **Thinking mode is a switch we own.** Gemma 4's thinking is turned on only when Truffle has enough energy. Low energy means no thinking, short answers, short memory.
-- **Your steps and your location never leave infrastructure we control.** Cloudflare edge for the app, one GPU on Modal for the brain, and a Workers AI Gemma 4 fallback when the big brain is asleep.
+- **The rules live in code, the soul lives in the weights.** The energy engine (steps in, thinking out) is plain code with golden tests and cannot be talked out of. Truffle's voice and the way it reads its own energy state are meant to come from a LoRA fine-tune of Gemma 4 31B. The training set exists (1,800 filtered rows). The adapter is not trained yet. See the brain status table below.
+- **Thinking mode is a switch we own.** Gemma 4's thinking is turned on only when Truffle has enough energy. Low energy means no thinking, short answers, short memory. The switch is a request flag the Worker sets from a number it computed, and the same code drives both brains below.
+- **We can swap brains without touching the app.** The Worker talks to a 31B model on one rented GPU, or to a 26B model on Workers AI when that GPU is asleep, and the app does not know which answered. The UI shows "half-awake" when it was the fallback.
+- **Where your data goes.** Steps go to a Cloudflare Worker we deploy. Your coordinates go to Open-Meteo for the weather check and are rounded to about 1 km. Chat text goes to the model host (Cloudflare Workers AI, or Modal when the big brain is live). Nothing is sold or used for training by us.
+
+## Brain status
+
+| Date | Live brain | Fine-tuned adapter | Notes |
+|---|---|---|---|
+| 2026-10-08 | Workers AI `gemma-4-26b-a4b-it`, un-tuned, flagged "half-awake" in the UI | not trained yet | Modal serving of `gemma-4-31B-it` (FP8) is deployed but its first cold start failed in vLLM. Being debugged. Training data: 1,800 rows, 0 drops (`finetune/data/generated/REPORT.md`). |
+
+This table is updated whenever the live brain changes. Claims in the DEV post will match it.
 
 ## How it works (short)
 
 ```
 Samsung phone (Health Connect)  --steps-->  Cloudflare Worker + Durable Object (Truffle's body)
                                              energy, age, mood, memory, weather check
-                                             picks an effort tier --> Modal: vLLM + Gemma 4 31B + Truffle LoRA
+                                             picks an effort tier --> brain: Modal (Gemma 4 31B + LoRA) or Workers AI (Gemma 4 26B)
 Cloudflare Pages: the ASCII world  <-------------------------------------------------+
   clouds, grass, real sky for your local time, rain only when it really rains
 ```
@@ -31,11 +40,12 @@ Cloudflare Pages: the ASCII world  <--------------------------------------------
 
 ## Status
 
-Build day 1 (night of Oct 7 to 8): the world, the chat and the energy engine are live with the Workers AI fallback brain. The Modal brain and the fine-tune come next.
+Build day 2 (Oct 8): the world, the chat, the energy engine, the Android feeder and the training set are done. Two red-team rounds are applied. The Modal brain and the fine-tune are in progress; see the brain status table above.
 
 - Try it: https://truffle-web.ahmed-abied.workers.dev (judge mode: https://truffle-web.ahmed-abied.workers.dev/demo)
 - API: https://truffle.ahmed-abied.workers.dev
-- Read `PLAYBOOK.md` for the plan, `STATE.md` for where things are, `docs/` for the specs, `fleet/outbox/` for the spike results.
+- Feeder APK: GitHub Releases, `v0.1.0-feeder` (draft until the first real walk is verified)
+- Read `STATE.md` for where things are, `docs/` for the specs, `decisions/` for why, `fleet/outbox/` for the agent results.
 
 ## Licence
 
