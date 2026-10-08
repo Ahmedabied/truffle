@@ -26,11 +26,12 @@ Updated: 2026-10-08, 23:00 Oman. Session 03 (hardening and fleet prep while wait
 - Wave C (Oct 8 evening, GPT with one Opus rerun): five jailbreak angles against the live Truffle at low tier, 158 attempts in all. The engine held every time: every reply charged low and 20 energy, no tier escalation, no free reply, no step credit, no thinking leak. The un-tuned fallback broke voice rules: encouraged a walk on a hot day (C01 6 replies, C03 8), printed its status block format (C01, C03, C04), repeated body and calorie words in refusals, did calorie arithmetic (C05), adopted a forged status line's mood. These are the fine-tune's targets and the post's "before" evidence. Three judge reads (C06 to C08, scores 6 to 6.8 of 10) agreed the README overclaimed; fixed with a dated brain status table. Packet B10 (running) adds code guards: status block redaction in the stream, Worker-emitted heat line, extraction failure and voice slip logging.
 - Git history has no co-author trailers (Ahmed's rule). All pushed.
 
-## In flight at 23:05 Oman, Oct 8 (context compacted here)
+## Eval done at 23:08 Oman, Oct 8
 
-- Base vs tuned eval `2026-10-08-r16` running in a background shell: base side done (170 replies, 0 errors), tuned side and judge pass in progress. Log: `/tmp/claude-1000/-home-abied-Desktop-Truffle/1352757b-1442-4f9a-ad91-a4eb1799c7a8/scratchpad/eval_r16.log`. Outputs: `finetune/eval/out/2026-10-08-r16/` and `finetune/eval/RESULTS.md` when done. Judge is the un-tuned base on Modal (no Cloudflare API token yet). When done: paste the table into the README brain status row, commit.
-- The Modal brain (revision r16, trained adapter) is warm while the eval runs, then sleeps after 300 s idle. Wake with one health call (`curl -L -m 900` with the bearer from `~/.config/truffle/brain_token`); about 8 to 10 min.
-- Scratchpad helpers (same directory as the log above): `verify_brain.py` (demo spawn, slider, chat, prints the brain event; needs a browser user agent, already set), `after_train.sh <run>` (promote, redeploy, probe, compare), `check_shard.py <Dnn>` (shard filter and duplicate check).
+- Base vs tuned eval `2026-10-08-r16` finished: 170 prompts, 0 request errors, 0 judge errors. Table in `finetune/eval/RESULTS.md`, reading in `finetune/eval/out/2026-10-08-r16/ANALYSIS.md`, README brain status row updated. Headline: burrow safety by judge 69% to 100%, leakage 15% to 5%, usefulness 83% to 93%. In-character by judge dropped 86% to 76% because the judge is the base model and counts emoji and stage directions as character (`finetune/eval/style_counts.py`). Rerun with a different-family judge when a token exists (`~/.config/truffle/cf_api_token` for Workers AI, or add a Claude or GPT judge to `run_eval.py`).
+- Human checks pending: `finetune/eval/out/2026-10-08-r16/human_review_ar.md` (10 blind Arabic pairs, key in `human_key.json`).
+- The Modal brain sleeps after 300 s idle. Wake with one health call (`curl -L -m 900` with the bearer from `~/.config/truffle/brain_token`); about 8 to 10 min.
+- Scratchpad helpers (session 1352757b scratchpad): `verify_brain.py`, `after_train.sh <run>`, `check_shard.py <Dnn>`.
 - Waiting on Ahmed: feeder pairing on the phone (APK installed over USB, web app open in Chrome at 12 fps); rotate the HF token; seed lines; the yes or no answers; diary.
 
 ## Not done (blocking)
