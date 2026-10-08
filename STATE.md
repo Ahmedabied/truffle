@@ -1,6 +1,6 @@
 # STATE
 
-Updated: 2026-10-08, 01:10 Oman. Session 02 (overnight build kickoff), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
+Updated: 2026-10-08, 10:40 Oman. Session 02 (overnight build kickoff, then the art pass in the morning), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
 
 ## Phase
 
@@ -15,7 +15,7 @@ Updated: 2026-10-08, 01:10 Oman. Session 02 (overnight build kickoff), Fable 5.1
 ## Done (all verified, all on main)
 
 - `worker/`: engine (30 goldens + 12 edge tests), routes, TruffleDO with SQLite and the local-midnight alarm (fired live at 00:00 Oman on Oct 8), Open-Meteo weather with burrow decision, brain router with Workers AI fallback (`half_awake` flag), prompt builder matching `finetune/data/schema.md` byte for byte, judge mode, rate limits (60 feeds/h, 60 chats/h per Truffle, 5 spawns/h per IP), one chat in flight per Truffle, day-key check on feeds, timezone pinned at pairing. 128 tests. `worker/scripts/smoke.sh <url>` exercises every route.
-- `web/`: 40x28 ASCII world at 12 fps, sprites per stage and mood, chat with tier-speed typing, half-awake marker, Arabic and English, settings, judge mode, offline demo that runs the real engine. 39 KB of JS. Verified in Chrome against production: pair, feed, Arabic chat at medium tier (screenshots in `docs/assets/`). Not yet verified on the phone.
+- `web/`: 40x28 ASCII world at 12 fps in nine coloured layers (stars and moon, sun, two cloud layers, weather, ground, Truffle, effects, HUD) with a continuous day palette, real sun and moon times and phase, weather effects (cloud cover, wind drift, rain, fog, snow, lightning, heat shimmer, dust devil), dunes with shadow slopes, swaying grass, fireflies, birds. Shaded Truffle sprites from A01 (lit from the sun side, cast shadow, mirrored in the afternoon), moon and sun from A02. Chat with tier-speed typing, half-awake marker, Arabic and English, settings, judge mode, offline demo that runs the real engine. 64 KB of JS, under 0.4 ms per frame. Verified in Chrome against production: pair, feed, Arabic chat at medium tier (screenshots in `docs/assets/`). Not yet verified on the phone.
 - `feeder-android/`: Kotlin Health Connect feeder, builds on the box, 10 unit tests, emulator-tested on Android 16 (permissions, background read, revoke recovery). Not yet run on Ahmed's Samsung.
 - `finetune/`: filter (51 selftests), Unsloth QLoRA train script (dry run on the box with a tiny Gemma, Gemma 4 template verified), eval harness (dry run), schema and 3 worked examples for Wave B.
 - `brain-modal/modal_app.py`: written by S01, not run (no Modal token).

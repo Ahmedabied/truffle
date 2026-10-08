@@ -11,6 +11,10 @@ import { COLS, ROWS } from "./grid";
 import { canonicalHour, paletteAt, type Conditions, type Palette } from "./palette";
 import { cloudRows, lightFrom, luma, moonRows, normalize, shadeDomes, toChar, type CloudKind, type Vec3 } from "./shade";
 import { localHour } from "./sky";
+import SKY from "../sky.json";
+
+const MOON_NAMES = ["new", "waxing_crescent", "first_quarter", "waxing_gibbous", "full", "waning_gibbous", "last_quarter", "waning_crescent"] as const;
+const sky = SKY as { moon: Record<string, { dark: string[]; light: string[] }>; sun: { dark: string[]; light: string[] }; sun_horizon: { dark: string[]; light: string[] } };
 
 const PERIOD = 1000 / 12;
 export const HORIZON = 16; // first ground row
@@ -203,7 +207,9 @@ function starsLayer(v: View, t: number, e: Env): Grid {
     }
   }
   if (e.moon.up && e.moon.phase > 0.04 && e.moon.phase < 0.96) {
-    const m = moonRows(e.moon.phase, 7, 4, inkLight);
+    // Hand-shaded phases from A02; the runtime sphere is the fallback.
+    const name = MOON_NAMES[Math.round(e.moon.phase * 8) % 8];
+    const m = sky.moon[name]?.light ?? moonRows(e.moon.phase, 7, 4, inkLight);
     stamp(g, e.moon.x - 3, e.moon.y - 2, m, false);
   }
   for (let cx = 0; cx < COLS; cx++) for (let cy = ridgeTop(cx, e.sand); cy < ROWS; cy++) g[cy][cx] = " ";
@@ -224,29 +230,13 @@ function sunLayer(v: View, t: number, e: Env): Grid {
   if (!e.sun.up || e.cond.cloud >= 0.95 || e.cond.fog) return g;
   const { x, y } = e.sun;
   if (e.sunH < 0.16) {
-    // Big and low: a half disk resting on the horizon.
-    const rows = shadeDomes(13, 3, [{ cx: 6.5, cy: 3.4, rx: 6.5, ry: 3.4, z: 0.6 }], {
-      light: [0, 0, 1],
-      inkLight: true,
-      ambient: 0.5,
-      rim: 2,
-      ramp: " .:=*#%@",
-      outline: true,
-      range: [0.3, 1]
-    });
+    // Big and low: a half disk resting on the dune line.
+    const rows = sky.sun_horizon.light.slice(0, 2);
     const base = Math.min(ridgeTop(x, e.sand), ridgeTop(x - 3, e.sand), ridgeTop(x + 3, e.sand));
-    stamp(g, x - 6, Math.min(base - 3, y - 1), rows, false);
+    stamp(g, x - 6, base - 2, rows, false);
     for (let cx = 0; cx < COLS; cx++) for (let cy = ridgeTop(cx, e.sand); cy < ROWS; cy++) g[cy][cx] = " ";
   } else {
-    const rows = shadeDomes(7, 3, [{ cx: 3.5, cy: 1.5, rx: 3.5, ry: 1.5 }], {
-      light: [0, 0, 1],
-      inkLight: true,
-      ambient: 0.6,
-      rim: 2,
-      ramp: " .:=*#%@",
-      range: [0.4, 1]
-    });
-    stamp(g, x - 3, y - 1, rows, false);
+    stamp(g, x - 3, y - 1, sky.sun.light, false);
     const long = t % 24 < 12;
     put(g, x - 6, y, long ? "-" : " ", false);
     put(g, x + 6, y, long ? "-" : " ", false);

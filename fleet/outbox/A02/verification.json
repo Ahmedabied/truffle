@@ -1,0 +1,1123 @@
+{
+  "cell_px": [
+    11,
+    20
+  ],
+  "font": "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf",
+  "font_size_px": 18,
+  "supersample": 3,
+  "surface_samples_per_cell": 256,
+  "ramp": " .:-=+*#%@",
+  "assets": {
+    "cloud_small": {
+      "width": 7,
+      "height": 2,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          6
+        ],
+        "occupancy_pct": 78.57
+      },
+      "light": {
+        "occupied_per_row": [
+          5,
+          6
+        ],
+        "occupancy_pct": 78.57
+      }
+    },
+    "cloud_medium": {
+      "width": 11,
+      "height": 3,
+      "dark": {
+        "occupied_per_row": [
+          6,
+          10,
+          11
+        ],
+        "occupancy_pct": 81.82
+      },
+      "light": {
+        "occupied_per_row": [
+          6,
+          10,
+          11
+        ],
+        "occupancy_pct": 81.82
+      }
+    },
+    "cloud_large": {
+      "width": 15,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          7,
+          11,
+          15,
+          13
+        ],
+        "occupancy_pct": 76.67
+      },
+      "light": {
+        "occupied_per_row": [
+          7,
+          11,
+          15,
+          13
+        ],
+        "occupancy_pct": 76.67
+      }
+    },
+    "cloud_stratus": {
+      "width": 20,
+      "height": 2,
+      "dark": {
+        "occupied_per_row": [
+          16,
+          19
+        ],
+        "occupancy_pct": 87.5
+      },
+      "light": {
+        "occupied_per_row": [
+          16,
+          19
+        ],
+        "occupancy_pct": 87.5
+      }
+    },
+    "cloud_storm": {
+      "width": 13,
+      "height": 5,
+      "dark": {
+        "occupied_per_row": [
+          4,
+          8,
+          10,
+          11,
+          11
+        ],
+        "occupancy_pct": 67.69
+      },
+      "light": {
+        "occupied_per_row": [
+          4,
+          8,
+          10,
+          11,
+          11
+        ],
+        "occupancy_pct": 67.69
+      }
+    },
+    "cloud_wisp": {
+      "width": 9,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          7
+        ],
+        "occupancy_pct": 77.78
+      },
+      "light": {
+        "occupied_per_row": [
+          7
+        ],
+        "occupancy_pct": 77.78
+      }
+    },
+    "sun": {
+      "width": 7,
+      "height": 3,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          5
+        ],
+        "occupancy_pct": 80.95
+      },
+      "light": {
+        "occupied_per_row": [
+          5,
+          7,
+          5
+        ],
+        "occupancy_pct": 80.95
+      }
+    },
+    "sun_horizon": {
+      "width": 13,
+      "height": 3,
+      "dark": {
+        "occupied_per_row": [
+          9,
+          13,
+          13
+        ],
+        "occupancy_pct": 89.74
+      },
+      "light": {
+        "occupied_per_row": [
+          9,
+          13,
+          13
+        ],
+        "occupancy_pct": 89.74
+      }
+    },
+    "moon_new": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          0,
+          3,
+          3,
+          0
+        ],
+        "occupancy_pct": 21.43
+      }
+    },
+    "moon_waxing_crescent": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "occupancy_pct": 28.57
+      }
+    },
+    "moon_first_quarter": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          3,
+          4,
+          4,
+          3
+        ],
+        "occupancy_pct": 50.0
+      }
+    },
+    "moon_waxing_gibbous": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          5,
+          6,
+          6,
+          5
+        ],
+        "occupancy_pct": 78.57
+      }
+    },
+    "moon_full": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      }
+    },
+    "moon_waning_gibbous": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          5,
+          6,
+          6,
+          5
+        ],
+        "occupancy_pct": 78.57
+      }
+    },
+    "moon_last_quarter": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          3,
+          4,
+          4,
+          3
+        ],
+        "occupancy_pct": 50.0
+      }
+    },
+    "moon_waning_crescent": {
+      "width": 7,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          7,
+          7,
+          5
+        ],
+        "occupancy_pct": 85.71
+      },
+      "light": {
+        "occupied_per_row": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "occupancy_pct": 28.57
+      }
+    },
+    "dunes_far": {
+      "width": 40,
+      "height": 4,
+      "dark": {
+        "occupied_per_row": [
+          4,
+          17,
+          40,
+          40
+        ],
+        "occupancy_pct": 63.12
+      },
+      "light": {
+        "occupied_per_row": [
+          4,
+          17,
+          40,
+          40
+        ],
+        "occupancy_pct": 63.12
+      }
+    },
+    "dunes_near": {
+      "width": 20,
+      "height": 3,
+      "dark": {
+        "occupied_per_row": [
+          5,
+          10,
+          18
+        ],
+        "occupancy_pct": 55.0
+      },
+      "light": {
+        "occupied_per_row": [
+          5,
+          10,
+          18
+        ],
+        "occupancy_pct": 55.0
+      }
+    },
+    "hills": {
+      "width": 40,
+      "height": 3,
+      "dark": {
+        "occupied_per_row": [
+          2,
+          27,
+          40
+        ],
+        "occupancy_pct": 57.5
+      },
+      "light": {
+        "occupied_per_row": [
+          2,
+          27,
+          40
+        ],
+        "occupancy_pct": 57.5
+      }
+    },
+    "sand_field": {
+      "width": 40,
+      "height": 9,
+      "dark": {
+        "occupied_per_row": [
+          1,
+          2,
+          3,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9
+        ],
+        "occupancy_pct": 11.39
+      },
+      "light": {
+        "occupied_per_row": [
+          1,
+          2,
+          3,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9
+        ],
+        "occupancy_pct": 11.39
+      }
+    },
+    "grass_field": {
+      "width": 40,
+      "height": 9,
+      "dark": {
+        "occupied_per_row": [
+          1,
+          2,
+          3,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9
+        ],
+        "occupancy_pct": 11.39
+      },
+      "light": {
+        "occupied_per_row": [
+          1,
+          2,
+          3,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9
+        ],
+        "occupancy_pct": 11.39
+      }
+    },
+    "rain_light": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          2
+        ],
+        "occupancy_pct": 5.0
+      },
+      "light": {
+        "occupied_per_row": [
+          2
+        ],
+        "occupancy_pct": 5.0
+      }
+    },
+    "rain_medium": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          5
+        ],
+        "occupancy_pct": 12.5
+      },
+      "light": {
+        "occupied_per_row": [
+          5
+        ],
+        "occupancy_pct": 12.5
+      }
+    },
+    "rain_heavy": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          9
+        ],
+        "occupancy_pct": 22.5
+      },
+      "light": {
+        "occupied_per_row": [
+          9
+        ],
+        "occupancy_pct": 22.5
+      }
+    },
+    "snow_light": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          2
+        ],
+        "occupancy_pct": 5.0
+      },
+      "light": {
+        "occupied_per_row": [
+          2
+        ],
+        "occupancy_pct": 5.0
+      }
+    },
+    "snow_medium": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          4
+        ],
+        "occupancy_pct": 10.0
+      },
+      "light": {
+        "occupied_per_row": [
+          4
+        ],
+        "occupancy_pct": 10.0
+      }
+    },
+    "snow_heavy": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          7
+        ],
+        "occupancy_pct": 17.5
+      },
+      "light": {
+        "occupied_per_row": [
+          7
+        ],
+        "occupancy_pct": 17.5
+      }
+    },
+    "heat_1": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          2
+        ],
+        "occupancy_pct": 5.0
+      },
+      "light": {
+        "occupied_per_row": [
+          2
+        ],
+        "occupancy_pct": 5.0
+      }
+    },
+    "heat_2": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          3
+        ],
+        "occupancy_pct": 7.5
+      },
+      "light": {
+        "occupied_per_row": [
+          3
+        ],
+        "occupancy_pct": 7.5
+      }
+    },
+    "heat_3": {
+      "width": 40,
+      "height": 1,
+      "dark": {
+        "occupied_per_row": [
+          5
+        ],
+        "occupancy_pct": 12.5
+      },
+      "light": {
+        "occupied_per_row": [
+          5
+        ],
+        "occupancy_pct": 12.5
+      }
+    }
+  },
+  "pngs": {
+    "preview/cloud_large_dark-ink.png": {
+      "size": [
+        187,
+        120
+      ],
+      "sha256": "b7aac3f371f46eaeda5d95c9570be1cc5d2e36b8df5261148b7d076451d594e1"
+    },
+    "preview/cloud_large_light-ink.png": {
+      "size": [
+        187,
+        120
+      ],
+      "sha256": "ca9f40a29cc1045e1d73c3dd6e648b4716daaaabb1254ba9bd766f46909f1ba0"
+    },
+    "preview/cloud_medium_dark-ink.png": {
+      "size": [
+        143,
+        100
+      ],
+      "sha256": "a9788bfa46983f40b233f6a8625538181a44d9d0cfd55e25d298d30b4ef30229"
+    },
+    "preview/cloud_medium_light-ink.png": {
+      "size": [
+        143,
+        100
+      ],
+      "sha256": "a1ff49d6e1acf8394cf58d154d4fe5f3059621d9341e438f4fb6f70023754d53"
+    },
+    "preview/cloud_small_dark-ink.png": {
+      "size": [
+        99,
+        80
+      ],
+      "sha256": "a0b9129c416562c0f26e107ea04e8112abb1aac65a97b68136b6176994b2284a"
+    },
+    "preview/cloud_small_light-ink.png": {
+      "size": [
+        99,
+        80
+      ],
+      "sha256": "22fbe0f40ff7be0b08e5a2dbc3792326a078e03924d6d8bc153c6c72d257cc82"
+    },
+    "preview/cloud_storm_dark-ink.png": {
+      "size": [
+        165,
+        140
+      ],
+      "sha256": "d7928fdf838f1a57de4c57db59b3485609678a9841b79c8126cc9e2c10c7c645"
+    },
+    "preview/cloud_storm_light-ink.png": {
+      "size": [
+        165,
+        140
+      ],
+      "sha256": "db0749c0c95cbc456c8a1e67305fc8cf3c7c3f4f9b017b9f8364ddbf44aa3e65"
+    },
+    "preview/cloud_stratus_dark-ink.png": {
+      "size": [
+        242,
+        80
+      ],
+      "sha256": "961ae83fc7928d6ab8813ee1f65f49226e31248990d27e588de90749adb0e73f"
+    },
+    "preview/cloud_stratus_light-ink.png": {
+      "size": [
+        242,
+        80
+      ],
+      "sha256": "8085d105e3ba1af29a05fd71bb26f48c90d3541bbc4e8258b6d9f2d936b59c53"
+    },
+    "preview/cloud_wisp_dark-ink.png": {
+      "size": [
+        121,
+        60
+      ],
+      "sha256": "208a51e64809c10f330ba46c4838330c30bc56c2d732dc2d4c48630daf8691e6"
+    },
+    "preview/cloud_wisp_light-ink.png": {
+      "size": [
+        121,
+        60
+      ],
+      "sha256": "bbb88cdca107fa25cc6ad50f02eeab453018d19e9b023fe01d3a788ca8c77674"
+    },
+    "preview/clouds.png": {
+      "size": [
+        1056,
+        648
+      ],
+      "sha256": "b33dd94f875cfd26a81fb412e36d34946d6f463dbd5dff49068797b95a87fa15"
+    },
+    "preview/contact_sheet.png": {
+      "size": [
+        1056,
+        3223
+      ],
+      "sha256": "f58342fe25217ce157a1e29d37a89ad13b6b4f1861a9f5f89d8df7735b9daba8"
+    },
+    "preview/dunes_far_dark-ink.png": {
+      "size": [
+        462,
+        120
+      ],
+      "sha256": "bcc2d31bc0269510a873e195bfa82c6df000e94302feb769de9d47b5d78eb07d"
+    },
+    "preview/dunes_far_light-ink.png": {
+      "size": [
+        462,
+        120
+      ],
+      "sha256": "755336b9a79e55a00894967a0c932c675ce2a704155e5c45fa990581841a8fcc"
+    },
+    "preview/dunes_near_dark-ink.png": {
+      "size": [
+        242,
+        100
+      ],
+      "sha256": "b27087d92117874c74b2c06516e4259861408cd157b8b921e65bb9a460896349"
+    },
+    "preview/dunes_near_light-ink.png": {
+      "size": [
+        242,
+        100
+      ],
+      "sha256": "4e90dfdcd5b62e46c0147f260c44461033e45af8442cf00ed91ced2df17493c0"
+    },
+    "preview/grass_field_dark-ink.png": {
+      "size": [
+        462,
+        220
+      ],
+      "sha256": "e7f960339269f696f077486a86a42d54be82b88f47fa03b1f79ab13e8dc4683a"
+    },
+    "preview/grass_field_light-ink.png": {
+      "size": [
+        462,
+        220
+      ],
+      "sha256": "605b2026f66fd5807bf4bc1e3abd0007becb85144632c481d54a859f7b251053"
+    },
+    "preview/heat_1_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "fb26b2b32db8a64c4f47bfec9783c9c99d93f89295fed913257e364c56900641"
+    },
+    "preview/heat_1_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "f6c04f60651a3ebe788eb50a5a916c2e2bb940ecb0ac678c5f85d57e0eb7dfc9"
+    },
+    "preview/heat_2_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "c6bc9ab2158a6deb4f6a1f2667b2d12acf7b250da2fbecc959c2488e6681ddb2"
+    },
+    "preview/heat_2_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "27252c49d64b822b66c330c612367efe51b2403fd909b5185e747eeeecabe419"
+    },
+    "preview/heat_3_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "5e44e7319be7e15dc2fa818d2bc727b91ee2348d3889976b81d70228715353a4"
+    },
+    "preview/heat_3_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "2bdfae3f2b4a5d7bf81a3a2a9e4d017df6b39fea039139c493bd7e097df1608b"
+    },
+    "preview/hills_dark-ink.png": {
+      "size": [
+        462,
+        100
+      ],
+      "sha256": "80bfbe46efc698d0bad37d01f3e6fdb10fb715176b6e94ecc3f717a97fa761e4"
+    },
+    "preview/hills_light-ink.png": {
+      "size": [
+        462,
+        100
+      ],
+      "sha256": "0b2a9646c118b46f577ac5e85d4f1abe8eff7d69771c2fab9da04ad3cfc39e6f"
+    },
+    "preview/landscape.png": {
+      "size": [
+        1056,
+        608
+      ],
+      "sha256": "93a428ea5017dd71f480320d4b09ac805d6075ed0b1119e63a35024feeb43242"
+    },
+    "preview/moon_first_quarter_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "71da444fca55a8765a65c40e8b32cca1db94503d8b4cfadf9350491e185e9224"
+    },
+    "preview/moon_first_quarter_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "cdb9965b7e6f6bf752e8e6de25bb128d7143d5a2b57376a544ab47cabb5e6047"
+    },
+    "preview/moon_full_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "1433562dfb6cb57faf4209f6537dd33c3c1ac722fe269b80c18941e56d527480"
+    },
+    "preview/moon_full_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "c841b8e0e37c4eb32214fd0d87d954a05cff83ed691d9eb119630a5f9933f909"
+    },
+    "preview/moon_last_quarter_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "719e52abeca5888107bdba0d420c0305435af93f6f8ff7d929d61afbc4eaf8dc"
+    },
+    "preview/moon_last_quarter_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "7753cc12233e88dbac750f39de3b9e7266003b04cdc34503f3a5fc1178dd06fa"
+    },
+    "preview/moon_new_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "2248783a585f5d9e786dc0d07ee8102a89607f1798e8e3cd65148588378f298f"
+    },
+    "preview/moon_new_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "3519cda3e8dd0a64b0b29dca5661a436ba8ac0b4e4bbcd4450c8bedc107668ad"
+    },
+    "preview/moon_phases.png": {
+      "size": [
+        1056,
+        454
+      ],
+      "sha256": "0245ccfad84ec246c282d01807000aa36de79a473334d0e63fe87a544d8c7ff9"
+    },
+    "preview/moon_waning_crescent_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "59693887eca015cf99b9a2fde9d12f23cafaba69f0d7b348aacd53dc0720ca7b"
+    },
+    "preview/moon_waning_crescent_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "0bfaf44d064652e66b33f41ee99f77f5a708056d2d730c010f31ee4f9e46b8ba"
+    },
+    "preview/moon_waning_gibbous_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "a199cad9db279854584b97045411a9aed7fd46d8b5063e7d36f2a98c12ebfc6c"
+    },
+    "preview/moon_waning_gibbous_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "d35c7f250171e05b112feb15d2ee7730ddeca9a5c21070986333a4c7efc59f79"
+    },
+    "preview/moon_waxing_crescent_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "7e151484316474afdb8a8dfdccd04a9fde21c200959e3d3ed2e305d194714abc"
+    },
+    "preview/moon_waxing_crescent_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "36da82e228171ab0b8b63d21c68bdb003f088b0c06f2f999cf0d7f5eacc53dd3"
+    },
+    "preview/moon_waxing_gibbous_dark-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "f8e3cfc9fc5b1d0e271892c088e2fb3a1e93eb18c01d554f3a6b62c6512a44ca"
+    },
+    "preview/moon_waxing_gibbous_light-ink.png": {
+      "size": [
+        99,
+        120
+      ],
+      "sha256": "30e7238403e49a2508652d65b65b85fb11550b1c8b5164fb5a3f2a5416fa532d"
+    },
+    "preview/rain_heavy_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "a42fb8d9e2f3559e29ec5be2180ce4c26f6ddb919218e8ca31466bd9756aa776"
+    },
+    "preview/rain_heavy_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "6760283ce0f4184748e1dddb3fcc684247d3f60262fc16661ccfc3fb2992203c"
+    },
+    "preview/rain_light_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "c18d1e261f675d48ef2b95ebb7769874f896fbe0992e7054513965b8593d8a5f"
+    },
+    "preview/rain_light_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "f0c2be94946290041198dbd2a2e22fd785d1364ebdf08a48c04ea7deee7bbcdf"
+    },
+    "preview/rain_medium_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "208287f459fd5674f6be294405dda2d0dc718684b9d9e9f8d03996a635944cca"
+    },
+    "preview/rain_medium_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "aab01e8c7e24300c68833862da9e677616dc7b8ee00ea5e60c087605dafe1983"
+    },
+    "preview/sand_field_dark-ink.png": {
+      "size": [
+        462,
+        220
+      ],
+      "sha256": "c147722b658bd9beecec37d7c26fbcc12b7e92fa5bb78905f32b75c8a569b205"
+    },
+    "preview/sand_field_light-ink.png": {
+      "size": [
+        462,
+        220
+      ],
+      "sha256": "2b59275bca096a7f9dad5a9ccd5f3366041b6024f5628d185aab99753cdecbf0"
+    },
+    "preview/scene_contact_sheet.png": {
+      "size": [
+        944,
+        1258
+      ],
+      "sha256": "675f28c8860caa671bc2dff35854804a31c0a86d5592c28412762543ac7b22e6"
+    },
+    "preview/scene_grass_dark-ink.png": {
+      "size": [
+        440,
+        560
+      ],
+      "sha256": "c62d0700ce758e78cf654ac79fd53b4c5fd1b814bf88d2f84d50105302d0576d"
+    },
+    "preview/scene_grass_light-ink.png": {
+      "size": [
+        440,
+        560
+      ],
+      "sha256": "609b9e2f366b58cc8abc2ea000fa5a5699230185ebe50231e728b6d5d1ab4b46"
+    },
+    "preview/scene_sand_dark-ink.png": {
+      "size": [
+        440,
+        560
+      ],
+      "sha256": "ea8d012ec59b7b6ea77fe77c63d66aae8fcd0020c232cde7b6c972fcbec6bd14"
+    },
+    "preview/scene_sand_light-ink.png": {
+      "size": [
+        440,
+        560
+      ],
+      "sha256": "bc9868bf23ac493f51ad11eafc7e216438fcfd29b21ce01bece21a53c045f300"
+    },
+    "preview/snow_heavy_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "4f4c0072856dc62254792a4af44de31402185c9f05d519c8eec0a0d59f9c1850"
+    },
+    "preview/snow_heavy_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "fd0a904b8b1d8a4cea359bbb9772f73629ef6294e3798bea41070f2effe9a06a"
+    },
+    "preview/snow_light_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "35bbdc3a512f906879225fe5129dd1e4cc75aa3c00199705f21f7ec1689d1a84"
+    },
+    "preview/snow_light_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "d94f31c29567fc76f1c2a02c549dd0e94b7ca07e1e637fe71cbdb1823305c6ba"
+    },
+    "preview/snow_medium_dark-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "68988fc0aa2509d0c62292f74c2808ab1106e7729709fa622654e9696e4432af"
+    },
+    "preview/snow_medium_light-ink.png": {
+      "size": [
+        462,
+        60
+      ],
+      "sha256": "18cfba41273077ace1edf533865ac4dedf1652cd9e55d6ce0dfece1bace95314"
+    },
+    "preview/sun.png": {
+      "size": [
+        1056,
+        240
+      ],
+      "sha256": "48d7afbd179b18c3f0e31dea3482d9edd90376e2a8507d0801e7d1c01dffec38"
+    },
+    "preview/sun_dark-ink.png": {
+      "size": [
+        99,
+        100
+      ],
+      "sha256": "b9400149179fbd03cc7e41f99c274c41279830462e376eac04dda09946f9404d"
+    },
+    "preview/sun_horizon_dark-ink.png": {
+      "size": [
+        165,
+        100
+      ],
+      "sha256": "e71edf8b5ca61be5cd21f76476203adbb937258ae0bb6d89c4e47396cd3c422a"
+    },
+    "preview/sun_horizon_light-ink.png": {
+      "size": [
+        165,
+        100
+      ],
+      "sha256": "5956ff3dcfd09c95dff938f20e55cb7dc373db3ee178b479300ab921484df82b"
+    },
+    "preview/sun_light-ink.png": {
+      "size": [
+        99,
+        100
+      ],
+      "sha256": "e9b7e1fa01651bb097dfd0391c1a1e325e354f7d5e5631d10c6353c73988755b"
+    },
+    "preview/textures.png": {
+      "size": [
+        1056,
+        654
+      ],
+      "sha256": "e991dccedcbb46392300d22e439be9cbc7cb21a88cbcd0b1fc7e14fc641273f6"
+    },
+    "preview/weather.png": {
+      "size": [
+        1056,
+        514
+      ],
+      "sha256": "b8d6123081fa632294abbab1254e0fd03bfeceb7786fa685687abc19ddf1d622"
+    }
+  }
+}

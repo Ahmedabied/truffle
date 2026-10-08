@@ -15,6 +15,10 @@ Fable 5.1 integrating. Ahmed launched the fleet with "the bells are ringing", ga
 - Security review bot flagged the phrase-only /feed path, limiter parity and feed data exposure; applied the reduced feed response, validation and the /pair limiter; the phrase-only feed itself is the spec's accepted tradeoff.
 - Chrome: Hugging Face is logged in and the Gemma 4 page shows no gate banner. Modal has no account; account creation is Ahmed's (not something the session does on his behalf). No HF token exists on the box; the search found only library false positives.
 
+## Morning art pass (Oct 8, 09:40 to 10:40)
+
+Ahmed asked for richer, more alive ASCII with depth, dimension and shadow, like image-to-ASCII tools. Two GPT asset agents (A01 Truffle sprites, A02 sky and landscape) rendered candidates through a Pillow pipeline with PNG previews in three styles; Fable rebuilt the renderer as nine coloured layers with a continuous palette, real sun and moon, weather effects and a living Truffle, then adopted A01's classic shaded sprites (mirrored by light side) and A02's moon phases and sun. Verified with headless Chrome screenshots of 20 scenes and a compose benchmark (under 0.4 ms per frame). Deployed.
+
 ## Numbers
 
 - 23 commits, 0 co-author trailers.

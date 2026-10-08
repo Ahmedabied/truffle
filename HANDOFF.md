@@ -1,6 +1,10 @@
-# HANDOFF -> Session 03 (Thursday Oct 8, morning)
+# HANDOFF -> Session 03 (Thursday Oct 8, late morning)
 
 Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this. Rules from Ahmed tonight: no co-author trailers on commits, only his identity; no Fable subagents (builders are Opus 5.5 with `model: "opus"`, research and spikes are GPT); the GPT plugin only runs when his message asks for GPT or astra.
+
+## Where the art stands (done 10:45 Oman, deployed)
+
+The web world was rebuilt this morning: nine coloured layers, continuous palette, real sun and moon, weather effects, shaded Truffle sprites (A01, mirrored by light side), moon phases and sun from A02. Code: `web/src/scene/{world,palette,astro,shade}.ts`, `web/src/sprites.ts`, assets in `web/src/art.json` and `web/src/sky.json`, candidates and generators in `fleet/outbox/A01` and `A02`. Screenshot any scene with `?mock=1&scene=<content|affectionate|asleep|tired|wilting|burrowed|dead|spore|sprout|elder>&hour=<0..24>&moon=<0..1>&wx=<code>&rain=1&mm=<mm>&wind=<kmh>&temp=<C>&country=<CC>` through `npx vite preview` and headless Chrome (see the session log). Still open: phone check of fonts and frame rate (Ahmed), A02's cloud shapes and dune bands were not adopted (the runtime ones read cleaner at phone size), the sunrise half disk can sit partly off the left edge.
 
 ## Ahmed's first message should say
 
