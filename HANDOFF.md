@@ -47,10 +47,10 @@ Upgrade with install-r, preserving private preferences and the recorded diary.
 Pause tracking before an upgrade, resume explicitly, and verify repeated Feed is
 idempotent. Do not bypass the phone's keyguard or change lock settings.
 
-Commit and deploy final web code, then verify the anonymous public demo and
-native World together. Public demo replies must retain trained/fallback/sample
-provenance. Publish a clearly labelled test APK only after ownership matches;
-a draft release alone is not a public download. Never publish the DEV article
+For future changes, commit and deploy a tested checkpoint and verify the
+public demo plus native ownership again when the phone is available. Public demo replies must retain trained/fallback/sample
+provenance. The verified debug test APK is public at v0.3.0-app; an anonymous download
+matched its checksum. Future releases require matching ownership evidence. Never publish the DEV article
 without an explicit publication instruction. Energy redesign is a separate
 spec/migration task; do not quietly replace balances or golden cases.
 

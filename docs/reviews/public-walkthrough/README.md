@@ -38,3 +38,6 @@ claimed verified from these earlier replies. The energy economy is unchanged.
 [Final gift capture](gift-followup.png) shows the actual canvas object opened in
 chat. The original [capture](gift.png) is retained. Captures contain demo state,
 not native pairing keys or private health data.
+
+The [published APK and visitor-link verification](release-download.json) used
+no authentication and matched the installed artifact's SHA-256.

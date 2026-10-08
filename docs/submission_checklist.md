@@ -34,8 +34,8 @@ The user did not manually count the walk. Do not claim an accuracy percentage, o
 
 - [x] Web f388eef deployed as 7d31e6ff-aff6-4584-b604-d4410332778b.
 - [x] Worker 1f86536 deployed as 2872c460-58fd-4277-b11c-3dcaaf289853.
-- [ ] Selected docs/captures committed and pushed; visitor URLs verified after final documentation commit.
-- [ ] Public debug test APK v0.3.0-app downloadable without authentication and SHA-256 verified. A draft release alone is not a download.
+- [x] Selected docs/captures committed and pushed. Eight key release/article/evidence URLs returned HTTP 200 anonymously.
+- [x] Public debug test APK v0.3.0-app downloaded without authentication; all 12,498,062 bytes matched the installed artifact SHA-256. [Verification](reviews/public-walkthrough/release-download.json).
 
 ## Energy investigation
 

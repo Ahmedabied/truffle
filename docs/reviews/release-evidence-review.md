@@ -88,3 +88,13 @@ for publication by this review.
 
 The DEV draft remains unpublished. This report does not itself approve a
 deployment, publish a post, or establish anonymous APK-download availability.
+
+## Integrator closeout
+
+The final complete browser run passed 40/40. The corrected Android 4c86a68
+build passed 101 tests with zero lint errors and **62 warnings**; the earlier
+60-warning count above belongs to the prior candidate. The successful public
+continuation is [ui-final.json](public-walkthrough/ui-final.json).
+Selected docs and reviewed images were committed/pushed, eight key URLs returned
+HTTP 200 anonymously, and the published debug prerelease download matched the
+installed APK SHA-256. [Download verification](public-walkthrough/release-download.json).

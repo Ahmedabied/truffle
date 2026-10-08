@@ -1,0 +1,52 @@
+{
+  "anonymous": true,
+  "links": [
+    {
+      "url": "https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app",
+      "status": 200,
+      "bytes": 193260
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/post_draft.md",
+      "status": 200,
+      "bytes": 12419
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/reviews/ascii-art/after/day-scene.png",
+      "status": 200,
+      "bytes": 289617
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/reviews/ascii-art-direction.md",
+      "status": 200,
+      "bytes": 6521
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/reviews/recorded-browser-latencies.json",
+      "status": 200,
+      "bytes": 503
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/reviews/public-walkthrough/README.md",
+      "status": 200,
+      "bytes": 2601
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/submission_checklist.md",
+      "status": 200,
+      "bytes": 5528
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/reviews/energy-carryover-exploration.md",
+      "status": 200,
+      "bytes": 18928
+    }
+  ],
+  "apk": {
+    "url": "https://github.com/Ahmedabied/truffle/releases/download/v0.3.0-app/truffle-0.3.0-debug.apk",
+    "status": 200,
+    "bytes": 12498062,
+    "sha256": "aa312a365866ae2c5895e3ecf60d9718a1968ca308c6f99e0f84fc5310cc0eab"
+  },
+  "success": true
+}

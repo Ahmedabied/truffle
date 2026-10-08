@@ -93,6 +93,6 @@ MemPalace KG is empty for Truffle. Promotion is blocked by peer writer PID 14424
 Do not bypass or terminate it. Repository reports preserve facts and provenance.
 Raw fleet evidence and partial U01–U08 outputs are not blanket-staged for publication.
 
-Android download is prepared as the clearly labelled `v0.3.0-app` debug test
-prerelease; publication and anonymous checksum verification are recorded in
-the session report. The DEV article remains unpublished.
+Android [v0.3.0-app](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app)
+is public as a clearly labelled debug test prerelease. Anonymous download and
+SHA-256 match passed; eight key evidence/article URLs returned HTTP 200. The DEV article remains unpublished.

@@ -116,3 +116,19 @@ unreconciled, so the old zero-cost running total was corrected.
 MemPalace KG returned no Truffle facts. Promotion attempts failed because peer
 writer PID 1442453 holds the lock. No lock override or termination was attempted.
 These repository reports retain provenance for later promotion.
+
+## Delivery addendum
+
+The debug test prerelease is public:
+https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app .
+Anonymous download returned HTTP 200 and 12,498,062 bytes. SHA-256 matched
+`aa312a365866ae2c5895e3ecf60d9718a1968ca308c6f99e0f84fc5310cc0eab`.
+Eight key release/article/evidence URLs returned HTTP 200 without authentication.
+The selected documentation and reviewed captures were committed/pushed at
+5dc3803; this addendum records the final delivery checks. No DEV publication ran.
+
+A second MemPalace promotion attempt for the tested energy recommendation also
+failed on the same peer-writer lock. No facts were falsely reported as stored.
+The user's phone remains disconnected; no further phone work is outstanding for
+this release. Remaining evidence opportunities and the proposed energy v2 are
+explicitly separated from the delivered application.
