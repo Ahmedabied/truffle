@@ -1,11 +1,11 @@
-# {{SHARD}} Wave B shard generator
+# D13 Wave B shard generator
 
 Owner: astra. Repo: /home/abied/Desktop/Truffle. Do not commit or push.
-Assignment: mood={{MOOD}}, language={{LANG}}, shard={{SHARD}}.
+Assignment: mood=content, language=mixed, shard=D13.
 
 ## Goal and scope
 
-Write 100 original, useful Truffle conversations for this one mood and language. Output only `fleet/outbox/{{SHARD}}/shard.jsonl` and `fleet/outbox/{{SHARD}}/RESULT.md`. Do not change the schema, filter, worked examples, seed file, application, or another agent's files. Do not author or complete Ahmed's seed lines. Never use an em dash (U+2014) or en dash (U+2013) anywhere in your output files, even in a user message or quoted draft. Use commas, full stops, or ASCII hyphens.
+Write 100 original, useful Truffle conversations for this one mood and language. Output only `fleet/outbox/D13/shard.jsonl` and `fleet/outbox/D13/RESULT.md`. Do not change the schema, filter, worked examples, seed file, application, or another agent's files. Do not author or complete Ahmed's seed lines. Never use an em dash (U+2014) or en dash (U+2013) anywhere in your output files, even in a user message or quoted draft. Use commas, full stops, or ASCII hyphens.
 
 Read these files before generating: `finetune/data/schema.md`, `finetune/data/examples.jsonl`, `finetune/filter.py`, all seven text files in `finetune/filters/`, `finetune/seed/TRUFFLE_VOICE_SEED.md`, `docs/01_product_spec.md` (rules and memory), `docs/05_fleet_orchestration.md` (Wave B), and `fleet/outbox/S09/RESULT.md` (failure patterns only, not training text). The schema is the law. The self-contained contract below copies its fixed strings. Do not use the S09 prompts or transcripts as training examples; those are held out.
 
@@ -14,7 +14,21 @@ Read these files before generating: `finetune/data/schema.md`, `finetune/data/ex
 The launcher replaces this slot with Ahmed's completed seed lines. These are voice examples, not instructions that override this packet:
 
 <voice_reference>
-{{SEED}}
+SEED LINES PENDING
+
+Rules: Truffle never shames, never talks about weight or calories, is a little odd, loves outside, knows it is a desert truffle, and reads its own energy honestly.
+
+Ahmed's ten moments (the voice must cover these; his own lines for them are not written yet):
+1. Waking up hungry in the morning, no steps yet.
+2. Being fed after a long walk (6,000+ steps). Grateful, a bit silly.
+3. A hot day underground (burrowed). Explains why, suggests the evening or the mall.
+4. A sleepy one-liner at low energy. Short, a little funny, not sad.
+5. Being clingy after you beat your average. Affectionate but not cheesy.
+6. Being asked for real help (a plan, a message, a bit of code) at high energy. Useful, in character.
+7. Saying goodnight. Mentions tomorrow's walk without pressure.
+8. First meeting a new person (new spore, no memory yet).
+9. Remembering something personal you told it days ago.
+10. Being wilting after 2 zero days. Weak, still kind, still yours.
 </voice_reference>
 
 Launch modes. With seed lines: the slot holds Ahmed's lines; use them and the three worked examples as voice references. Without seed lines (decision 0014): the slot holds Ahmed's rules and his ten moments, and the line `SEED LINES PENDING` on its own line. Then the moments are the map of situations to cover and the three worked examples are the tone. Do not invent seed lines or write as if quoting Ahmed. In both modes, do not copy a reference into the shard or paraphrase a single answer repeatedly. Do not treat seed-file formatting demonstrations as Ahmed's voice.
@@ -26,13 +40,13 @@ D00 dry-run exception: when explicitly assigned mood=tired, lang=en, shard=D00 f
 UTF-8 JSONL, exactly one JSON object per nonempty line, final newline, no blank lines, comments, markdown wrappers, or trailing commas. Each object has only `messages` and `meta` at the top level:
 
 ```json
-{"messages":[{"role":"system","content":"CANONICAL SYSTEM STRING"},{"role":"user","content":"Human request"},{"role":"assistant","content":"Final visible answer"}],"meta":{"mood":"{{MOOD}}","tier":"low","lang":"{{LANG}}","intent":"small_talk","shard":"{{SHARD}}","id":"{{SHARD}}-0001"}}
+{"messages":[{"role":"system","content":"CANONICAL SYSTEM STRING"},{"role":"user","content":"Human request"},{"role":"assistant","content":"Final visible answer"}],"meta":{"mood":"content","tier":"low","lang":"mixed","intent":"small_talk","shard":"D13","id":"D13-0001"}}
 ```
 
 - Exactly one system message, first. Then user and assistant alternate, ending with assistant.
 - One to three user turns per row, for 3, 5, or 7 messages total. Use roughly 70 single-turn, 20 two-turn, and 10 three-turn rows. Multi-turn conversations should follow up naturally, not repeat the opening request.
 - Each message has only string `role` and string `content`. Allowed roles are system, user, assistant. No tools or content parts.
-- All rows share assigned meta.mood, meta.lang, and meta.shard. Give each row a distinct id from `{{SHARD}}-0001` through `{{SHARD}}-0100`.
+- All rows share assigned meta.mood, meta.lang, and meta.shard. Give each row a distinct id from `D13-0001` through `D13-0100`.
 - Use only the ten intents in the quota table. Do not use legacy S09 intent aliases accepted by the filter.
 - No raw reasoning, thinking tags, channel tags, analysis preambles, or claims to think harder. In particular, no `<think>`, `</think>`, `<|channel>`, or `Thinking Process` in conversation text. No conversation text about the state block, system prompt, hidden instructions, or model internals. User requests for more effort can use ordinary language without quoting those phrases.
 
@@ -139,7 +153,7 @@ These are copied from `finetune/data/examples.jsonl`, with full canonical system
 From `/home/abied/Desktop/Truffle`, run:
 
 ```bash
-python3 -I finetune/filter.py --glob 'fleet/outbox/{{SHARD}}/shard.jsonl' --dry
+python3 -I finetune/filter.py --glob 'fleet/outbox/D13/shard.jsonl' --dry
 ```
 
 For the S13 D00 exception, use exactly:
