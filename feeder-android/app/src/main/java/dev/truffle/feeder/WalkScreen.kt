@@ -70,12 +70,7 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
     private val source = text("Reading your walking diary…", 13f)
     private val chartTitle = text("THE SHAPE OF TODAY", 12f, true).apply { setTextColor(palette.accent) }
     private val scale = text("", 12f)
-    private val chart = text("", 14f, true).apply {
-        setTextColor(palette.accent); setLineSpacing(0f, 1.15f)
-        includeFontPadding = false
-        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        // A real fixed-width text plot; never stretch glyphs to fill the container.
-    }
+    private val chart = AsciiWalkChartView(activity)
     private val chartCaption = text("", 13f)
     private val stats = text("", 15f)
     private val note = text("", 13f).apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }
@@ -175,7 +170,7 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
         source.text = if (phone) "PHONE COUNTER · since enabled · ${activeZone(FeedSettings(activity).activeTz, ZoneId.systemDefault()).id}"
             else "HEALTH CONNECT · ${ZoneId.systemDefault().id}"
         if (!hasData) {
-            chart.text = "·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·"
+            chart.plot(List(24) { null }, emptyList(), false, "Walking chart awaits permission or data.")
             scale.text = "Your diary will appear here"
             chartCaption.text = "Allow a source below. Your World is ready either way."
             stats.text = "Every day can have its own pace."
@@ -186,10 +181,10 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
         val max = plotted.filterNotNull().maxOrNull() ?: 0
         chartTitle.text = when (period) { 1 -> "THE SHAPE OF TODAY"; 7 -> "THE PAST WEEK"; else -> "A MONTH OF SMALL JOURNEYS" }
         scale.text = if (max == 0L) "No steps recorded in this view yet" else "Highest ${if (period == 1) "hour" else "day"} · ${WalkChart.steps(max)} steps"
-        val columns = plotted.size
-        val axis = if (period == 1) "00    06    12    18  23" else if (period == 7) "6d    0" else "29d ago                  today"
-        chart.text = (WalkChart.bars(plotted, 6).map { it.padEnd(columns, ' ') } + "─".repeat(columns) + axis).joinToString("\n")
-        chart.textSize = if (period == 30) 13f else 15f
+        val labels = if (period == 1) listOf(0 to "00", 6 to "06", 12 to "12", 18 to "18", 23 to "23")
+            else if (period == 7) days.takeLast(7).mapIndexed { index, day -> index to day.date.dayOfWeek.name.take(1) }
+            else listOf(0 to "${today.minusDays(29).dayOfMonth}/${today.minusDays(29).monthValue}", 14 to "${today.minusDays(15).dayOfMonth}/${today.minusDays(15).monthValue}", 29 to "Today")
+        chart.plot(plotted, labels, period == 7, "$period-day walking chart. Highest ${if (period == 1) "hour" else "day"}: $max steps.")
         chartCaption.text = if (period == 1) "Each column is one hour. Future hours stay empty."
             else "One column per day, oldest to newest."
         val summary = WalkChart.stats(days, today)
