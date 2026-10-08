@@ -3,6 +3,7 @@
 
 import type { Mood } from "../../worker/src/engine";
 import type { Stage, Tier } from "../../worker/src/config";
+import type { MomentKind } from "./moments";
 
 export type Lang = "ar" | "en";
 
@@ -54,7 +55,16 @@ const en = {
   heatExplainOff: "The heat passed. Truffle can come up again.",
   newSporeDone: "A new spore is in the sand. The old stone stays.",
   pollNote: "Updates every 30 seconds.",
-  partial: "The reply was cut short. Only the part you saw was charged."
+  partial: "The reply was cut short. Only the part you saw was charged.",
+  moments: "Moments",
+  momentsShow: "Show moments",
+  momentsEmpty: "No moments yet. They come from walking.",
+  share: "Share",
+  shareMaking: "Making the card...",
+  shareFailed: "Could not make the card on this browser.",
+  shareTag: "truffle, a pet that eats steps",
+  openApp: "Open in the Truffle app",
+  getApp: "Get the Android app"
 };
 
 export type CopyKey = keyof typeof en;
@@ -107,7 +117,16 @@ const ar: Record<CopyKey, string> = {
   heatExplainOff: "راح الحر. ترافل يقدر يطلع من جديد.",
   newSporeDone: "بذرة جديدة في الرمل. الحجر القديم باقي.",
   pollNote: "يتحدّث كل 30 ثانية.",
-  partial: "الرد انقطع. انحسب بس الجزء اللي شفته."
+  partial: "الرد انقطع. انحسب بس الجزء اللي شفته.",
+  moments: "لحظات",
+  momentsShow: "اعرض اللحظات",
+  momentsEmpty: "ما فيه لحظات للحين. تجي من المشي.",
+  share: "شارك",
+  shareMaking: "نسوي البطاقة...",
+  shareFailed: "ما قدرنا نسوي البطاقة على هذا المتصفح.",
+  shareTag: "ترافل، حيوان أليف ياكل خطوات",
+  openApp: "افتح في تطبيق ترافل",
+  getApp: "نزّل تطبيق أندرويد"
 };
 
 export const COPY: Record<Lang, Record<CopyKey, string>> = { en, ar };
@@ -198,4 +217,54 @@ export function explainMidnight(
 
 export function explainGrew(lang: Lang, stage: Stage): string {
   return lang === "ar" ? `كبر وصار ${STAGE_WORD.ar[stage]}.` : `It grew into a ${stage}.`;
+}
+
+const STAGE_BY_INDEX: readonly Stage[] = ["Spore", "Sprout", "Truffle", "Elder"];
+
+/** Numbers in moment lines: Latin digits in English, Arabic-Indic digits in Arabic. */
+export function momentNum(lang: Lang, n: number): string {
+  return Math.round(n).toLocaleString(lang === "ar" ? "ar-u-nu-arab" : "en-US");
+}
+
+/**
+ * One fixed line per proud moment (decision 0017). Truffle's quiet voice:
+ * lowercase, no exclamation marks, no emoji, the number in the line.
+ * The model never writes these.
+ */
+export function momentLine(lang: Lang, kind: MomentKind, value: number): string {
+  const n = momentNum(lang, value);
+  if (lang === "ar") {
+    switch (kind) {
+      case "stage_up":
+        return `كبر. صار ${STAGE_WORD.ar[STAGE_BY_INDEX[value] ?? "Sprout"]}.`;
+      case "best_day":
+        return `أفضل يوم هالأسبوع. ${n} خطوة.`;
+      case "beat_avg7":
+        return `فوق يومك المعتاد. ${n} خطوة.`;
+      case "day_10k":
+        return `عشرة آلاف اليوم. ${n} خطوة.`;
+      case "streak":
+        return `${n} ${value >= 3 && value <= 10 ? "أيام" : "يوم"} مشي ورا بعض.`;
+      case "lifetime":
+        return `${n} خطوة مع بعض لين الحين.`;
+      case "heat_day_indoor":
+        return `يوم حر، وبعدك تحركت. ${n} خطوة.`;
+    }
+  }
+  switch (kind) {
+    case "stage_up":
+      return `it grew. ${(STAGE_BY_INDEX[value] ?? "Sprout").toLowerCase()} now.`;
+    case "best_day":
+      return `best day this week. ${n} steps.`;
+    case "beat_avg7":
+      return `past your usual day. ${n} steps.`;
+    case "day_10k":
+      return `ten thousand today. ${n} steps.`;
+    case "streak":
+      return `${n} walking days in a row.`;
+    case "lifetime":
+      return `${n} steps together so far.`;
+    case "heat_day_indoor":
+      return `a hot day, and you still moved. ${n} steps.`;
+  }
 }

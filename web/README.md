@@ -21,7 +21,13 @@ npm run build        # dist/, about 39 KB of JS
 
 If the Worker cannot be reached at startup, or with `?mock=1`, the page runs a small simulation in the browser and shows "offline demo". It imports the real engine from `../worker/src/engine.ts`, so tiers, moods, feeding and midnight follow the same rules. Only the replies are canned.
 
-Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|wilting|burrowed|dead|spore|sprout|elder|fresh`, `hour=0..23`, `rain=1`, `wind=0..40`, `cold=1` (slow half-awake brain).
+Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|wilting|burrowed|dead|spore|sprout|elder|fresh`, `hour=0..23`, `rain=1`, `wind=0..40`, `cold=1` (slow half-awake brain), `moment=best_day|beat_avg7|day_10k|streak|lifetime|stage_up|heat_day_indoor` with optional `mv=<value>` (adds one fresh proud moment).
+
+## Moments, share card, the Truffle app
+
+- Proud moments (decision 0017) come in every summary. The page remembers the last id it showed per phrase and shows each new one once, as one quiet line under the HUD for 6 seconds. Tap the HUD for the last five.
+- Share makes a 1080 x 1350 PNG on the device: the world, the HUD line, the newest moment. It opens the share sheet when the browser can share files, else it downloads.
+- The Truffle app opens the page with `#creds=<phrase>.<secret>`. The page stores them and strips the fragment at once. Inside the app (user agent mark `TruffleApp/`) the phrase and forget controls are hidden. On Android Chrome a real Truffle gets "Open in the Truffle app" (`truffle://pair?creds=...`, never sent to a server) and a link to the releases page.
 
 ## Files
 
@@ -30,6 +36,9 @@ Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|
 - `src/scene/`: grid fitting (`grid.ts`), palette (`palette.ts`), sun and moon (`astro.ts`), the luminance raster and dither (`raster.ts`), the Truffle model (`pet.ts`), the scene and the 12 fps loop (`world.ts`).
 - `src/chat.ts`: input line, tier-speed typing, yawn, explanation line.
 - `src/copy.ts`: UI copy in English and Arabic.
+- `src/moments.ts`: proud moment types and which ones to show.
+- `src/share.ts`: the share card canvas and delivery.
+- `src/handoff.ts`: `#creds=` from the app and the link back to it.
 - `src/main.ts`: boot, pairing, polling, settings, judge mode.
 
 ## Deploy

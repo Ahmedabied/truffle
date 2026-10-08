@@ -5,7 +5,10 @@ import { ApiError, apiBase, connect, setApiBase } from "./api";
 import { Chat } from "./chat";
 import { Cooldown, describeError, waitText, type ErrorCtx } from "./errors";
 import { FpsMeter, fpsEnabled, fpsText } from "./fps";
-import { COPY, MOOD_WORD, STAGE_WORD, TIER_WORD, explainGrew, explainMidnight, explainSteps, type CopyKey, type Lang } from "./copy";
+import { COPY, MOOD_WORD, STAGE_WORD, TIER_WORD, explainGrew, explainMidnight, explainSteps, momentLine, type CopyKey, type Lang } from "./copy";
+import { appLink, inApp, offerApp, takeCredsFromHash } from "./handoff";
+import { MOMENT_SHOW_MS, lastIdKey, momentsOf, pickNew, recent, type Moment, type MomentKind } from "./moments";
+import { cardHost, deliver, drawCard, fileName, readWorld, toBlob } from "./share";
 import { makeFitter } from "./scene/grid";
 import { World } from "./scene/world";
 import type { Backend, Creds, StateSummary, Tier } from "./types";
@@ -49,6 +52,12 @@ const store = {
     }
   }
 };
+
+// Credentials from the Truffle app arrive once as #creds=<phrase>.<secret>.
+// Store them like a pairing and strip the fragment before anything else reads the URL.
+takeCredsFromHash(location, history, (c) => store.set(K.creds, c));
+const IN_APP = inApp(navigator.userAgent);
+if (IN_APP) document.documentElement.classList.add("in-app");
 
 // ---------- app state ----------
 
@@ -174,6 +183,7 @@ function render(s: StateSummary): void {
     hud.push(lang === "ar" ? `عاش ${days.toLocaleString("en-US")} يوم و ${steps.toLocaleString("en-US")} خطوة` : `lived ${days.toLocaleString("en-US")} days and ${steps.toLocaleString("en-US")} steps`);
   }
   $("hudText").textContent = hud.join(sep);
+  onMoments(s);
   $("world").setAttribute(
     "aria-label",
     `${MOOD_WORD.en[s.mood]} ${st.stage}. Energy ${s.energy_pct} percent. ${st.steps_today} steps today. Effort ${s.tier}.` +
@@ -198,6 +208,125 @@ function render(s: StateSummary): void {
     heat.textContent = st.burrowed ? t("heatOn") : t("heatOff");
   }
   chat.refresh();
+}
+
+// ---------- proud moments (decision 0017) ----------
+
+let moments: Moment[] = [];
+let momentQueue: Moment[] = [];
+let showing: Moment | null = null;
+let momentTimer = 0;
+
+function onMoments(s: StateSummary): void {
+  moments = momentsOf(s);
+  if (creds) {
+    const key = lastIdKey(creds.phrase);
+    const r = pickNew(moments, store.get<number>(key), Date.now());
+    if (r.lastId !== null) store.set(key, r.lastId);
+    momentQueue.push(...r.show);
+    if (!showing) nextMoment();
+  }
+  if (showing) $("moment").textContent = momentLine(lang, showing.kind, showing.value);
+  renderMomentList();
+}
+
+function nextMoment(): void {
+  clearTimeout(momentTimer);
+  const el = $("moment");
+  const m = momentQueue.shift() ?? null;
+  showing = m;
+  if (!m) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  // The world draws the celebration (B15). Guarded: it may not exist yet, and reduced motion skips it.
+  const w = world as unknown as { celebrate?: (kind: MomentKind, value: number) => void };
+  if (typeof w.celebrate === "function" && !reduced()) {
+    try {
+      w.celebrate(m.kind, m.value);
+    } catch {
+      /* a celebration is never worth a broken page */
+    }
+  }
+  el.textContent = momentLine(lang, m.kind, m.value);
+  el.hidden = false;
+  el.classList.remove("in");
+  void el.offsetWidth; // restart the fade-in
+  el.classList.add("in");
+  momentTimer = window.setTimeout(nextMoment, MOMENT_SHOW_MS);
+}
+
+function renderMomentList(): void {
+  const list = $("momentList");
+  const items = recent(moments).map((m) => {
+    const li = document.createElement("li");
+    li.textContent = momentLine(lang, m.kind, m.value);
+    return li;
+  });
+  list.replaceChildren(...items);
+  $("momentsEmpty").hidden = items.length > 0;
+}
+
+function toggleMoments(): void {
+  const box = $("momentBox");
+  box.hidden = !box.hidden;
+  $("hud").setAttribute("aria-expanded", String(!box.hidden));
+}
+$("hud").addEventListener("click", toggleMoments);
+$("hud").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    toggleMoments();
+  }
+});
+
+// ---------- share card ----------
+
+function makeCard(): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  const body = getComputedStyle(document.body);
+  const newest = moments[moments.length - 1];
+  drawCard(canvas, readWorld($("world"), world), {
+    lang,
+    bg: body.backgroundColor,
+    fg: body.color,
+    muted: getComputedStyle($("hud")).color,
+    hud: $("hudText").textContent ?? "",
+    moment: newest ? momentLine(lang, newest.kind, newest.value) : "",
+    tag: t("shareTag"),
+    host: cardHost(location.host)
+  });
+  return canvas;
+}
+
+$("shareBtn").addEventListener("click", async () => {
+  if (!summary) return;
+  const btn = $<HTMLButtonElement>("shareBtn");
+  btn.disabled = true;
+  btn.textContent = t("shareMaking");
+  try {
+    const blob = await toBlob(makeCard());
+    await deliver(blob, fileName(new Date()), t("title"));
+  } catch {
+    explain(t("shareFailed"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = t("share");
+  }
+});
+
+// ---------- the Truffle app (decision 0016) ----------
+
+$("appBtn").addEventListener("click", () => {
+  // The custom scheme opens the app on this phone. It never reaches a server.
+  if (creds) location.href = appLink(creds);
+});
+
+function setupHandoff(): void {
+  const on = offerApp(navigator.userAgent, { demo: DEMO, mock: backend.mock, paired: !!creds });
+  $("appBtn").hidden = !on;
+  $("getApp").hidden = !on;
 }
 
 // ---------- backend calls ----------
@@ -361,6 +490,7 @@ $("fontUp").addEventListener("click", () => {
 
 function syncMotion(): void {
   world.setReduced(reduced());
+  document.documentElement.classList.toggle("reduced", reduced());
   $("motionNote").hidden = !media.matches;
   motionBox.disabled = media.matches;
   chat.skip();
@@ -473,6 +603,7 @@ async function boot(): Promise<void> {
     return;
   }
   $("phrase").textContent = creds?.phrase ?? "";
+  setupHandoff();
   applyLang();
   if (!lastWhy && summary) explain(explainSteps(lang, summary.state.steps_today, summary.energy_pct, summary.tier, summary.state.burrowed));
   $("half").hidden = !halfAwake;
@@ -490,5 +621,6 @@ void boot();
   summary: () => summary,
   frames: () => world.frames,
   mock: () => backend?.mock ?? null,
+  card: () => makeCard().toDataURL("image/png"),
   demo: DEMO
 };

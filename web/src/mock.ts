@@ -7,6 +7,42 @@ import { TIERS, type Tier } from "../../worker/src/config";
 import type { TruffleState } from "../../worker/src/engine";
 import type { Backend, ChatEvent, Creds, Lang, PairResult, StateSummary, WeatherSummary } from "./types";
 import { ApiError } from "./errors";
+import { MOMENT_KINDS, type Moment, type MomentKind } from "./moments";
+
+const STAGE_ORDER = ["Spore", "Sprout", "Truffle", "Elder"] as const;
+const LIFETIME_MARKS = [10_000, 50_000, 100_000, 250_000, 500_000];
+const STREAK_MARKS = [3, 7, 14, 30];
+
+/**
+ * A small stand-in for the engine's momentsFor (decision 0017, B12) so the
+ * offline demo can show proud moments. The Worker's function is the law; this
+ * only follows the same rules closely enough for screenshots and judge mode.
+ */
+function mockMoments(before: TruffleState, after: TruffleState, firedToday: Set<MomentKind>, midnight: boolean): { kind: MomentKind; value: number }[] {
+  const out: { kind: MomentKind; value: number }[] = [];
+  const once = (kind: MomentKind, value: number) => {
+    if (firedToday.has(kind)) return;
+    firedToday.add(kind);
+    out.push({ kind, value });
+  };
+  if (midnight) {
+    let run = 0;
+    for (let i = after.history7.length - 1; i >= 0 && after.history7[i] >= 3000; i--) run++;
+    if (STREAK_MARKS.includes(run)) out.push({ kind: "streak", value: run });
+    return out;
+  }
+  const b = before.steps_today;
+  const a = after.steps_today;
+  const si = (st: TruffleState) => STAGE_ORDER.indexOf(st.stage);
+  if (si(after) > si(before)) out.push({ kind: "stage_up", value: si(after) });
+  const best = Math.max(0, ...before.history7);
+  if (before.history7.length && a > best && b <= best && a >= 2000) once("best_day", a);
+  if (after.avg7 > 0 && b < after.avg7 && a >= after.avg7) once("beat_avg7", a);
+  if (b < 10_000 && a >= 10_000) once("day_10k", a);
+  if (after.burrowed && b < 2000 && a >= 2000) once("heat_day_indoor", a);
+  for (const m of LIFETIME_MARKS) if (before.lifetime_steps < m && after.lifetime_steps >= m) out.push({ kind: "lifetime", value: m });
+  return out;
+}
 
 const PHRASE = "sand-moon-fig";
 const SECRET = "offline-demo";
@@ -88,6 +124,8 @@ export class MockBackend implements Backend {
   private weather: WeatherSummary;
   private cold: boolean;
   private country: string;
+  private moments: Moment[] = [];
+  private firedToday = new Set<MomentKind>();
 
   constructor(params: URLSearchParams, demo: boolean) {
     this.key = demo ? "truffle.mock.demo" : "truffle.mock.main";
@@ -116,6 +154,31 @@ export class MockBackend implements Backend {
     };
     this.cold = params.get("cold") === "1";
     this.country = (params.get("country") ?? "OM").toUpperCase().slice(0, 2);
+    try {
+      const raw = scene ? null : localStorage.getItem(this.key + ".moments");
+      this.moments = raw ? (JSON.parse(raw) as Moment[]) : [];
+    } catch {
+      this.moments = [];
+    }
+    // Debug knob for screenshots: ?moment=<kind>[&mv=<value>] adds one fresh moment.
+    const mk = params.get("moment");
+    if (mk && (MOMENT_KINDS as readonly string[]).includes(mk)) {
+      const fallback: Record<MomentKind, number> = {
+        stage_up: 2, best_day: 7420, beat_avg7: 6100, day_10k: 10_240, streak: 7, lifetime: 50_000, heat_day_indoor: 2300
+      };
+      this.addMoments([{ kind: mk as MomentKind, value: Number(params.get("mv")) || fallback[mk as MomentKind] }]);
+    }
+  }
+
+  private addMoments(list: { kind: MomentKind; value: number }[]): void {
+    let id = this.moments.length ? this.moments[this.moments.length - 1].id : 0;
+    for (const m of list) this.moments.push({ id: ++id, kind: m.kind, at_ms: Date.now(), value: m.value });
+    this.moments = this.moments.slice(-20);
+    try {
+      localStorage.setItem(this.key + ".moments", JSON.stringify(this.moments));
+    } catch {
+      /* fine */
+    }
   }
 
   private save(): void {
@@ -126,9 +189,10 @@ export class MockBackend implements Backend {
     }
   }
 
-  private summary(): StateSummary {
+  private summary(): StateSummary & { moments: Moment[] } {
     const { energy_max } = engine.stageConfig(this.s.stage);
     return {
+      moments: structuredClone(this.moments),
       state: structuredClone(this.s),
       mood: engine.moodOf(this.s),
       tier: engine.decideTier(this.s).tier,
@@ -165,15 +229,21 @@ export class MockBackend implements Backend {
     return this.update(this.s.dead ? engine.newSpore(this.s) : this.s);
   }
   slider(_c: Creds, steps: number) {
-    return this.update(engine.feed(this.s, steps));
+    const after = engine.feed(this.s, steps);
+    this.addMoments(mockMoments(this.s, after, this.firedToday, false));
+    return this.update(after);
   }
   midnight(_c: Creds) {
-    return this.update(engine.midnight(this.s, false, "You walked me to the sea once."));
+    const after = engine.midnight(this.s, false, "You walked me to the sea once.");
+    this.firedToday.clear();
+    this.addMoments(after.dead ? [] : mockMoments(this.s, after, this.firedToday, true));
+    return this.update(after);
   }
   heat(_c: Creds, on: boolean) {
     return this.update({ ...this.s, burrowed: on });
   }
   reset(_c: Creds) {
+    this.firedToday.clear();
     return this.update(structuredClone(engine.DEFAULT_STATE));
   }
 

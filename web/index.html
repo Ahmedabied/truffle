@@ -22,9 +22,20 @@
       </div>
       <span id="probe" class="grid-font" aria-hidden="true"></span>
 
-      <p id="hud" class="hud" aria-live="off"><span id="hudText"></span><span id="fps" class="fps" dir="ltr" hidden></span></p>
+      <p id="hud" class="hud" aria-live="off" role="button" tabindex="0" aria-expanded="false" aria-controls="momentBox"><span id="hudText"></span><span id="fps" class="fps" dir="ltr" hidden></span></p>
+      <p id="moment" class="moment" dir="auto" role="status" aria-live="polite" hidden></p>
+      <section id="momentBox" class="moments" aria-labelledby="momentsTitle" hidden>
+        <h2 id="momentsTitle" data-c="moments"></h2>
+        <ol id="momentList" dir="auto"></ol>
+        <p id="momentsEmpty" class="hint" data-c="momentsEmpty"></p>
+      </section>
       <p id="memory" class="memory" dir="auto" hidden></p>
       <button id="sporeBtn" type="button" class="primary wide" data-c="sporeButton" hidden></button>
+      <div class="row tools">
+        <button id="shareBtn" type="button" class="small" data-c="share"></button>
+        <button id="appBtn" type="button" class="small primary" data-c="openApp" hidden></button>
+        <a id="getApp" class="small-link" href="https://github.com/ahmedabied/Truffle/releases" target="_blank" rel="noopener" data-c="getApp" hidden></a>
+      </div>
 
       <section class="chat" aria-label="Chat">
         <p id="reply" class="reply" dir="auto" aria-hidden="true"></p>
@@ -59,8 +70,8 @@
 
       <details id="settings" class="settings">
         <summary data-c="settings"></summary>
-        <p class="label" data-c="phrase"></p>
-        <div class="row">
+        <p class="label pairing" data-c="phrase"></p>
+        <div class="row pairing">
           <code id="phrase" dir="ltr"></code>
           <button id="copyBtn" type="button" class="small" data-c="copy"></button>
         </div>
@@ -78,7 +89,7 @@
         </div>
         <div class="row">
           <button id="sporeBtn2" type="button" class="primary" data-c="sporeButton" hidden></button>
-          <button id="forgetBtn" type="button" class="ghost small" data-c="forget"></button>
+          <button id="forgetBtn" type="button" class="ghost small pairing" data-c="forget"></button>
         </div>
       </details>
     </div>

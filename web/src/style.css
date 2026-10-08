@@ -70,6 +70,19 @@ body {
 .hud { margin: 8px 0 4px; font-size: 0.85em; color: var(--muted); font-variant-numeric: tabular-nums; }
 .fps:not([hidden]) { display: inline-block; margin-inline-start: 0.5em; font-family: ui-monospace, monospace; font-size: 0.9em; }
 .fps::before { content: "| "; }
+.hud[role="button"] { cursor: pointer; border-radius: 6px; }
+.hud[aria-expanded="true"] { color: var(--fg); }
+.moment { margin: 2px 0 6px; font-size: 1em; font-weight: 600; color: var(--fg); }
+.moment.in { animation: moment-in 0.6s ease-out; }
+@keyframes moment-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .moment.in { animation: none; } }
+.reduced .moment.in { animation: none; }
+.moments { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; margin: 4px 0 8px; }
+.moments h2 { font-size: 0.85em; margin: 4px 0; color: var(--muted); font-weight: 600; }
+.moments ol { margin: 0; padding-inline-start: 1.2em; font-size: 0.9em; line-height: 1.6; }
+.tools { margin: 4px 0; }
+.small-link { font-size: 0.85em; color: var(--accent); padding: 8px 4px; min-height: 36px; display: inline-flex; align-items: center; }
+.in-app .pairing { display: none !important; }
 .memory { margin: 4px 0; font-style: italic; color: var(--muted); }
 
 .chat { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
@@ -116,3 +129,4 @@ button[aria-pressed="true"] { background: var(--warn); color: var(--bg); border-
 #phrase { font-size: 1.1em; padding: 4px 8px; border: 1px dashed var(--line); border-radius: 6px; user-select: all; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.small-link[hidden] { display: none; }
