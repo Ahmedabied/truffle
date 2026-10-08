@@ -8,7 +8,7 @@ import { AUTH_FAILED, generatePhrase, generateSecret, hashPhrase, hashSecret, is
 import { AUTH_FAILS_PER_MINUTE, DAY_MS, DEMO_SPAWNS_PER_DAY, DEMO_SPAWNS_PER_HOUR, HOUR_MS, MINUTE_MS } from "./ratelimit";
 import { isValidTimeZone } from "./time";
 import type { Env, Lang, PairInput, Result } from "./types";
-import { BodyTooLarge, MAX_BODY_BYTES, parseBodyText, parseCoords, parseMessage, readBounded, stepTotalError } from "./validate";
+import { BodyTooLarge, MAX_BODY_BYTES, parseBodyText, parseCoords, isCalendarDay, parseMessage, readBounded, stepTotalError } from "./validate";
 import { sanitizeText } from "./weather";
 
 export { TruffleDO } from "./do";
@@ -93,12 +93,6 @@ function isNum(v: unknown, min: number, max: number): v is number {
   return typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
 }
 
-/** A real calendar date in YYYY-MM-DD form (rejects 2026-02-30). */
-function isCalendarDay(v: unknown): v is string {
-  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
-  const t = Date.parse(v + "T00:00:00Z");
-  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === v;
-}
 
 function langOf(v: unknown): Lang | undefined {
   return v === "ar" || v === "en" ? v : undefined;
@@ -220,7 +214,8 @@ app.post("/feed", async (c) => {
   const coords = parseCoords(b.lat, b.lon);
   if (!coords.ok) return no(coords.error);
   if (b.device_tz !== undefined && !isValidTimeZone(b.device_tz)) return no("device_tz must be an IANA zone");
-  if (b.day !== undefined && !isCalendarDay(b.day)) return no("day must be a real date, YYYY-MM-DD");
+  if (!isCalendarDay(b.day)) return no("day is required and must be a real date, YYYY-MM-DD.");
+  if (!isValidTimeZone(b.day_tz)) return no("day_tz is required and must be the IANA zone used to aggregate these steps.");
   const stub = await stubFor(c.env, phrase);
   return reply(
     c,
@@ -229,7 +224,8 @@ app.post("/feed", async (c) => {
       lat: coords.value?.lat,
       lon: coords.value?.lon,
       device_tz: b.device_tz as string | undefined,
-      day: b.day as string | undefined
+      day: b.day,
+      day_tz: b.day_tz
     })
   );
 });
@@ -247,12 +243,12 @@ app.post("/chat", async (c) => {
   const msg = parseMessage(b.message);
   if (!msg.ok) return bad(c, msg.error);
   const message = msg.value;
-  const o = await owned(c, b);
-  if ("error" in o) return o.error;
   if (b.requested_tier !== undefined && !TIERS_IN.includes(b.requested_tier as Tier)) {
     return bad(c, "requested_tier must be asleep, low, medium or high");
   }
   if (b.lang !== undefined && !langOf(b.lang)) return bad(c, "lang must be ar or en");
+  const o = await owned(c, b);
+  if ("error" in o) return o.error;
   const r = await o.stub.chat(o.secret, message, b.requested_tier as Tier | undefined, langOf(b.lang));
   if (!r.ok) return ownerReply(c, r, o.limiter);
   await o.limiter.release(AUTH_RULES);
@@ -322,9 +318,9 @@ app.post("/demo/heat", async (c) => {
   const p = await body(c);
   if ("error" in p) return p.error;
   const b = p.b;
+  if (typeof b.on !== "boolean") return bad(c, "on must be true or false");
   const o = await owned(c, b);
   if ("error" in o) return o.error;
-  if (typeof b.on !== "boolean") return bad(c, "on must be true or false");
   return ownerReply(c, await o.stub.setHeat(o.secret, b.on), o.limiter);
 });
 

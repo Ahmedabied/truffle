@@ -50,6 +50,42 @@ class AppSettingsTest {
         assertNull(settings.creds)
     }
 
+    @Test fun changingApiOriginRemovesTheOldPetsKeyAndDayZone() {
+        val settings = FeedSettings(MapStore())
+        settings.saveCreds(TruffleCreds("sand-moon-fig", secret))
+        settings.saveActiveTz("Asia/Muscat")
+        settings.saveOrigins("https://other.example", DEFAULT_WEB_ORIGIN)
+        assertNull(settings.creds)
+        assertEquals("", settings.phrase)
+        assertNull(settings.activeTz)
+        assertEquals("https://other.example", settings.server)
+    }
+
+    @Test fun confirmedWebChangeKeepsTheSamePetAndCanonicalApiDoesNotForgetIt() {
+        val settings = FeedSettings(MapStore())
+        val creds = TruffleCreds("sand-moon-fig", secret)
+        settings.saveCreds(creds)
+        settings.saveOrigins("$DEFAULT_API_ORIGIN:443/", "https://trusted.example/")
+        assertEquals(creds, settings.creds)
+        assertEquals("https://trusted.example", settings.webOrigin)
+    }
+
+    @Test fun invalidOriginCannotPartiallySaveOrForgetThePet() {
+        val settings = FeedSettings(MapStore())
+        val creds = TruffleCreds("sand-moon-fig", secret)
+        settings.saveCreds(creds)
+        assertEquals(false, runCatching { settings.saveOrigins("https://other.example", "http://bad.example") }.isSuccess)
+        assertEquals(creds, settings.creds)
+        assertEquals(DEFAULT_API_ORIGIN, settings.server)
+    }
+
+    @Test fun editingTheLegacyPhraseCannotReuseAnOldOwnershipSecret() {
+        val settings = FeedSettings(MapStore())
+        settings.saveCreds(TruffleCreds("sand-moon-fig", secret))
+        settings.saveInputs("moon-sand-fig", DEFAULT_API_ORIGIN)
+        assertNull(settings.creds)
+    }
+
     private class MapStore : FeedStore {
         private val values = mutableMapOf<String, Any>()
         override fun getString(key: String): String? = values[key] as? String

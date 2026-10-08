@@ -21,13 +21,13 @@ import {
   jumpCheck,
   MAX_JUMP_STEPS_PER_SECOND,
   nextWeatherBackoff,
-  plausibleTotal,
   unreserve
 } from "./ratelimit";
 import { markToday, momentsFor, nextStreak, pushMoments, trailingStreak } from "./moments";
 import { AUTH_FAILED, ownerMatches } from "./pairing";
 import { daysBetween, isValidTimeZone, localDayKey, missedMidnights, nextLocalMidnight } from "./time";
 import type { ChatTicket, Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
+import { isCalendarDay } from "./validate";
 import { daytimeMax, fetchForecast, forecastDays, parseForecast, stateWeather } from "./weather";
 
 export const DEMO_TTL_MS = 24 * 3_600_000;
@@ -46,6 +46,7 @@ export interface FeedInput {
   lon?: number;
   device_tz?: string;
   day?: string;
+  day_tz?: string;
 }
 
 const err = (status: 400 | 401 | 404 | 409 | 429, error: string, retry_after_s?: number) =>
@@ -218,9 +219,9 @@ export class TruffleDO extends DurableObject<Env> {
         this.log("midnight_skipped", { day: key, tz: m.tz });
         continue;
       }
-      // The day being entered uses its own cached forecast, never today's. Missing = false.
+      // The new day uses its forecast. An outage preserves the previous heat protection (0019).
       const max = m.weather_days[key];
-      const burrowTomorrow = typeof max === "number" ? engine.shouldBurrow(max) : false;
+      const burrowTomorrow = typeof max === "number" ? engine.shouldBurrow(max) : s.burrowed;
       if (typeof max !== "number") this.log("catchup_weather_missing", { day: key, tz: m.tz });
       const wasDead = s.dead;
       const before = s;
@@ -406,6 +407,9 @@ export class TruffleDO extends DurableObject<Env> {
   async feed(
     input: FeedInput
   ): Promise<Result<FeedSummary & { ignored?: string; expected_day: string; active_tz: string }>> {
+    if (!isCalendarDay(input.day) || !isValidTimeZone(input.day_tz)) {
+      return err(400, "A valid day and day_tz are required. Read steps again for the Truffle's day.");
+    }
     const now = Date.now();
     const o = await this.open(null, now);
     if (!o.ok) return o;
@@ -438,15 +442,13 @@ export class TruffleDO extends DurableObject<Env> {
       this.log("feed_ignored", { why, day: input.day ?? null, total: input.total });
       return ok({ ...this.feedSummary(s), ...envelope, ignored: why });
     };
-    if (input.day !== undefined && input.day !== today) {
+    if (input.day_tz !== m.tz) {
+      return ignore("day_tz does not match the Truffle's active zone; read steps again in active_tz");
+    }
+    if (input.day !== today) {
       return ignore(input.day < today ? `day ${input.day} is already closed` : `day ${input.day} has not started here yet`);
     }
     const midnight = this.lastLocalMidnight(now, m.tz);
-    // Without a day label, a replay of yesterday's total right after midnight
-    // is caught by a walking-speed cap since local midnight.
-    if (input.day === undefined && !m.demo && !plausibleTotal(input.total, now - midnight)) {
-      return ignore("total is too high for the time since local midnight; send the day field");
-    }
     // S10-07: an increase may imply at most 20 steps a second since the last
     // accepted feed today (or local midnight). A rejection changes nothing:
     // not the day, not the baseline, no weather call.

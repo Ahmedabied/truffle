@@ -104,6 +104,10 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
             content.addView(this)
         }
         webLabel.labelFor = web.id
+        content.addView(Button(activity).apply {
+            text = "Save server settings"
+            setOnClickListener { activity.confirmOrigins(server.text.toString(), web.text.toString()) }
+        })
         content.addView(Switch(activity).apply {
             text = "Share coarse location (TODO)"
             isChecked = false
@@ -121,8 +125,6 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
         }
         syncFields()
         phrase.doAfterTextChanged { saveInputs() }
-        server.doAfterTextChanged { saveInputs() }
-        web.doAfterTextChanged { if (!syncing) settings.saveWebOrigin(web.text.toString()) }
     }
 
     private fun label(text: String, size: Float = 16f): TextView = TextView(activity).apply {
@@ -147,7 +149,7 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
 
     private fun saveInputs() {
         if (syncing) return
-        settings.saveInputs(phrase.text.toString(), server.text.toString())
+        settings.saveInputs(phrase.text.toString(), settings.server)
     }
 
     fun renderStatus() {

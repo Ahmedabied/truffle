@@ -17,12 +17,12 @@ export const PRIVATE_LINE: Record<Lang, string> = {
 const KEYS = ["stage", "energy", "tier", "mood", "zero_days", "burrowed", "weather", "lang", "steps_today", "avg7", "age_days"];
 const KEY = `(?:${KEYS.join("|")})`;
 const PREFIX = "[truffle ";
-/** A real block is about 200 characters. Past this, an open bracket is not held any longer. */
+/** A real block is about 200 characters. Longer candidates are discarded until their closing bracket. */
 const MAX_HELD = 400;
 
 const VALUE = `(?:"[^"\\n]*"|[\\w%](?:[\\w%.]*[\\w%])?)`;
 const PAIR = `\\b${KEY}=${VALUE}`;
-const SEP = "[ \\t,;]+";
+const SEP = "[\\s,;]+";
 /** A closed block: "[truffle " then at least one field, up to "]". "[Truffle yawns]" is not one. */
 const BLOCK_RE = new RegExp(`\\[truffle\\s[^\\]]*?\\b${KEY}=[^\\]]*\\]`, "gi");
 /** Two or more field=value pairs in a row, outside brackets. */
@@ -30,7 +30,7 @@ const RUN_RE = new RegExp(`${PAIR}(?:${SEP}${PAIR})+`, "gi");
 /** An open block that has not closed yet, at the end of the buffer. */
 const OPEN_RE = /\[truffle\s[^\]]*$/i;
 /** Field pairs at the end of the buffer that a run could still grow from. */
-const TAIL_RUN_RE = new RegExp(`(?:\\b${KEY}=(?:"[^"\\n]*"?|[\\w%.]*)[ \\t,;]*)+$`, "i");
+const TAIL_RUN_RE = new RegExp(`(?:\\b${KEY}=(?:"[^"\\n]*"?|[\\w%.]*)[\\s,;]*)+$`, "i");
 /** A last word that could still become "field=". */
 const TAIL_WORD_RE = /(?:^|[^\w])([a-z_0-9]{1,12})$/i;
 const HAS_KEY_RE = new RegExp(`\\b${KEY}=`, "i");
@@ -45,10 +45,26 @@ const HAS_KEY_RE = new RegExp(`\\b${KEY}=`, "i");
 export class BlockGuard {
   leaks = 0;
   private pending = "";
+  private discardingBlock = false;
   constructor(private readonly lang: Lang) {}
 
   push(chunk: string): string {
+    if (this.discardingBlock) {
+      const close = chunk.indexOf("]");
+      if (close < 0) return "";
+      this.discardingBlock = false;
+      chunk = chunk.slice(close + 1);
+    }
     this.pending += chunk;
+    const open = OPEN_RE.exec(this.pending);
+    if (open && open[0].length > MAX_HELD) {
+      // Never release a suspected private block just because the model padded it.
+      const ready = this.scrub(this.pending.slice(0, open.index));
+      this.pending = "";
+      this.discardingBlock = true;
+      this.leaks++;
+      return ready + PRIVATE_LINE[this.lang];
+    }
     const hold = this.holdPoint();
     const ready = this.pending.slice(0, hold);
     this.pending = this.pending.slice(hold);
@@ -59,6 +75,7 @@ export class BlockGuard {
   flush(): string {
     const rest = this.pending;
     this.pending = "";
+    this.discardingBlock = false;
     const open = OPEN_RE.exec(rest);
     if (open && HAS_KEY_RE.test(open[0])) {
       this.leaks++;
@@ -88,7 +105,7 @@ export class BlockGuard {
       if (KEYS.some((k) => (k + "=").startsWith(w))) end = p.length - w.length;
     }
     const run = TAIL_RUN_RE.exec(p.slice(0, end));
-    if (run && run[0].length <= MAX_HELD) end = run.index;
+    if (run) end = run.index;
     return Math.min(hold, end);
   }
 

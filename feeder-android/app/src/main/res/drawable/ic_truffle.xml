@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Authored pixel mushroom, matching the world's quiet palette. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#345437"
+        android:pathData="M42,28h24v4h8v8h8v8h4v12h-64v-12h4v-8h8v-8h8z" />
+    <path android:fillColor="#7fae7a"
+        android:pathData="M42,36h8v8h-8zM62,44h8v8h-8zM30,48h8v8h-8z" />
+    <path android:fillColor="#ccb78a"
+        android:pathData="M38,60h32v16h-4v4h-24v-4h-4z" />
+    <path android:fillColor="#293e35"
+        android:pathData="M44,64h4v4h-4zM60,64h4v4h-4zM50,72h8v4h-8z" />
+</vector>

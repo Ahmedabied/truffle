@@ -7,13 +7,11 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateGroupByDurationRequest
-import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.Period
 import java.time.ZoneId
 
 class GrantPermissionException(message: String) : Exception(message)
@@ -117,26 +115,25 @@ class HealthSteps(private val context: Context) {
                             metrics = setOf(DistanceRecord.DISTANCE_TOTAL),
                             timeRangeFilter = TimeRangeFilter.between(midnight, now),
                         ),
-                    )[DistanceRecord.DISTANCE_TOTAL]?.inMeters ?: 0.0
+                    )[DistanceRecord.DISTANCE_TOTAL]?.inMeters
                 } catch (_: SecurityException) {
                     null // Distance was revoked. Degrade silently, steps still show.
                 }
             }
-        } else if (access.distanceGranted) {
-            distance = 0.0
         }
-        val first = today.minusDays(29).atStartOfDay()
         val found = mutableMapOf<LocalDate, Long>()
-        for (group in client.aggregateGroupByPeriod(
-            AggregateGroupByPeriodRequest(
-                metrics = setOf(StepsRecord.COUNT_TOTAL),
-                timeRangeFilter = TimeRangeFilter.between(first, local.toLocalDateTime()),
-                timeRangeSlicer = Period.ofDays(1),
-            ),
-        )) {
-            val date = group.startTime.toLocalDate()
-            found[date] = (found[date] ?: 0L) + (group.result[StepsRecord.COUNT_TOTAL] ?: 0L)
+        // Period aggregates use record-local offsets. Exact Instant windows keep
+        // this view in the current device zone even after travel (decision 0019).
+        for ((day, window) in WalkWindows.completedDays(today, zone)) {
+            found[day] = if (window.start == window.end) 0L else client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(window.start, window.end),
+                ),
+            )[StepsRecord.COUNT_TOTAL] ?: 0L
         }
+        // One snapshot for today's chart and total, even if a writer syncs mid-read.
+        found[today] = hourly.sum()
         return WalkData(today, hourly.toList(), WalkChart.fillDays(found, today), distance)
     }
 }

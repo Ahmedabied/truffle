@@ -40,6 +40,20 @@ function guardAll(parts: string[], lang: "en" | "ar" = "en") {
 // ---------- item 1: status block guard ----------
 
 describe("B10-1 the status block never reaches the client", () => {
+  it("catches newline-separated fields at every chunk boundary", () => {
+    const full = "hi stage=Spore\nenergy=15%\ntier=low bye";
+    for (let i = 1; i < full.length; i++) {
+      expect(guardAll([full.slice(0, i), full.slice(i)]).text, `split at ${i}`)
+        .toBe(`hi ${PRIVATE_LINE.en} bye`);
+    }
+  });
+
+  it("does not release a long unfinished private block to bound its buffer", () => {
+    const full = "hi [truffle stage=Spore " + "x".repeat(1000) + " energy=15%] bye";
+    expect(guardAll([...full]).text).toBe(`hi ${PRIVATE_LINE.en} bye`);
+    expect(guardAll([full.slice(0, -5)]).text).toBe(`hi ${PRIVATE_LINE.en}`);
+  });
+
   it("a whole block in one chunk is replaced and counted", () => {
     const r = guardAll([`Hi. ${BLOCK} How are you?`]);
     expect(r.text).toBe(`Hi. ${PRIVATE_LINE.en} How are you?`);

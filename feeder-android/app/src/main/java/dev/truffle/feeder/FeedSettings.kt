@@ -60,7 +60,10 @@ class FeedSettings(private val store: FeedStore) {
         // A different Truffle may live in a different zone. The next reply tells us.
         val changed = phrase.trim().lowercase() != this.phrase.trim().lowercase()
         store.edit {
-            if (changed) putString("active_tz", "")
+            if (changed) {
+                putString("active_tz", "")
+                putString("secret", "")
+            }
             putString("phrase", phrase)
             putString("server", server)
         }
@@ -68,6 +71,24 @@ class FeedSettings(private val store: FeedStore) {
 
     fun saveWebOrigin(text: String) {
         store.edit { putString("web_origin", text) }
+    }
+
+    /** Called only after an explicit Save and any ownership-transfer confirmation. */
+    fun saveOrigins(apiText: String, webText: String) {
+        val api = requireNotNull(AppLink.parseOrigin(apiText)) { "Use a valid HTTPS API origin." }
+        val web = requireNotNull(AppLink.parseOrigin(webText)) { "Use a valid HTTPS web origin." }
+        val apiChanged = api != AppLink.parseOrigin(server)
+        store.edit {
+            if (apiChanged) {
+                putString("phrase", "")
+                putString("secret", "")
+                putString("active_tz", "")
+                putString("status", "Server changed. Make a truffle or open one from this server.")
+                putBoolean("needs_permission", false)
+            }
+            putString("server", api)
+            putString("web_origin", web)
+        }
     }
 
     /** The app now owns this pet. The feeder phrase follows it. */

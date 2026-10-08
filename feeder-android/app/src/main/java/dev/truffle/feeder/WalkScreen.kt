@@ -88,7 +88,7 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
                 val data = health.readWalk()
                 chart.text = render(WalkChart.report(data.hourly, data.days, data.today, data.distanceMeters))
                 grant.isVisible = false
-                note.text = if (data.distanceMeters == null) "Steps from Health Connect. Allow distance too to see kilometres." else "Steps and distance from Health Connect."
+                note.text = if (data.distanceMeters == null) "Steps from Health Connect. Distance appears when access and records are available." else "Steps and distance from Health Connect."
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (missing: GrantPermissionException) {

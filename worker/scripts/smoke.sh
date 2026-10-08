@@ -11,8 +11,8 @@ j() { python3 -c "import json,sys;print(json.load(open('/tmp/truffle-smoke-body'
 C=$(code -X POST "$U/pair" -H 'content-type: application/json' -d '{}')
 if [ "$C" = 429 ]; then echo "pair: 429 from the per-IP spawn limiter (5 per hour). Limiter works; rerun later."; exit 0; fi
 [ "$C" = 200 ] || fail "pair $C"
-PH=$(j "['phrase']"); SEC=$(j "['secret']"); DAY=$(j "['local_day']")
-[ "$(code -X POST "$U/feed" -H 'content-type: application/json' -d "{\"phrase\":\"$PH\",\"steps_today_total\":2500,\"day\":\"$DAY\"}")" = 200 ] || fail feed
+PH=$(j "['phrase']"); SEC=$(j "['secret']"); DAY=$(j "['local_day']"); TZ=$(j "['tz']")
+[ "$(code -X POST "$U/feed" -H 'content-type: application/json' -d "{\"phrase\":\"$PH\",\"steps_today_total\":2500,\"day\":\"$DAY\",\"day_tz\":\"$TZ\"}")" = 200 ] || fail feed
 [ "$(code "$U/state?phrase=$PH" -H "x-truffle-secret: $SEC")" = 200 ] || fail state
 [ "$(code "$U/state?phrase=$PH" -H "x-truffle-secret: wrong")" = 401 ] || fail "state wrong secret"
 [ "$(code -X POST "$U/spore" -H 'content-type: application/json' -H "x-truffle-secret: $SEC" -d "{\"phrase\":\"$PH\"}")" = 409 ] || fail "spore while alive should be 409, got $(cat /tmp/truffle-smoke-body)"

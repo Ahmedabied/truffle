@@ -38,7 +38,7 @@ The web app's **Open in the Truffle app** link launches
 `truffle://pair?creds=<phrase>.<secret>`. The custom scheme goes from the browser
 to this app and never reaches a server. The app checks both formats (three
 lowercase words, and a base64url secret of 16 to 64 characters), stores them, and
-shows the World. If the phone already holds a different pet, it asks first. The
+shows the World. Every new imported pet needs confirmation, including on a fresh install. The
 link is dropped after one use, so recents cannot replay it.
 
 ### WebView settings
@@ -50,6 +50,16 @@ UI and the app link. Only HTTPS pages on the configured web origin load inside.
 A tapped link to any other web address opens in the browser. Other schemes are
 dropped. WebView remote debugging is off even in this debug build, so USB
 inspection cannot read the stored secret.
+
+Server fields change only after **Save server settings**. A different API server
+requires confirmation and removes the old pet's key and day zone. A different
+World site requires confirmation before it receives the current pet's key.
+Importing or forgetting a pet invalidates any older pairing request still in flight.
+
+Walk reads completed days using exact midnight instants in the device zone,
+including 23 and 25 hour days. Today's total comes from the same hourly snapshot
+as the chart. Missing distance records stay unavailable instead of showing zero.
+The 30 day chart and its streak are limited to the displayed window.
 
 ## Samsung first run
 
@@ -90,8 +100,8 @@ feature leaves **Feed now** working while the app is open. The app does not assu
 support from the OS version alone. Revoking either grant makes the red
 **Grant steps permission** button appear on the next check or failed read.
 
-**Coarse location is a disabled, OFF-by-default TODO.** This packet permits only
-Steps read, background health read, and INTERNET. There is no location permission
+**Coarse location is a disabled, OFF-by-default TODO.** This build permits only
+Steps read, Distance read, background health read, and INTERNET. There is no location permission
 or location dependency. `lat` and `lon` are omitted. The Worker can use its
 city-level `request.cf` fallback.
 
@@ -103,17 +113,17 @@ compared with Gradle's published checksum. The distribution checksum is pinned.
 The `all` distribution reuses the workstation's existing Gradle 8.12 cache.
 
 ```sh
-ssh workstation 'mkdir -p ~/truffle-build/feeder-android'
-rsync -a --delete --exclude build --exclude .gradle \
-  /home/abied/Desktop/Truffle/feeder-android/ \
-  workstation:~/truffle-build/feeder-android/
-ssh workstation 'cd ~/truffle-build/feeder-android && \
+# Commit and push the reviewed source first. GitHub is the only source link
+# between machines. Do not rsync or copy a checkout.
+ssh workstation 'git clone https://github.com/Ahmedabied/truffle.git ~/Truffle'
+ssh workstation 'cd ~/Truffle && git pull --ff-only'
+ssh workstation 'cd ~/Truffle/feeder-android && \
   export JAVA_HOME=/home/tamlik/android-studio/jbr \
          ANDROID_HOME=/home/tamlik/Android/Sdk && \
   ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon \
     -Dorg.gradle.java.home=/home/tamlik/jdks/jdk-17.0.20.1+1'
 mkdir -p /home/abied/Desktop/Truffle/fleet/outbox/B14/raw
-scp workstation:~/truffle-build/feeder-android/app/build/outputs/apk/debug/app-debug.apk \
+scp workstation:~/Truffle/feeder-android/app/build/outputs/apk/debug/app-debug.apk \
   /home/abied/Desktop/Truffle/fleet/outbox/B14/raw/app-debug.apk
 ```
 
@@ -125,7 +135,7 @@ With a connected phone, this optional command installs the APK from the box:
 
 ```sh
 ssh workstation '/home/tamlik/Android/Sdk/platform-tools/adb install -r \
-  /home/tamlik/truffle-build/feeder-android/app/build/outputs/apk/debug/app-debug.apk'
+  /home/tamlik/Truffle/feeder-android/app/build/outputs/apk/debug/app-debug.apk'
 ```
 
 This is a debug APK for sideloading. No release signing key is included.

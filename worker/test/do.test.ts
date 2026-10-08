@@ -126,7 +126,7 @@ describe("D01 pending chat admission and deadline (S11-01)", () => {
     const held = f.ai.hold();
     const a = await startChat(f, "high");
     await settle();
-    const fed = await f.obj.feed({ total: 500 });
+    const fed = await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 500 });
     expect(fed.ok).toBe(true);
     await finishHeld(held);
     await a.events;
@@ -257,7 +257,7 @@ describe("D03 generation fencing covers the whole completion (S11-02)", () => {
     await f.obj.alarm();
     expect(f.state().dead).toBe(true);
     expect((await f.obj.spore(f.secret)).ok).toBe(true);
-    expect((await f.obj.feed({ total: 3000, day: "2026-10-09" })).ok).toBe(true);
+    expect((await f.obj.feed({ day: "2026-10-09", day_tz: "Asia/Muscat", total: 3000 })).ok).toBe(true);
     await finishHeld(held, "Old life words.");
     const evA = await a.events!;
     expect(names(evA)).not.toContain("done");
@@ -506,7 +506,7 @@ describe("D09 coalesced, revision-aware weather refresh (S11-11)", () => {
     const p = f.obj.getState(f.secret);
     await until(() => net.count > 0, "a forecast fetch");
     expect(net.urls[0]).toContain("latitude=23.5900");
-    expect((await f.obj.feed({ total: 0, lat: 24.01, lon: 56.99 })).ok).toBe(true);
+    expect((await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 0, lat: 24.01, lon: 56.99 })).ok).toBe(true);
     d.resolve(muscat);
     await p;
     expect(f.meta().weather_now!.fetched_ms).toBe(0);
@@ -520,8 +520,8 @@ describe("D09 coalesced, revision-aware weather refresh (S11-11)", () => {
 
   it("feed never fetches a forecast itself", async () => {
     const f = await truffle({ meta: { weather_now: stale() } });
-    await f.obj.feed({ total: 200, lat: 24.5, lon: 57.5 });
-    await f.obj.feed({ total: 300 });
+    await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 200, lat: 24.5, lon: 57.5 });
+    await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 300 });
     expect(net.count).toBe(0);
   });
 });

@@ -93,17 +93,20 @@ S=<the secret>
 
 ### POST /feed
 
-`steps_today_total` is the absolute total since local midnight, not a delta. Optional fields:
+`steps_today_total` is the absolute total since local midnight, not a delta. Required day envelope:
 
-- `day`: the local date the total belongs to, `YYYY-MM-DD`. Send it. A total for any other day than the Truffle's current day is ignored, so a late retry of yesterday's total never counts twice.
+- `day`: the local date the total belongs to, `YYYY-MM-DD`. A total for any other day than the Truffle's current day is ignored, so a late retry of yesterday's total never counts twice.
+- `day_tz`: the IANA zone used to sum the total. It must match the Truffle's `active_tz`. A mismatch is ignored and the reply returns `active_tz` so the feeder can read again from the correct midnight.
+
+Optional fields:
 - `lat`, `lon`: together, as numbers in range. Stored rounded to 2 decimals, current point only. The log records that the point moved, never where. A move can force a weather refresh at most once an hour.
 - `device_tz`: recorded for display only. The Truffle's timezone is fixed at `/pair` and decides its midnight.
 
-`steps_today_total` must be a whole number from 0 to 50,000. Strings, `null`, fractions, booleans and huge numbers get `400`. So does a jump of more than 20 steps a second since the last accepted feed of the day (or local midnight for the first one). That `400` carries `retry_after_s`. Without `day`, a total that is too high for the time since local midnight (more than 4 steps a second on average) is ignored. The reply is a short status for the feeder, not the full state. `expected_day` and `active_tz` tell the feeder which day to count.
+`steps_today_total` must be a whole number from 0 to 50,000. Strings, `null`, fractions, booleans and huge numbers get `400`. Missing or invalid `day` or `day_tz` also gets `400` before the pet is touched. So does a jump of more than 20 steps a second since the last accepted feed of the day (or local midnight for the first one). That `400` carries `retry_after_s`. The reply is a short status for the feeder, not the full state. `expected_day` and `active_tz` tell the feeder which day to count.
 
 ```sh
 curl -s -X POST $B/feed -H 'content-type: application/json' \
-  -d "{\"phrase\":\"$P\",\"steps_today_total\":4500,\"day\":\"2026-10-08\"}"
+  -d "{\"phrase\":\"$P\",\"steps_today_total\":4500,\"day\":\"2026-10-08\",\"day_tz\":\"Asia/Muscat\"}"
 # {"energy":4500,"energy_max":6000,"stage":"Spore","mood":"content","tier":"high","steps_today":4500,
 #  "burrowed":false,"expected_day":"2026-10-08","active_tz":"Asia/Muscat"}
 ```
@@ -190,7 +193,7 @@ Four midnights at zero energy kill it. `/spore` brings a new one.
 
 Each Truffle has one alarm, set to its next local midnight (`src/time.ts`, DST safe). The alarm runs every midnight it missed, oldest first, at most 14 per run, and comes back a second later if more are owed. Each processed day key is stored, so a double fire never burns twice. The timezone is fixed when the Truffle is paired. The feeder's `device_tz` never moves the alarm, so a clock change cannot skip or double a burn. Moving a Truffle to a new timezone is an open decision. Requests also catch up on missed midnights before they read or write state.
 
-Weather comes from Open-Meteo for the stored coarse point (2 decimals). The daytime (06:00 to 22:00 local) max apparent temperature for each forecast day is cached. A day is burrowed when that max is at least 42C. If the forecast is missing, the day is not burrowed. One forecast fetch runs at a time per Truffle, and concurrent reads share it. After a failed fetch, reads keep the old data and wait 5 minutes before trying again, doubling up to 1 hour. If the point moves while a fetch is running, that forecast is thrown away. `/feed` never fetches weather itself.
+Weather comes from Open-Meteo for the stored coarse point (2 decimals). The daytime (06:00 to 22:00 local) max apparent temperature for each forecast day is cached. A day is burrowed when that max is at least 42C. If a midnight forecast is missing, the previous burrow flag is preserved. A known cool forecast clears it. This keeps an outage from removing known heat protection (decision 0019). One forecast fetch runs at a time per Truffle, and concurrent reads share it. After a failed fetch, reads keep the old data and wait 5 minutes before trying again, doubling up to 1 hour. If the point moves while a fetch is running, that forecast is thrown away. `/feed` never fetches weather itself.
 
 ## Data kept per Truffle
 

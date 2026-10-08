@@ -23,9 +23,9 @@ const HISTORY = { history7: [2500, 2500, 2500, 2500, 2500, 2500, 2500], avg7: 25
 describe("moments from real feeds", () => {
   it("crossing 2,000 then beating avg7 shows both in /state, ascending ids", async () => {
     const f = await truffle({ state: { history7: [1500, 3000], avg7: 2250, lifetime_steps: 4500 } });
-    expect((await f.obj.feed({ total: 2100 })).ok).toBe(true);
+    expect((await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 2100 })).ok).toBe(true);
     advance(600_000);
-    expect((await f.obj.feed({ total: 2400 })).ok).toBe(true);
+    expect((await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 2400 })).ok).toBe(true);
     const r = await f.obj.getState(f.secret);
     if (!r.ok) throw new Error(r.error);
     expect(kinds(r.value.moments)).toEqual(["stage_up:1", "beat_avg7:2400"]);
@@ -37,9 +37,9 @@ describe("moments from real feeds", () => {
 
   it("a once-per-day kind does not fire twice in one day, and moments are not cleared on read", async () => {
     const f = await truffle({ state: { ...HISTORY, history7: [12000], avg7: 12000 } });
-    await f.obj.feed({ total: 10500 });
+    await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 10500 });
     advance(600_000);
-    await f.obj.feed({ total: 11000 });
+    await f.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 11000 });
     await f.obj.getState(f.secret);
     const r = await f.obj.getState(f.secret);
     if (!r.ok) throw new Error(r.error);
@@ -48,13 +48,13 @@ describe("moments from real feeds", () => {
 
   it("an ignored or rejected feed makes no moment", async () => {
     const f = await truffle({ state: HISTORY });
-    await f.obj.feed({ total: 3000, day: "2026-10-07" });
+    await f.obj.feed({ day: "2026-10-07", day_tz: "Asia/Muscat", total: 3000 });
     expect(f.meta().moments ?? []).toEqual([]);
   });
 
   it("moments never change the engine state", async () => {
     const a = await truffle({ state: HISTORY });
-    await a.obj.feed({ total: 3000 });
+    await a.obj.feed({ day: "2026-10-08", day_tz: "Asia/Muscat", total: 3000 });
     const withMoments = a.state();
     expect(a.meta().moments!.length).toBeGreaterThan(0);
     expect(withMoments).toEqual(feed({ ...structuredClone(DEFAULT_STATE), ...HISTORY }, 3000));
@@ -134,7 +134,7 @@ describe("midnight, streaks and a new spore", () => {
     expect(r.value.moments.map((m) => m.id)).toEqual([7]);
     expect(f.meta().moments_today).toEqual([]);
     expect(f.meta().streak_days).toBe(0);
-    expect((await f.obj.feed({ total: 2100, day: "2026-10-09" })).ok).toBe(true);
+    expect((await f.obj.feed({ day: "2026-10-09", day_tz: "Asia/Muscat", total: 2100 })).ok).toBe(true);
     expect(f.meta().moments!.at(-1)).toMatchObject({ id: 8, kind: "best_day", value: 2100 });
   });
 

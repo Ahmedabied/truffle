@@ -192,18 +192,59 @@ class MainActivity : ComponentActivity() {
                 .setPositiveButton("Replace") { _, _ -> adopt(creds) }
                 .setNegativeButton("Keep mine", null)
                 .show()
-            else -> adopt(creds)
+            else -> AlertDialog.Builder(this)
+                .setTitle("Open this truffle?")
+                .setMessage("The link brings ${creds.phrase}. This phone will send your steps to it. Only open it if you made this truffle yourself.")
+                .setPositiveButton("Open") { _, _ -> adopt(creds) }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
 
     /** Store the credentials, point the feeder at them and show the world. */
     fun adopt(creds: TruffleCreds) {
+        world.cancelPendingPair()
         settings.saveCreds(creds)
         settings.setStatus("Paired with ${creds.phrase}. Tap Feed now.")
         feed.syncFields()
-        world.reloadFresh()
+        world.clearData()
         show(Tab.WORLD)
         lifecycleScope.launch { feed.refreshAccess() }
+    }
+
+    fun confirmOrigins(apiText: String, webText: String) {
+        val api = AppLink.parseOrigin(apiText)
+        val webOrigin = AppLink.parseOrigin(webText)
+        if (api == null || webOrigin == null) {
+            Toast.makeText(this, "Use HTTPS origins with no path, query or fragment.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val apiChanged = api != AppLink.parseOrigin(settings.server)
+        val webChanged = webOrigin != settings.webOrigin
+        val apply = {
+            world.cancelPendingPair()
+            if (apiChanged) FeedSchedule.disable(this)
+            settings.saveOrigins(api, webOrigin)
+            feed.syncFields()
+            if (apiChanged || webChanged) world.clearData()
+            lifecycleScope.launch { feed.refreshAccess() }
+            Toast.makeText(this, "Settings saved.", Toast.LENGTH_SHORT).show()
+        }
+        when {
+            apiChanged && settings.phrase.isNotBlank() -> AlertDialog.Builder(this)
+                .setTitle("Change server and forget this pet?")
+                .setMessage("The new server is $api. This phone will remove the current pet's key and stop feeding it. You can pair again on the new server.")
+                .setPositiveButton("Change server") { _, _ -> apply() }
+                .setNegativeButton("Cancel", null)
+                .show()
+            webChanged && settings.creds != null -> AlertDialog.Builder(this)
+                .setTitle("Share this pet's key with this site?")
+                .setMessage("$webOrigin will be able to read and control this pet. Continue only if you trust this site.")
+                .setPositiveButton("Trust and save") { _, _ -> apply() }
+                .setNegativeButton("Cancel", null)
+                .show()
+            else -> apply()
+        }
     }
 
     fun confirmPair() {

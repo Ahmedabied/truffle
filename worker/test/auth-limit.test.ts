@@ -43,6 +43,23 @@ function state(p: string, s: string | null, ip = "203.0.113.7") {
 }
 
 describe("R02 uniform auth failures (S11-05)", () => {
+  it.each([
+    ["/chat", { message: "hi", requested_tier: "invalid" }],
+    ["/chat", { message: "hi", lang: "invalid" }],
+    ["/demo/heat", { on: "yes" }]
+  ])("malformed %s fields do not spend the authentication budget", async (path, fields) => {
+    for (let i = 0; i < AUTH_FAILS_PER_MINUTE + 1; i++) {
+      const response = await app.fetch(new Request(`http://truffle.test${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7", "x-truffle-secret": secret },
+        body: JSON.stringify({ phrase, ...fields })
+      }), env);
+      expect(response.status).toBe(400);
+    }
+    expect(truffles.gets).toBe(0);
+    expect((await state(phrase, secret)).status).toBe(200);
+  });
+
   it("unknown phrase, wrong secret and missing secret give the same status and bytes", async () => {
     let other = generatePhrase();
     while (other === phrase) other = generatePhrase();

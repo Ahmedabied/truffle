@@ -99,3 +99,10 @@ export async function readBounded(stream: ReadableStream<Uint8Array> | null, max
   }
   return new TextDecoder().decode(all);
 }
+
+/** A real calendar date in YYYY-MM-DD form (rejects 2026-02-30). */
+export function isCalendarDay(v: unknown): v is string {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const t = Date.parse(v + "T00:00:00Z");
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === v;
+}

@@ -39,6 +39,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     private var web: WebView = newWebView()
     private var loaded = false
     private var loadedOrigin = ""
+    private var pairGeneration = 0
 
     init {
         pairPanel.addView(TextView(activity).apply {
@@ -147,11 +148,16 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     /** Called after the person confirmed. The secret goes straight to private storage. */
     fun pair() {
+        val generation = ++pairGeneration
+        val origin = prefs.server
         make.isEnabled = false
         pairStatus.text = "Making your truffle..."
         activity.lifecycleScope.launch {
             try {
-                when (val reply = PairClient.pair(prefs.server)) {
+                val reply = PairClient.pair(origin)
+                // Importing, forgetting or changing origins invalidates an older reply.
+                if (generation != pairGeneration || origin != prefs.server) return@launch
+                when (reply) {
                     is PairReply.Paired -> {
                         pairStatus.text = ""
                         activity.adopt(reply.creds)
@@ -161,19 +167,32 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                pairStatus.text = "Could not reach the server. Check your connection and try again."
+                if (generation == pairGeneration) pairStatus.text = "Could not reach the server. Check your connection and try again."
             } finally {
-                make.isEnabled = true
+                if (generation == pairGeneration) make.isEnabled = true
             }
         }
     }
 
+    fun cancelPendingPair() {
+        pairGeneration++
+        make.isEnabled = true
+        pairStatus.text = ""
+    }
+
     /** Forget: the page's stored credentials go too, then the plain world loads. */
     fun clearData() {
+        cancelPendingPair()
+        // Stop the old document before clearing its storage so it cannot write
+        // old credentials back while the new pet is loading.
+        web.stopLoading()
+        root.removeView(web)
+        web.destroy()
         WebStorage.getInstance().deleteAllData()
         CookieManager.getInstance().removeAllCookies(null)
-        web.clearHistory()
+        web = newWebView()
         web.clearCache(true)
+        root.addView(web, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         reloadFresh()
     }
 
