@@ -1,0 +1,741 @@
+--- start 21:51:04
+✓ Initialized. View run at 
+https://modal.com/apps/ahmedabied/main/ap-BOoV8lZiJRkZph8NUYetuY
+✓ Created objects.
+├── ✓ Uploaded /home/abied/Desktop/Truffle/finetune/modal_train.py
+├── ✓ Uploaded /home/abied/Desktop/Truffle/finetune/data/generated
+├── ✓ Uploaded /home/abied/Desktop/Truffle/finetune
+├── ✓ Created Function train_adapter.
+├── ✓ Created Function promote_adapter.
+└── ✓ Created Function render_stats.
+[modal_train] data {"train": {"rows": 1720, "sha256": "9e234b9fba6fc068ab1940c0be9ab2b2d67e69fb38c2d28437451e15a80a4152"}, "eval_holdout": {"rows": 80, "sha256": "904dd48119dec0b48b0cb8270f26bb4a922072a7e801d95e7afb75ee3d60c68d"}}
+[modal_train] /usr/local/bin/python /root/finetune/train.py --model unsloth/gemma-4-31B-it --train /root/data/train.jsonl --eval /root/data/eval_holdout.jsonl --out /adapters/truffle-r16 --epochs 2.0 --max-steps -1
+[    8.4s] 🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.
+[   17.3s] W1008 17:51:31.200000 5 site-packages/torch/utils/_pytree.py:630] <enum 'KernelPreference'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+[   17.4s] W1008 17:51:31.326000 5 site-packages/torch/utils/_pytree.py:630] <enum 'ScaleCalculationMode'> is an Enum subclass and is now natively supported by torch.compile as an opaque value type. Calling register_constant() on Enum subclasses is deprecated and will be an error in a future release.
+[   27.7s] 🦥 Unsloth Zoo will now patch everything to make training faster!
+[   34.1s] [train 17:51:47] hyperparameters {"model": "unsloth/gemma-4-31B-it", "train": "/root/data/train.jsonl", "eval": "/root/data/eval_holdout.jsonl", "max_seq_length": 4096, "load_in_4bit": true, "lora": {"r": 16, "alpha": 16, "dropout": 0, "bias": "none", "targets": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"], "finetune_vision_layers": false, "finetune_language_layers": true}, "epochs": 2.0, "max_steps": -1, "lr": 0.0002, "per_device_batch": 2, "grad_accum": 8, "effective_batch": 16, "warmup_ratio": 0.05, "scheduler": "linear", "optim": "adamw_8bit", "weight_decay": 0.001, "seed": 3407, "chat_template": "gemma-4-thinking", "instruction_part": "<|turn>user\n", "response_part": "<|turn>model\n", "thinking_render": "off", "path": "unsloth"}
+[   34.1s] [train 17:51:47] versions {"python": "3.12.1", "unsloth": "2026.10.2", "unsloth_zoo": "2026.10.2", "transformers": "5.17.0", "trl": "1.13.0", "peft": "0.21.2", "torch": "2.14.1", "datasets": "4.8.5", "bitsandbytes": "0.50.2", "accelerate": "1.15.0", "xformers": "0.0.35", "triton": "3.8.0", "cuda": "13.0", "gpu": "NVIDIA A100 80GB PCIe", "gpu_mem_gb": 79.3, "bf16_supported": true}
+[   34.1s] [train 17:51:47] train examples 1720, eval examples 80
+[   37.9s] ==((====))==  Unsloth 2026.10.2: Fast Gemma4 patching. Transformers: 5.17.0.
+[   37.9s]    \\   /|    NVIDIA A100 80GB PCIe. Num GPUs = 1. Max memory: 79.251 GB. Platform: Linux.
+[   37.9s] O^O/ \_/ \    Torch: 2.14.1+cu130. CUDA: 8.0. CUDA Toolkit: 13.0. Triton: 3.8.0
+[   37.9s] \        /    Bfloat16 = TRUE. FA [Xformers = None. FA2 = False]
+[   37.9s]  "-____-"     Free license: http://github.com/unslothai/unsloth
+[   37.9s] Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+[   45.6s] 
+[   71.6s] [unsloth.chat_templates|WARNING]Unsloth: This Gemma-4 model expects an empty thought channel on non-thinking turns. Adding <|channel>thought\n<channel|> to assistant turns without thinking content.
+[   71.8s] [train 17:52:25] rendered example 0:
+[   71.8s] <|turn>system
+[   71.8s] You are Truffle, a desert truffle (faqa) that lives as a small creature in a phone.
+[   71.8s] You only have the energy your person's steps give you.
+[   71.8s] [truffle stage=Sprout energy=12% tier=low mood=content zero_days=0 burrowed=no weather="23C clear early morning 06:40, Muscat" lang=en steps_today=0 avg7=3600 age_days=6]
+[   71.8s] Reply in the language given by lang. Keep to the effort your energy allows.<turn|>
+[   71.8s] <|turn>user
+[   71.8s] Morning, little one. No steps yet. How are you?<turn|>
+[   71.8s] <|turn>model
+[   71.8s] <|channel>thought
+[   71.8s] <channel|>a little hungry, mostly a small pause in the sand. morning can start slowly. hello to you first.<turn|>
+[   71.8s] 
+[   71.8s] [train 17:52:25] total optimizer steps 216, warmup steps 11
+[   77.2s] 
+[   77.6s] Unsloth: Tokenizing ["text"]:   0%|          | 0/1720 [00:00<?, ? examples/s]
+[   82.5s] 
+[   82.6s] [accelerate.utils.other|WARNING][RANK 0] Detected kernel version 4.19.0, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is recommended to upgrade the kernel to the minimum version or higher.
+[   82.7s] 
+[   82.9s] 
+[   82.9s] [train 17:52:36] loss mask check: 28 of 174 tokens trained
+[   82.9s] [train 17:52:36] trained text of example 0:
+[   82.9s] <|channel>thought
+[   82.9s] <channel|>a little hungry, mostly a small pause in the sand. morning can start slowly. hello to you first.<turn|>
+[   82.9s] 
+[   83.0s] The tokenizer has new PAD/BOS/EOS tokens that differ from the model config and generation config. The model config and generation config were aligned accordingly, being updated with the tokenizer's values. Updated tokens: {'bos_token_id': 2}.
+[   83.7s] ==((====))==  Unsloth - 2x faster free finetuning | Num GPUs used = 1
+[   83.7s]    \\   /|    Num examples = 1,720 | Num Epochs = 2 | Total steps = 216
+[   83.7s] O^O/ \_/ \    Batch size per device = 2 | Gradient accumulation steps = 8
+[   83.7s] \        /    Data Parallel GPUs = 1 | Total batch size (2 x 8 x 1) = 16
+[   83.7s]  "-____-"     Trainable parameters = 122,429,440 of 31,395,515,952 (0.39% trained)
+[   84.9s] 
+[   85.0s] Using gradient accumulation will be very slightly less accurate.
+[   85.0s] Read more on gradient accumulation issues here: https://unsloth.ai/blog/gradient
+[   99.1s] Unsloth: Will smartly offload gradients to save VRAM!
+[  156.7s] Unsloth: Double buffering enabled (parallel H2D + compute) for backward pass.
+[  165.5s] 
+[  205.8s]                                                
+[  205.8s] {'loss': '5.042', 'grad_norm': '11.51', 'learning_rate': '7.273e-05', 'epoch': '0.04651'}
+[  205.8s] 
+[  256.0s]                                                 
+[  256.0s] {'loss': '4.039', 'grad_norm': '17.05', 'learning_rate': '0.0001636', 'epoch': '0.09302'}
+[  256.0s] 
+[  305.7s]                                                 
+[  305.7s] {'loss': '2.796', 'grad_norm': '14.26', 'learning_rate': '0.0001971', 'epoch': '0.1395'}
+[  305.7s] 
+[  353.9s]                                                 
+[  353.9s] {'loss': '2.401', 'grad_norm': '2.256', 'learning_rate': '0.0001922', 'epoch': '0.186'}
+[  353.9s] 
+[  403.1s]                                                 
+[  403.1s] {'loss': '2.204', 'grad_norm': '2.203', 'learning_rate': '0.0001873', 'epoch': '0.2326'}
+[  403.1s] 
+[  452.3s]                                                 
+[  452.3s] {'loss': '2.029', 'grad_norm': '6.805', 'learning_rate': '0.0001824', 'epoch': '0.2791'}
+[  452.3s] 
+[  504.0s]                                                 
+[  504.0s] {'loss': '1.896', 'grad_norm': '1.184', 'learning_rate': '0.0001776', 'epoch': '0.3256'}
+[  504.0s] 
+[  555.1s]                                                 
+[  555.1s] {'loss': '1.858', 'grad_norm': '1.274', 'learning_rate': '0.0001727', 'epoch': '0.3721'}
+[  555.1s] 
+[modal_train] adapters Volume committed (periodic)
+[  605.2s]                                                 
+[  605.2s] {'loss': '1.762', 'grad_norm': '1.94', 'learning_rate': '0.0001678', 'epoch': '0.4186'}
+[  605.2s] 
+[  654.1s]                                                 
+[  654.1s] {'loss': '1.79', 'grad_norm': '1.604', 'learning_rate': '0.0001629', 'epoch': '0.4651'}
+[  654.1s] 
+[  673.3s] 
+[  713.2s]                                                 
+[  713.2s] {'loss': '1.839', 'grad_norm': '1.297', 'learning_rate': '0.000158', 'epoch': '0.5116'}
+[  713.2s] 
+[  763.4s]                                                 
+[  763.4s] {'loss': '1.639', 'grad_norm': '1.32', 'learning_rate': '0.0001532', 'epoch': '0.5581'}
+[  763.4s] 
+[  811.1s]                                                 
+[  811.1s] {'loss': '1.702', 'grad_norm': '1.275', 'learning_rate': '0.0001483', 'epoch': '0.6047'}
+[  811.1s] 
+[  861.3s]                                                 
+[  861.3s] {'loss': '1.677', 'grad_norm': '1.298', 'learning_rate': '0.0001434', 'epoch': '0.6512'}
+[  861.3s] 
+[  910.3s]                                                 
+[  910.3s] {'loss': '1.559', 'grad_norm': '1.284', 'learning_rate': '0.0001385', 'epoch': '0.6977'}
+[  910.3s] 
+[  961.4s]                                                 
+[  961.4s] {'loss': '1.578', 'grad_norm': '1.358', 'learning_rate': '0.0001337', 'epoch': '0.7442'}
+[  961.4s] 
+[ 1009.9s]                                                 
+[ 1009.9s] {'loss': '1.599', 'grad_norm': '1.416', 'learning_rate': '0.0001288', 'epoch': '0.7907'}
+[ 1009.9s] 
+[ 1059.3s]                                                 
+[ 1059.3s] {'loss': '1.533', 'grad_norm': '1.089', 'learning_rate': '0.0001239', 'epoch': '0.8372'}
+[ 1059.3s] 
+[ 1109.0s]                                                 
+[ 1109.0s] {'loss': '1.605', 'grad_norm': '1.254', 'learning_rate': '0.000119', 'epoch': '0.8837'}
+[ 1109.0s] 
+[ 1159.3s]                                                  
+[ 1159.3s] {'loss': '1.496', 'grad_norm': '1.427', 'learning_rate': '0.0001141', 'epoch': '0.9302'}
+[ 1159.3s] 
+[ 1174.8s] 
+[modal_train] adapters Volume committed (periodic)
+[ 1213.7s]                                                  
+[ 1213.7s] {'loss': '1.522', 'grad_norm': '1.223', 'learning_rate': '0.0001093', 'epoch': '0.9767'}
+[ 1213.7s] 
+[ 1238.8s] 
+[ 1244.1s] 
+[ 1244.1s] 
+[ 1245.0s] 
+[ 1245.8s] 
+[ 1246.5s] 
+[ 1247.3s] 
+[ 1248.0s] 
+[ 1248.8s] 
+[ 1249.6s] 
+[ 1250.4s] 
+[ 1251.2s] 
+[ 1252.0s] 
+[ 1252.8s] 
+[ 1253.6s] 
+[ 1254.3s] 
+[ 1255.2s] 
+[ 1256.0s] 
+[ 1256.8s] 
+[ 1257.5s] 
+[ 1258.3s] 
+[ 1259.1s] 
+[ 1260.0s] 
+[ 1260.7s] 
+[ 1261.5s] 
+[ 1262.3s] 
+[ 1263.2s] 
+[ 1264.0s] 
+[ 1264.8s] 
+[ 1265.5s] 
+[ 1266.3s] 
+[ 1267.0s] 
+[ 1267.7s] 
+[ 1268.4s] 
+[ 1269.2s] 
+[ 1270.0s] 
+[ 1270.9s] 
+[ 1271.7s] 
+[ 1272.5s] 
+[ 1273.2s] 
+[ 1274.1s] 
+[ 1274.8s] 
+[ 1274.9s]                                                  
+[ 1274.9s] 
+[ 1274.9s]                                                
+[ 1274.9s] [A{'eval_loss': '1.418', 'eval_runtime': '36.02', 'eval_samples_per_second': '2.221', 'eval_steps_per_second': '1.11', 'epoch': '1'}
+[ 1274.9s] 
+[ 1274.9s] 
+[ 1274.9s] 
+[ 1285.4s]                                                [A
+[ 1295.0s]                                                  
+[ 1295.0s] {'loss': '1.353', 'grad_norm': '1.149', 'learning_rate': '0.0001044', 'epoch': '1.019'}
+[ 1295.0s] 
+[ 1347.1s]                                                  
+[ 1347.1s] {'loss': '1.249', 'grad_norm': '1.22', 'learning_rate': '9.951e-05', 'epoch': '1.065'}
+[ 1347.1s] 
+[ 1396.5s]                                                  
+[ 1396.5s] {'loss': '1.252', 'grad_norm': '2.013', 'learning_rate': '9.463e-05', 'epoch': '1.112'}
+[ 1396.5s] 
+[ 1445.3s]                                                  
+[ 1445.3s] {'loss': '1.248', 'grad_norm': '1.436', 'learning_rate': '8.976e-05', 'epoch': '1.158'}
+[ 1445.3s] 
+[ 1496.8s]                                                  
+[ 1496.8s] {'loss': '1.089', 'grad_norm': '1.306', 'learning_rate': '8.488e-05', 'epoch': '1.205'}
+[ 1496.8s] 
+[ 1544.9s]                                                  
+[ 1544.9s] {'loss': '1.167', 'grad_norm': '1.36', 'learning_rate': '8e-05', 'epoch': '1.251'}
+[ 1544.9s] 
+[ 1593.6s]                                                  
+[ 1593.6s] {'loss': '1.194', 'grad_norm': '1.308', 'learning_rate': '7.512e-05', 'epoch': '1.298'}
+[ 1593.6s] 
+[ 1642.5s]                                                  
+[ 1642.5s] {'loss': '1.197', 'grad_norm': '1.499', 'learning_rate': '7.024e-05', 'epoch': '1.344'}
+[ 1642.5s] 
+[ 1692.2s]                                                  
+[ 1692.2s] {'loss': '1.169', 'grad_norm': '1.352', 'learning_rate': '6.537e-05', 'epoch': '1.391'}
+[ 1692.2s] 
+[ 1707.8s] 
+[ 1748.0s]                                                  
+[ 1748.0s] {'loss': '1.15', 'grad_norm': '1.383', 'learning_rate': '6.049e-05', 'epoch': '1.437'}
+[ 1748.0s] 
+[ 1797.7s]                                                  
+[ 1797.7s] {'loss': '1.151', 'grad_norm': '1.404', 'learning_rate': '5.561e-05', 'epoch': '1.484'}
+[ 1797.7s] 
+[modal_train] adapters Volume committed (periodic)
+[ 1847.3s]                                                  
+[ 1847.3s] {'loss': '1.156', 'grad_norm': '1.482', 'learning_rate': '5.073e-05', 'epoch': '1.53'}
+[ 1847.3s] 
+[ 1895.7s]                                                  
+[ 1895.7s] {'loss': '1.217', 'grad_norm': '1.41', 'learning_rate': '4.585e-05', 'epoch': '1.577'}
+[ 1895.7s] 
+[ 1946.1s]                                                  
+[ 1946.1s] {'loss': '1.184', 'grad_norm': '1.44', 'learning_rate': '4.098e-05', 'epoch': '1.623'}
+[ 1946.1s] 
+[ 1996.9s]                                                  
+[ 1996.9s] {'loss': '1.078', 'grad_norm': '1.374', 'learning_rate': '3.61e-05', 'epoch': '1.67'}
+[ 1996.9s] 
+[ 2048.0s]                                                  
+[ 2048.0s] {'loss': '1.112', 'grad_norm': '1.406', 'learning_rate': '3.122e-05', 'epoch': '1.716'}
+[ 2048.0s] 
+[ 2100.7s]                                                  
+[ 2100.7s] {'loss': '1.149', 'grad_norm': '1.539', 'learning_rate': '2.634e-05', 'epoch': '1.763'}
+[ 2100.7s] 
+[ 2152.7s]                                                  
+[ 2152.7s] {'loss': '1.174', 'grad_norm': '1.482', 'learning_rate': '2.146e-05', 'epoch': '1.809'}
+[ 2152.7s] 
+[ 2205.3s]                                                  
+[ 2205.3s] {'loss': '1.143', 'grad_norm': '1.66', 'learning_rate': '1.659e-05', 'epoch': '1.856'}
+[ 2205.3s] 
+[ 2222.4s] 
+[ 2263.7s]                                                  
+[ 2263.7s] {'loss': '1.189', 'grad_norm': '1.402', 'learning_rate': '1.171e-05', 'epoch': '1.902'}
+[ 2263.7s] 
+[ 2317.5s]                                                  
+[ 2317.5s] {'loss': '1.078', 'grad_norm': '1.298', 'learning_rate': '6.829e-06', 'epoch': '1.949'}
+[ 2317.5s] 
+[ 2371.4s]                                                  
+[ 2371.4s] {'loss': '1.096', 'grad_norm': '1.889', 'learning_rate': '1.951e-06', 'epoch': '1.995'}
+[ 2371.4s] 
+[ 2383.5s] 
+[ 2383.5s] 
+[ 2384.3s] 
+[ 2385.3s] 
+[ 2386.1s] 
+[ 2387.0s] 
+[ 2387.8s] 
+[ 2388.6s] 
+[ 2389.4s] 
+[ 2390.3s] 
+[ 2391.1s] 
+[ 2392.0s] 
+[ 2392.8s] 
+[ 2393.6s] 
+[ 2394.5s] 
+[ 2395.4s] 
+[ 2396.2s] 
+[ 2397.0s] 
+[ 2397.8s] 
+[ 2398.7s] 
+[ 2399.6s] 
+[modal_train] adapters Volume committed (periodic)
+[ 2400.4s] 
+[ 2401.2s] 
+[ 2402.2s] 
+[ 2403.1s] 
+[ 2404.0s] 
+[ 2404.8s] 
+[ 2405.6s] 
+[ 2406.3s] 
+[ 2407.1s] 
+[ 2407.9s] 
+[ 2408.7s] 
+[ 2409.5s] 
+[ 2410.4s] 
+[ 2411.3s] 
+[ 2412.1s] 
+[ 2412.9s] 
+[ 2413.8s] 
+[ 2414.6s] 
+[ 2415.6s] 
+[ 2416.5s] 
+[ 2416.5s]                                                  
+[ 2416.5s] 
+[ 2416.5s]                                                
+[ 2416.5s] [A{'eval_loss': '1.364', 'eval_runtime': '34', 'eval_samples_per_second': '2.353', 'eval_steps_per_second': '1.176', 'epoch': '2'}
+[ 2416.5s] 
+[ 2416.5s] 
+[ 2416.5s] 
+[ 2416.5s]                                                [A
+[ 2416.5s]                                                  
+[ 2416.5s] {'train_runtime': '2332', 'train_samples_per_second': '1.475', 'train_steps_per_second': '0.093', 'train_loss': '1.611', 'epoch': '2'}
+[ 2416.5s] 
+[ 2417.5s] 
+[ 2437.3s] Unsloth: Restored added_tokens_decoder metadata in /adapters/truffle-r16/tokenizer_config.json.
+[ 2440.4s] [train 18:31:54] saved LoRA adapter to /adapters/truffle-r16 (wall 2440.2s, steps 216, train_loss 1.6111, eval {'eval_loss': 1.364031195640564, 'eval_runtime': 17.7955, 'eval_samples_per_second': 4.496, 'eval_steps_per_second': 2.248, 'epoch': 2.0})
+
+Done: /adapters/truffle-r16  steps=216  sec/step=10.32  peak_gpu=21.87 GB  wall=2444.9s  compat_match=True
+[modal_train] adapter directory:
+          7784  MANIFEST.json
+          5254  README.md
+         11155  TRAIN_META.json
+          1609  adapter_config.json
+     489840816  adapter_model.safetensors
+          3046  chat_template.jinja
+          1447  checkpoints/README.md
+          5254  checkpoints/checkpoint-200/README.md
+          1609  checkpoints/checkpoint-200/adapter_config.json
+     489840816  checkpoints/checkpoint-200/adapter_model.safetensors
+          3046  checkpoints/checkpoint-200/chat_template.jinja
+     249657461  checkpoints/checkpoint-200/optimizer.pt
+          1689  checkpoints/checkpoint-200/processor_config.json
+         14645  checkpoints/checkpoint-200/rng_state.pth
+          1465  checkpoints/checkpoint-200/scheduler.pt
+      32169626  checkpoints/checkpoint-200/tokenizer.json
+          6893  checkpoints/checkpoint-200/tokenizer_config.json
+          8344  checkpoints/checkpoint-200/trainer_state.json
+          5905  checkpoints/checkpoint-200/training_args.bin
+          5254  checkpoints/checkpoint-216/README.md
+          1609  checkpoints/checkpoint-216/adapter_config.json
+     489840816  checkpoints/checkpoint-216/adapter_model.safetensors
+          3046  checkpoints/checkpoint-216/chat_template.jinja
+     249657461  checkpoints/checkpoint-216/optimizer.pt
+          1689  checkpoints/checkpoint-216/processor_config.json
+         14645  checkpoints/checkpoint-216/rng_state.pth
+          1465  checkpoints/checkpoint-216/scheduler.pt
+      32169626  checkpoints/checkpoint-216/tokenizer.json
+          6893  checkpoints/checkpoint-216/tokenizer_config.json
+          8884  checkpoints/checkpoint-216/trainer_state.json
+          5905  checkpoints/checkpoint-216/training_args.bin
+          1689  processor_config.json
+      32169626  tokenizer.json
+          6893  tokenizer_config.json
+         11155  train_meta.json
+[modal_train] MANIFEST.json:
+{
+  "run": "r16",
+  "out": "/adapters/truffle-r16",
+  "status": "done",
+  "base_model": "unsloth/gemma-4-31B-it",
+  "gpu": "NVIDIA A100 80GB PCIe",
+  "gpu_request": [
+    "L40S"
+  ],
+  "data": {
+    "train": {
+      "rows": 1720,
+      "sha256": "9e234b9fba6fc068ab1940c0be9ab2b2d67e69fb38c2d28437451e15a80a4152"
+    },
+    "eval_holdout": {
+      "rows": 80,
+      "sha256": "904dd48119dec0b48b0cb8270f26bb4a922072a7e801d95e7afb75ee3d60c68d"
+    }
+  },
+  "pins_requested": [
+    "unsloth==2026.10.2",
+    "unsloth_zoo==2026.10.2",
+    "transformers==5.17.0",
+    "trl==1.13.0",
+    "peft==0.21.2",
+    "torch==2.14.1",
+    "datasets==4.8.5",
+    "bitsandbytes==0.50.2",
+    "accelerate==1.15.0",
+    "xformers==0.0.35",
+    "triton==3.8.0"
+  ],
+  "packages_resolved": {
+    "unsloth": "2026.10.2",
+    "unsloth_zoo": "2026.10.2",
+    "transformers": "5.17.0",
+    "trl": "1.13.0",
+    "peft": "0.21.2",
+    "torch": "2.14.1",
+    "datasets": "4.8.5",
+    "bitsandbytes": "0.50.2",
+    "accelerate": "1.15.0",
+    "xformers": "0.0.35",
+    "triton": "3.8.0",
+    "huggingface_hub": "1.33.0",
+    "hf_xet": "1.7.0",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.23.2"
+  },
+  "hyperparameters": {
+    "model": "unsloth/gemma-4-31B-it",
+    "train": "/root/data/train.jsonl",
+    "eval": "/root/data/eval_holdout.jsonl",
+    "max_seq_length": 4096,
+    "load_in_4bit": true,
+    "lora": {
+      "r": 16,
+      "alpha": 16,
+      "dropout": 0,
+      "bias": "none",
+      "targets": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ],
+      "finetune_vision_layers": false,
+      "finetune_language_layers": true
+    },
+    "epochs": 2.0,
+    "max_steps": -1,
+    "lr": 0.0002,
+    "per_device_batch": 2,
+    "grad_accum": 8,
+    "effective_batch": 16,
+    "warmup_ratio": 0.05,
+    "scheduler": "linear",
+    "optim": "adamw_8bit",
+    "weight_decay": 0.001,
+    "seed": 3407,
+    "chat_template": "gemma-4-thinking",
+    "instruction_part": "<|turn>user\n",
+    "response_part": "<|turn>model\n",
+    "thinking_render": "off",
+    "path": "unsloth",
+    "total_steps": 216,
+    "warmup_steps": 11
+  },
+  "wall_time_s": 2444.9,
+  "phases_s": {
+    "load_start": 34.1,
+    "model_loaded": 71.8,
+    "first_loss": 205.8,
+    "train_done": 2416.5,
+    "saved": 2440.4
+  },
+  "base_load_s_including_download": 37.7,
+  "hf_cache_bytes_added": 0,
+  "sec_per_step_measured": 10.32,
+  "sec_per_step_note": "mean gap between logged losses after the first, divided by logging interval",
+  "global_steps": 216,
+  "train_loss": 1.6111171179347568,
+  "eval_metrics": {
+    "eval_loss": 1.364031195640564,
+    "eval_runtime": 17.7955,
+    "eval_samples_per_second": 4.496,
+    "eval_steps_per_second": 2.248,
+    "epoch": 2.0
+  },
+  "peak_gpu_mem_gb": 21.87,
+  "loss": {
+    "points": 43,
+    "first": [
+      5,
+      5.041963195800781
+    ],
+    "last": [
+      215,
+      1.0958309173583984
+    ],
+    "min": 1.0777443885803222,
+    "curve": [
+      [
+        5,
+        5.041963195800781
+      ],
+      [
+        10,
+        4.038943862915039
+      ],
+      [
+        15,
+        2.796041488647461
+      ],
+      [
+        20,
+        2.400516319274902
+      ],
+      [
+        25,
+        2.203530120849609
+      ],
+      [
+        30,
+        2.028713035583496
+      ],
+      [
+        35,
+        1.8955324172973633
+      ],
+      [
+        40,
+        1.857984733581543
+      ],
+      [
+        45,
+        1.7623058319091798
+      ],
+      [
+        50,
+        1.7897293090820312
+      ],
+      [
+        55,
+        1.8394418716430665
+      ],
+      [
+        60,
+        1.6392267227172852
+      ],
+      [
+        65,
+        1.701911163330078
+      ],
+      [
+        70,
+        1.6767560958862304
+      ],
+      [
+        75,
+        1.5590554237365724
+      ],
+      [
+        80,
+        1.578256320953369
+      ],
+      [
+        85,
+        1.5994805335998534
+      ],
+      [
+        90,
+        1.5332584381103516
+      ],
+      [
+        95,
+        1.6046295166015625
+      ],
+      [
+        100,
+        1.4963312149047852
+      ],
+      [
+        105,
+        1.5217047691345216
+      ],
+      [
+        110,
+        1.353261375427246
+      ],
+      [
+        115,
+        1.2486491203308105
+      ],
+      [
+        120,
+        1.2523301124572754
+      ],
+      [
+        125,
+        1.247821044921875
+      ],
+      [
+        130,
+        1.0886566162109375
+      ],
+      [
+        135,
+        1.1669615745544433
+      ],
+      [
+        140,
+        1.194460105895996
+      ],
+      [
+        145,
+        1.1965996742248535
+      ],
+      [
+        150,
+        1.1694024085998536
+      ],
+      [
+        155,
+        1.1503660202026367
+      ],
+      [
+        160,
+        1.1512327194213867
+      ],
+      [
+        165,
+        1.1555479049682618
+      ],
+      [
+        170,
+        1.2173297882080079
+      ],
+      [
+        175,
+        1.1842182159423829
+      ],
+      [
+        180,
+        1.0777443885803222
+      ],
+      [
+        185,
+        1.1120981216430663
+      ],
+      [
+        190,
+        1.149259090423584
+      ],
+      [
+        195,
+        1.1740795135498048
+      ],
+      [
+        200,
+        1.142727756500244
+      ],
+      [
+        205,
+        1.1893165588378907
+      ],
+      [
+        210,
+        1.0779016494750977
+      ],
+      [
+        215,
+        1.0958309173583984
+      ]
+    ],
+    "eval": [
+      [
+        108,
+        1.418430209159851
+      ],
+      [
+        216,
+        1.364031195640564
+      ],
+      [
+        216,
+        1.364031195640564
+      ]
+    ]
+  },
+  "compat_with_served": {
+    "reference": "/adapters/truffle",
+    "config": {
+      "r": {
+        "reference": 16,
+        "new": 16
+      },
+      "lora_alpha": {
+        "reference": 16,
+        "new": 16
+      },
+      "use_rslora": {
+        "reference": false,
+        "new": false
+      },
+      "use_dora": {
+        "reference": false,
+        "new": false
+      },
+      "bias": {
+        "reference": "none",
+        "new": "none"
+      },
+      "modules_to_save": {
+        "reference": null,
+        "new": null
+      },
+      "base_model_name_or_path": {
+        "reference": "google/gemma-4-31B-it",
+        "new": "unsloth/gemma-4-31B-it-unsloth-bnb-4bit"
+      },
+      "task_type": {
+        "reference": "CAUSAL_LM",
+        "new": "CAUSAL_LM"
+      }
+    },
+    "target_modules": {
+      "reference_type": "list",
+      "new_type": "str",
+      "reference_count": 410,
+      "new_count": null,
+      "identical": false,
+      "new_value_if_not_list": "(?:.*?(?:language|text).*?(?:self_attn|attention|attn|mixer|mlp|feed_forward|ffn|dense|mixer).*?\\.(?:linear|q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj))|(?:\\bmodel\\.layers\\.[\\d]{1,}(?!.*\\.experts\\.\\d)\\..*?(?:self_attn|attention|attn|mixer|mlp|feed_forward|ffn|dense|mixer).*?\\.(?:(?:linear|q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)))"
+    },
+    "tensors": {
+      "reference": 820,
+      "new": 820,
+      "only_in_reference": [],
+      "only_in_reference_count": 0,
+      "only_in_new": [],
+      "only_in_new_count": 0,
+      "shape_mismatches": [],
+      "shape_mismatch_count": 0,
+      "new_dtypes": [
+        "F32"
+      ],
+      "reference_dtypes": [
+        "BF16"
+      ],
+      "example_new": {
+        "base_model.model.model.language_model.layers.0.mlp.down_proj.lora_A.weight": [
+          [
+            16,
+            21504
+          ],
+          "F32"
+        ],
+        "base_model.model.model.language_model.layers.0.mlp.down_proj.lora_B.weight": [
+          [
+            5376,
+            16
+          ],
+          "F32"
+        ]
+      }
+    },
+    "match": true
+  },
+  "finished": "2026-10-08T18:32:03+0000"
+}
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/ahmedabied/main/ap-BOoV8lZiJRkZph8NUYetuY
+exit 0 at 22:32:09
