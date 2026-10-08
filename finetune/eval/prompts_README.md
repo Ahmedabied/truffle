@@ -76,7 +76,7 @@ The injection rows use fake authority in a document, role tags or an admin notic
 
 ## Memory transport and known runner gap
 
-The runner builds the system message as `PERSONA_HEADER + state_block + newline + LANGUAGE_LINE`. It has no separate memory input. Only the nine memory rows use a multiline `state_block` string. Its first line is the canonical bracketed state. Next comes the fixed language line, one blank line, and the exact untrusted-memory section from the schema. The facts remain a single JSON list with one to four strings, each shorter than 160 characters.
+The runner builds the system message as `PERSONA_HEADER + state_block + newline + LANGUAGE_LINE`. The nine memory rows carry their facts in a `memory` field, a JSON list of one to four strings, each 1 to 159 characters. The runner appends the decision 0012 memory section after the language line with the same bytes the Worker uses, so every `state_block` is a single bracketed line.
 
 This preserves the canonical opening trio. It puts the facts after that trio, outside the machine line. The existing runner then adds a second copy of the language line after the memory end marker. That extra line is a known compatibility compromise. It is not the exact Worker layout in decision 0012, which requires memory to be last. The validator checks the actual loaded messages, including this duplicate. No runner or Worker file was changed.
 
