@@ -16,6 +16,10 @@ import modal
 # Read these in the deploying shell. Non-secret settings also travel in the image.
 PLAN_B = os.environ.get("TRUFFLE_PLAN_B", "0") == "1"
 GPU_SNAPSHOT = os.environ.get("TRUFFLE_GPU_SNAPSHOT", "1") == "1"
+# One GPU type, or a comma list in priority order (Modal schedules the first
+# type with capacity). Default follows the plan. Example: TRUFFLE_GPU=L40S,A100-80GB
+_gpu_env = os.environ.get("TRUFFLE_GPU", "")
+GPU_TYPES = [g.strip() for g in _gpu_env.split(",") if g.strip()] if _gpu_env else ("A100-80GB" if PLAN_B else "L40S")
 USE_HF_SECRET = os.environ.get("TRUFFLE_USE_HF_SECRET", "0") == "1"
 AUTH_MODE = os.environ.get("TRUFFLE_AUTH_MODE", "bearer")
 if AUTH_MODE not in {"bearer", "proxy"}:
@@ -380,7 +384,7 @@ def _make_proxy(instance_id):
 
 @app.cls(
     image=image,
-    gpu="A100-80GB" if PLAN_B else "L40S",
+    gpu=GPU_TYPES,
     cpu=4,
     memory=98304 if PLAN_B else 65536,
     timeout=1800,
