@@ -21,5 +21,6 @@ Cap: $50 total ($20 loaded + Modal $30 free credit). Log every paid run.
 | 2026-10-08 | B11 promote test into scratch path `truffle-promotetest` (deleted after), bf16 cast | Modal | none (2 CPU) | about 1 | est. 0.00 (credit) |
 | 2026-10-08 | Brain woken by a Worker chat after idle (cold start plus 300 s idle tail) | Modal | L40S | about 15 | est. 0.50 (credit) |
 | 2026-10-08 | Fine-tune r16: Unsloth QLoRA, 1,720 rows, 2 epochs, 216 steps at about 10 s, eval loss 1.364 | Modal | L40S | 41 | est. 1.81 (credit) |
+| 2026-10-08 | Brain redeploy with adapter r16, cold start 495 s plus warm compare | Modal | L40S | about 10 | est. 0.35 (credit) |
 
 Running total: $0.00

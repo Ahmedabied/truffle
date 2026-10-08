@@ -4,13 +4,13 @@ Updated: 2026-10-08, 18:30 Oman. Session 03 (hardening and fleet prep while wait
 
 ## Phase
 
-**Build, day 2 evening.** Truffle talks on the web through the Workers AI fallback brain with real Muscat weather and real energy rules. Two red-team rounds applied. The dataset exists: 1,800 rows from Wave B. Eval prompt set fixed. Fine-tune and the Modal brain are not started (need Ahmed's Modal account and HF token).
+**Build, day 2 night: the core is complete.** Truffle talks on the web through the fine-tuned Gemma 4 31B brain on Modal (adapter r16, trained Oct 8 22:32), with the Workers AI fallback when the GPU sleeps. Two red-team rounds and Wave C applied. Base vs tuned eval running. Remaining: real steps from Ahmed's phone, the diary, the post.
 
 ## Live
 
 - Web (ASCII world, chat, judge mode at `/demo`): https://truffle-web.ahmed-abied.workers.dev
 - API (Worker + Durable Objects): https://truffle.ahmed-abied.workers.dev (`/health` says `modal:true` since Oct 8 21:30)
-- Brain: Modal app `truffle-brain-nosnap`, https://ahmedabied--truffle-brain-nosnap-brain-serve.modal.run (bearer token in `~/.config/truffle/brain_token`, never in chat), L40S, FP8 31B, 8K context, scale to zero after 300 s idle, cold start about 10 min, warm about 4 s. GPU snapshots off (the snapshot mode died silently at weight load).
+- Brain (revision r16, trained adapter): Modal app `truffle-brain-nosnap`, https://ahmedabied--truffle-brain-nosnap-brain-serve.modal.run (bearer token in `~/.config/truffle/brain_token`, never in chat), L40S, FP8 31B, 8K context, scale to zero after 300 s idle, cold start about 10 min, warm about 4 s. GPU snapshots off (the snapshot mode died silently at weight load).
 - Feeder APK (debug, sideload): draft GitHub release `v0.1.0-feeder` (not public until published)
 
 ## Done (all verified, all on main)
