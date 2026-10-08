@@ -16,6 +16,10 @@ import modal
 # Read these in the deploying shell. Non-secret settings also travel in the image.
 PLAN_B = os.environ.get("TRUFFLE_PLAN_B", "0") == "1"
 GPU_SNAPSHOT = os.environ.get("TRUFFLE_GPU_SNAPSHOT", "1") == "1"
+# Context length. 16K does not fit next to the FP8 31B weights on one L40S at
+# 0.88 utilisation (5.17 GiB KV needed, 5.1 GiB free, observed 2026-10-08).
+# Truffle prompts are a few thousand tokens, so 8K is the product setting.
+MAX_MODEL_LEN = int(os.environ.get("TRUFFLE_MAX_MODEL_LEN", "8192"))
 # One GPU type, or a comma list in priority order (Modal schedules the first
 # type with capacity). Default follows the plan. Example: TRUFFLE_GPU=L40S,A100-80GB
 _gpu_env = os.environ.get("TRUFFLE_GPU", "")
@@ -272,7 +276,7 @@ def _vllm_command():
         "vllm", "serve", str(MODEL_DIR),
         "--host", "127.0.0.1", "--port", str(VLLM_PORT),
         "--served-model-name", "truffle" if MERGED_REPO else "truffle-base",
-        "--dtype", "bfloat16", "--max-model-len", "16384",
+        "--dtype", "bfloat16", "--max-model-len", str(MAX_MODEL_LEN),
         "--gpu-memory-utilization", "0.88",
         "--max-num-seqs", "2", "--max-num-batched-tokens", "2048",
         "--reasoning-parser", "gemma4", "--chat-template", TEMPLATE_PATH,

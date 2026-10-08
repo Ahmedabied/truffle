@@ -12,6 +12,7 @@ Cap: $50 total ($20 loaded + Modal $30 free credit). Log every paid run.
 | 2026-10-08 | S01 dummy rank-16 LoRA on CPU | Modal | none (4 CPU) | 2 | est. 0.01 (credit) |
 | 2026-10-08 | S01 first cold start on L40S (snapshot mode): vLLM engine core died 44 s into weight load, no reply served | Modal | L40S | about 3 | est. 0.10 (credit) |
 | 2026-10-08 | S01 no-snapshot variant: deploy rejected (snap=True hook bug, fixed), no GPU time | Modal | none | 0 | 0.00 |
-| 2026-10-08 | S01 no-snapshot cold start attempt 2 | Modal | L40S | pending | pending |
+| 2026-10-08 | S01 no-snapshot cold start attempt 2: weights loaded in 21 s, graph compiled in 93 s, then vLLM refused 16K context (5.17 GiB KV needed, 5.1 GiB free) | Modal | L40S | about 6 | est. 0.20 (credit) |
+| 2026-10-08 | S01 no-snapshot cold start attempt 3 at 8K context | Modal | L40S | pending | pending |
 
 Running total: $0.00
