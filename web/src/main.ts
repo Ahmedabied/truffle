@@ -68,6 +68,9 @@ if (IN_APP) document.documentElement.classList.add("in-app");
 let backend: Backend;
 let creds: Creds | null = null;
 let summary: StateSummary | null = null;
+// Preserve the last real visit until a return has a current day/alive state.
+// A failed refresh or a language change must not consume an eligible absence.
+let awaitingFreshReturn = true;
 const savedLang = store.get<unknown>(K.lang);
 let lang: Lang = savedLang === "ar" || savedLang === "en" ? savedLang : (navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en");
 let langChosen = savedLang === "ar" || savedLang === "en";
@@ -140,7 +143,7 @@ function applyLang(): void {
   const ask = $<HTMLSelectElement>("ask");
   for (const o of Array.from(ask.options)) if (o.value) o.textContent = TIER_WORD[lang][o.value as Tier];
   document.title = DEMO ? `${c.title} | ${c.judgeTitle}` : c.title;
-  if (summary) render(summary);
+  if (summary) render(summary, false);
   chat.refresh();
   if (backend?.mock) $("judgeIntro").textContent = c.offlineIntro;
   $("demoMode").hidden = !DEMO || !!backend?.mock;
@@ -172,7 +175,8 @@ function explain(text: string): void {
   if (pocketDialog.open) $("pocketStatus").textContent = text;
 }
 
-function render(s: StateSummary): void {
+function render(s: StateSummary, fresh = true): void {
+  if (fresh) awaitingFreshReturn = false;
   summary = s;
   const st = s.state;
   world.set({
@@ -297,7 +301,7 @@ function refreshKeepsakes(): void {
   if (!key || !summary) return;
   if (key !== selectedCollection) { selectedGift = null; selectedCollection = key; giftListSignature = ""; sceneGiftSignature = "uninitialized"; $("chatGift").hidden = true; }
   const stored = readShelf(store.get(key));
-  const result = document.hidden || $<HTMLDialogElement>("pauseDialog").open
+  const result = awaitingFreshReturn || document.hidden || $<HTMLDialogElement>("pauseDialog").open
     ? { shelf: stored, gift: undefined }
     : returnToShelf(stored, Date.now(), summary.local_day, key, !summary.state.dead);
   store.set(key, result.shelf);
@@ -343,7 +347,7 @@ function refreshKeepsakes(): void {
 
 function markVisit(): void {
   const key = collectionKey();
-  if (!key || $<HTMLDialogElement>("pauseDialog").open) return;
+  if (!key || awaitingFreshReturn || $<HTMLDialogElement>("pauseDialog").open) return;
   const shelf = readShelf(store.get(key));
   shelf.seen = Math.max(shelf.seen, Date.now());
   store.set(key, shelf);
@@ -899,7 +903,7 @@ async function boot(): Promise<void> {
 
   setInterval(() => void poll(), POLL_MS);
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) void poll();
+    if (!document.hidden) { awaitingFreshReturn = true; void poll(); }
     else markVisit();
   });
 }

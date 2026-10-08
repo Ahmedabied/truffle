@@ -258,6 +258,29 @@ try {
     await homeAction(rp, "#retryBtn");
     await rp.locator("#recovery").waitFor({ state: "hidden" });
   });
+  await check("an offline return preserves its keepsake through heartbeat and recovery", async () => {
+    await rp.clock.install();
+    await rp.reload();
+    await rp.waitForFunction(() => !!window.truffle?.summary());
+    stateStatus = 503;
+    const leftAt = await rp.evaluate(() => {
+      const key = Object.keys(localStorage).find(k => k.startsWith("truffle.keepsakes@") && !k.endsWith("/read"));
+      const seen = Date.now() - 11 * 60_000;
+      localStorage.setItem(key, JSON.stringify({ version: 1, seen, gifts: [] }));
+      document.dispatchEvent(new Event("visibilitychange"));
+      return seen;
+    });
+    await rp.locator("#recovery").waitFor({ state: "visible" });
+    await rp.clock.runFor(61_000);
+    const stored = await rp.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k => k.startsWith("truffle.keepsakes@") && !k.endsWith("/read")))));
+    assert.equal(stored.seen, leftAt);
+    assert.equal(stored.gifts.length, 0);
+    stateStatus = 200;
+    await homeAction(rp, "#retryBtn");
+    await rp.locator("#recovery").waitFor({ state: "hidden" });
+    assert.equal(await rp.locator("#giftCount").innerText(), "1");
+    assert.equal((await summary(rp)).state.energy, fixture.state.energy);
+  });
   await check("404 on real-pet startup preserves saved identity and does not pair", async () => {
     const realContext = await context();
     await realContext.addInitScript(() => {
