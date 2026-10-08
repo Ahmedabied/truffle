@@ -10,6 +10,8 @@ Cap: $50 total ($20 loaded + Modal $30 free credit). Log every paid run.
 | 2026-10-08 | B06 hardening local tests and smoke: about 40 Workers AI calls | Cloudflare Workers AI | none | n/a | 0.00 (inside the free allowance) |
 | 2026-10-08 | S01 weight download to the Volume (RedHatAI FP8, 16 files, 2.5 min) | Modal | none (2 CPU) | 3 | est. 0.01 (credit) |
 | 2026-10-08 | S01 dummy rank-16 LoRA on CPU | Modal | none (4 CPU) | 2 | est. 0.01 (credit) |
-| 2026-10-08 | S01 smoke bench, first cold start on L40S, 1 sample per combination | Modal | L40S | pending | pending |
+| 2026-10-08 | S01 first cold start on L40S (snapshot mode): vLLM engine core died 44 s into weight load, no reply served | Modal | L40S | about 3 | est. 0.10 (credit) |
+| 2026-10-08 | S01 no-snapshot variant: deploy rejected (snap=True hook bug, fixed), no GPU time | Modal | none | 0 | 0.00 |
+| 2026-10-08 | S01 no-snapshot cold start attempt 2 | Modal | L40S | pending | pending |
 
 Running total: $0.00
