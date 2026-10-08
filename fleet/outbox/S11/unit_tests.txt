@@ -1,0 +1,9 @@
+
+ RUN  v5.0.3 /home/abied/Desktop/Truffle/worker
+
+
+ Test Files  11 passed (11)
+      Tests  238 passed (238)
+   Start at  12:47:41
+   Duration  1.08s (tests 65%, transform 27%, import 6%, worker 2%)
+
