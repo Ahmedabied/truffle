@@ -1,47 +1,39 @@
-# HANDOFF -> Session 03 (Thursday Oct 8, late morning)
+# HANDOFF -> Session 04 (Thursday Oct 8 evening or Friday Oct 9)
 
-Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this. Rules from Ahmed tonight: no co-author trailers on commits, only his identity; no Fable subagents (builders are Opus 5.5 with `model: "opus"`, research and spikes are GPT); the GPT plugin only runs when his message asks for GPT or astra.
+Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this. Rules from Ahmed: no co-author trailers on commits, only his identity; no Fable subagents (builders are Opus 5.5 with `model: "opus"`, research and spikes are GPT); the GPT plugin only runs when his message asks for GPT or astra; never play sound on the laptop; do not use the desktop control while he is away from it.
 
-## Where the art stands (done 11:45 Oman, deployed)
+## Where things stand (18:30 Oman, Oct 8)
 
-Ahmed did not like the first art pass: at phone size the 40 column grid read as pixel art made of two pixels. He pointed at the Hermes Agent site (Nous Research), where pictures are a fine dither of tiny glyphs. The world was rebuilt as a 100 x 68 luminance raster dithered into glyph density (decision 0011): `web/src/scene/raster.ts` (layers, Bayer dither, ellipsoid lighting), `web/src/scene/pet.ts` (the Truffle as a lit model, moods as geometry), `web/src/scene/world.ts` (sky, sun with glow and rays, blob clouds, dune heightfield with the cast shadow, weather, effects). The A01 and A02 sprite packs are no longer used by the app (kept in `fleet/outbox` as reference). Palette gained `cap`, `skin`, `white` and `glow` inks. The grid HUD is gone; the HTML HUD line shows days and steps when dead. Screenshot any scene with `?mock=1&scene=<content|affectionate|asleep|tired|wilting|burrowed|dead|spore|sprout|elder>&hour=<0..24>&moon=<0..1>&wx=<code>&rain=1&mm=<mm>&wind=<kmh>&temp=<C>&country=<CC>` through `npx vite preview` and headless Chrome (see the session log). Still open: phone check of the 6.7 px glyphs and the frame rate on Ahmed's Samsung (twelve layers of 6,800 cells), and taste: the ground texture could carry more ink to feel closer to the Hermes engravings, the pupils are one cell at phone size, the Sprout's leaf is faint. Reference screenshots: `docs/assets/2026-10-08_world_engraving_*.png`.
+Everything that could be built without Ahmed is built, tested, deployed and pushed. See `sessions/2026-10-08_session-03_hardening_and_wave_b.md`. The dataset exists: 1,800 rows, 1,720 train and 80 hold-out. The fine-tune, the Modal brain and real steps are the only open lines, and all three wait on Ahmed.
 
-## Ahmed's first message should say
+## Ahmed's list (what unblocks what)
 
-"Continue the Truffle build. Use the astra fleet (GPT) for Wave B and red-team, Opus builders for code." Plus which of the morning items below are done.
+1. Modal: https://modal.com/login (Continue with GitHub), add a card under Settings, then `uv tool install modal && modal setup` on the laptop. Unblocks S01 (serve the brain) and the fine-tune.
+2. Hugging Face read token at `~/.config/truffle/hf_token`, mode 600. Unblocks the weight download.
+3. "Go" for the S01 bench, about USD 1 to 2 on an L40S.
+4. 30 seed lines in `finetune/seed/TRUFFLE_VOICE_SEED.md`. Unblocks the seed-anchored pass D19 to D21 (decision 0014). The main dataset no longer waits on this.
+5. Feeder APK from the draft release `v0.1.0-feeder` on the Samsung, pair, feed. Unblocks real steps and the day-envelope decision.
+6. Two minutes with https://truffle-web.ahmed-abied.workers.dev/?fps=1 on the phone; report the fps numbers and anything ugly.
+7. Four yes or no answers: Arabic stage names; protected day on a missing forecast; keep the 50,000 cap with an honest message; make `day` required. Recommendation on all four: yes. Each yes gets a decision record and a small packet.
 
-## Ahmed's 15 minutes (nothing else can start the fine-tune without these)
+## Session 04 order of work
 
-1. Modal: https://modal.com/login, Continue with GitHub, add a card (GPU runs need one even with the free credit), then on the laptop: `uv tool install modal && modal setup`. Tell the session when done; do not paste tokens in chat.
-2. Hugging Face: create a read token at https://huggingface.co/settings/tokens and put it in `~/.config/truffle/hf_token` (mode 600). The session reads the file, never the chat.
-3. Seed lines: 30 lines in `finetune/seed/TRUFFLE_VOICE_SEED.md` by noon. Wave B waits on this.
-4. Phone: download the APK from the draft release `v0.1.0-feeder` (GitHub, Releases, drafts are visible to you), sideload, open https://truffle-web.ahmed-abied.workers.dev, copy the phrase from Settings, paste it in the feeder, grant Health Connect steps, tap Feed now. If Health Connect shows no steps, Samsung Health > Settings > Health Connect > allow. Fallback: Tasker recipe in `feeder-android/README.md`.
-5. Look at the web app on the phone for 2 minutes and tell the session what is ugly (fonts, speed, Arabic).
-
-## Session's first hour
-
-1. Run S01 for real (packet result in `fleet/outbox/S01/RESULT.md`, commands in `brain-modal/README.md`): download weights to the Volume, make the dummy LoRA, deploy, bench. Estimate before running: weights download is CPU time, bench about 20 GPU minutes on L40S, about USD 1 to 2. Log in `fleet/costs.md`. Decide Plan A or B, write `decisions/0012_serving_plan.md`.
-2. `cd worker && wrangler secret put MODAL_URL` and `MODAL_TOKEN`, `wrangler deploy`, `scripts/smoke.sh https://truffle.ahmed-abied.workers.dev`, confirm `/health` says `modal:true` and a chat says `brain: modal`.
-3. When the seed lines land: launch Wave B (18 shards, GPT agents, one per mood x lang) with `finetune/data/schema.md`, `finetune/data/examples.jsonl` and the seed as inputs. The generator prompt must forbid em and en dashes (the filter drops them) and must use the exact system message format. Then one Opus reviewer runs `python3 -I finetune/filter.py` and reports.
-4. Launch B04 (Opus) to finish the feeder: decide compileSdk 36 plus Health Connect 1.1.0 stable, verify real Samsung counts against Samsung Health within 2 percent, keep location off.
-
-## Follow-ups from tonight (cut packets as needed)
-
-- S10 items not yet applied: feed admission caps (50,000 per day, 20 steps per second), coordinate move bounds and latching a protected day, sanitise weather text to a fixed vocabulary, facts as untrusted data with a 60 cap and wipe at death, uniform 401 for unknown phrase and wrong secret, demo chats bounded. Proposed goldens in `fleet/outbox/S10/proposed_goldens.json` (64 of 70 already pass; adopt after decisions).
-- S03: a high-tier Arabic reply once spent all its tokens thinking and produced nothing. Add a retry with thinking off when the visible reply is empty, and count it in the log.
-- B02 open point: the state block always shows the tier energy allows, even when the user asked for a lower one. Decide whether the block should show the charged tier.
-- Web: phone verification; HUD language decision; Arabic stage names; the demo page clears the heat toggle after time travel (by design, confirm).
-- Eval fairness: `finetune/eval/run_eval.py` builds its own system prompt from the schema; the Worker's `buildSystemPrompt` adds guidance lines after the canonical trio. For the base vs tuned table use the same builder, or evaluate through the Worker.
-- README still says pre-build; update after the Modal brain is live.
+1. If Modal is set up: run S01 for real (`brain-modal/README.md`, packet result in `fleet/outbox/S01/RESULT.md`). Download weights to the Volume, dummy LoRA, deploy, bench. Log in `fleet/costs.md`. Decide Plan A or B, write `decisions/0015_serving_plan.md`. Then `cd worker && wrangler secret put MODAL_URL` and `MODAL_TOKEN`, deploy, smoke, confirm `/health` says `modal:true` and a chat says `brain: modal`.
+2. If the HF token exists: the fine-tune. `finetune/train.py` dry-ran on the box with a tiny Gemma; the real run is Unsloth QLoRA on a 48 GB GPU on Modal, data from `finetune/data/generated/train.jsonl`. Add the repeat factor for D19 to D21 before the run if the seed-anchored shards exist. Estimate before running; expect under USD 5.
+3. Eval: `finetune/eval/run_eval.py --prompts finetune/eval/prompts.jsonl --holdout finetune/data/generated/eval_holdout.jsonl` base vs tuned. The harness builds the trio from the filter's constants, so it matches the Worker's trio; the Worker adds guidance lines for the un-tuned brain only. For the tuned brain, drop the EXTRAS in `worker/src/prompt.ts` when `brain: modal` (small packet, not done yet).
+4. If the seed lines landed: render D19 to D21 from `fleet/packets/D_template.md` (mode with seed lines, 60 rows each, every row grows from one seed line, en, ar, mixed). GPT if the plan is alive, else Opus.
+5. Decisions from Ahmed's answers: write the records, cut one Opus packet for the code (protected day latch in the DO, capped-feed message in the Worker and web, `day` required in the route).
+6. README still says pre-build. Update after the Modal brain is live. Draft the DEV post from `docs/06_writeup_plan.md`; the before and after numbers come from step 3.
 
 ## Things that will bite
 
 - `request.cf` is undefined in `wrangler dev`: defaults are Muscat, Asia/Muscat, OM, ar.
-- Workers AI thinking counts against `max_tokens`; the router adds 1,024 tokens at high tier. Reasoning arrives in `reasoning_content` (and sometimes `reasoning`) and never reaches the client.
-- The per-IP spawn limit (5 per hour) hits repeated testing from one IP.
-- Never let an agent download weights to the laptop (9 GB free). Box has 77 GB.
+- Per-IP spawn limit (5 an hour) and the new failed-lookup limit (30 a minute per IP and phrase) hit repeated testing from one IP. The smoke script tolerates the first.
+- Never let an agent download weights to the laptop (9 GB free). Box has 77 GB. GPU work is Modal.
+- `finetune/data/generated/` is gitignored. Regenerate with the filter command in the session log.
+- The Worker ignores `day_tz` today; the feeder sends it. Making `day` required is a one-line change in `worker/src/index.ts` plus a test, after Ahmed's yes.
 - DEV agent-session upload sends the raw transcript before redaction; slice and sanitise locally first (`fleet/outbox/S07/RESULT.md`).
 
-## Deliverable for end of Thursday
+## Deliverable for end of Friday
 
-Real steps from Ahmed's Samsung arrive at `/feed`. The Modal brain answers at least one chat (`brain: modal`). Wave B shards filtered into `train.jsonl` and `eval_holdout.jsonl`. Diary day 1 written by Ahmed after an evening walk.
+Modal brain answers a chat (`brain: modal`). LoRA trained on the 1,800 rows (plus the seed-anchored shards if they exist). Eval table base vs tuned in `finetune/eval/RESULTS.md`. Real steps from Ahmed's Samsung at `/feed`.
