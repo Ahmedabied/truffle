@@ -106,6 +106,8 @@ export interface StateSummary {
   next_midnight_ms: number | null;
   weather: {
     text: string;
+    /** Last successful forecast retrieval; zero marks an invalidated location. */
+    fetched_ms: number;
     apparent_c: number | null;
     daytime_max_c: number | null;
     precipitation_mm: number;

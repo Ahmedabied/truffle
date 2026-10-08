@@ -538,6 +538,7 @@ describe("D09 coalesced, revision-aware weather refresh (S11-11)", () => {
     const r = await f.obj.getState(f.secret);
     expect(net.count).toBe(1);
     expect(r.ok && r.value.weather).not.toBeNull();
+    expect(r.ok && r.value.weather?.fetched_ms).toBe(stale().fetched_ms);
     advance(4 * min);
     await f.obj.getState(f.secret);
     expect(net.count).toBe(1);

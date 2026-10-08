@@ -325,6 +325,7 @@ export class TruffleDO extends DurableObject<Env> {
       weather: w
         ? {
             text: weatherShown!,
+            fetched_ms: w.fetched_ms,
             apparent_c: w.current_apparent_c,
             daytime_max_c: m.weather_days[localDayKey(now, m.tz)] ?? w.daytime_max_c,
             precipitation_mm: w.precipitation_mm,
