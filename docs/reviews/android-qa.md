@@ -106,9 +106,12 @@ with a synthetic aggregate fixture. Tasker itself was not run.
 
 After the public web deployment (`283e981`), Chrome and the legacy feeder held
 different pets. Neither was silently replaced. Ahmed explicitly chose the pet
-currently in Chrome. The legacy feeder preferences were kept privately outside
-the repository. Chrome's **Open in the Truffle app** handoff then produced native
-ownership of that same pet, verified without printing either phrase or key.
+currently in Chrome. A private preferences snapshot was taken outside the repository immediately
+before the observed handoff, but it already matches the chosen pet; it does not
+prove recoverability of the earlier legacy phrase. Chrome's **Open in the Truffle
+app** action and subsequent checks confirmed native ownership of the chosen pet,
+without printing either phrase or key. The precise adoption moment may include a
+user action while the phone was open.
 
 The updated Chrome world reported **30 fps**, compose **0.7 ms**, paint **1.2 ms**
 on the SM-A366B. This is an on-screen sample, not a sustained performance trace.

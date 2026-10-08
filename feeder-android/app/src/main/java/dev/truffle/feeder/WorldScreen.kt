@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -51,14 +50,6 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
         pairStatus.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         make.setOnClickListener { activity.confirmPair() }
         root.addView(pairPanel)
-        root.addView(LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            addView(Button(activity, null, android.R.attr.borderlessButtonStyle).apply {
-                text = "refresh"
-                setOnClickListener { refresh() }
-            })
-        })
         root.addView(web, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         renderPairing()
     }

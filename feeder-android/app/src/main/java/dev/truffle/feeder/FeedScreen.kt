@@ -96,6 +96,11 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
         })
         val advancedStart = content.childCount
         label("Connection", 20f)
+        content.addView(Button(activity).apply {
+            text = "Reload World"
+            NotebookStyle.button(this)
+            setOnClickListener { activity.refreshWorld() }
+        })
         val serverLabel = label("Server URL (API origin)")
         server = EditText(activity).apply {
             id = R.id.server_url

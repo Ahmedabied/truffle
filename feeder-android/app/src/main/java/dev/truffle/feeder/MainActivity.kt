@@ -220,7 +220,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         NativeWalkStore(this).active()
         NativeTracking.reconcileStop(this)
-        world.onResume()
+        if (current == Tab.WORLD) world.onResume() else world.onPause()
         feed.renderStatus()
         lifecycleScope.launch { feed.refreshAccess() }
         if (current == Tab.WALK) walk.load()
@@ -245,6 +245,7 @@ class MainActivity : ComponentActivity() {
     private fun show(tab: Tab) {
         current = tab
         world.view.isVisible = tab == Tab.WORLD
+        if (tab == Tab.WORLD) world.onResume() else world.onPause()
         walk.view.isVisible = tab == Tab.WALK
         feed.view.isVisible = tab == Tab.FEED
         for ((t, item) in tabs) {
@@ -300,6 +301,8 @@ class MainActivity : ComponentActivity() {
         show(Tab.WORLD)
         lifecycleScope.launch { feed.refreshAccess() }
     }
+
+    fun refreshWorld() { world.refresh(); show(Tab.WORLD) }
 
     fun confirmOrigins(apiText: String, webText: String) {
         val api = AppLink.parseOrigin(apiText)

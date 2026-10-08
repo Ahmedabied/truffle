@@ -16,7 +16,7 @@ A bottom bar switches between them. One Activity, three plain views.
   phrase. The page gets the credentials once per fresh load in the URL fragment,
   `#creds=<phrase>.<secret>`. A fragment is never sent to a server. The page
   stores them and strips the fragment. There is no query token, no cookie and no
-  JavaScript bridge. **refresh** reloads the page. Back moves through the page's
+  JavaScript bridge. **Reload World** in Feed connection settings reloads the page without a permanent toolbar. Back moves through the page's
   own history first.
 - **Walk.** A walking notebook with Today, 7 days and 30 days views. Choose Health Connect or the direct phone counter. Steps are drawn as monospace text in the Truffle palette:
   today by hour, the last 30 days by day, today's total, the 7 day average, the
