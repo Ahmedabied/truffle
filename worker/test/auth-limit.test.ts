@@ -106,3 +106,27 @@ describe("R02 uniform auth failures (S11-05)", () => {
     expect((await state(phrase, secret)).status).toBe(429);
   });
 });
+
+describe("auth limiter: reserve before the lookup, keyed by IP and phrase", () => {
+  it("a concurrent burst of wrong secrets cannot reach the Truffle more than the limit allows", async () => {
+    const burst = await Promise.all(Array.from({ length: 100 }, () => state(phrase, generateSecret())));
+    const codes = burst.map((r) => r.status);
+    expect(codes.filter((s) => s === 401).length).toBe(AUTH_FAILS_PER_MINUTE);
+    expect(codes.filter((s) => s === 429).length).toBe(100 - AUTH_FAILS_PER_MINUTE);
+    expect(truffles.gets).toBeLessThanOrEqual(AUTH_FAILS_PER_MINUTE);
+  });
+
+  it("a lockout on one phrase does not lock other phrases from the same address", async () => {
+    for (let i = 0; i < AUTH_FAILS_PER_MINUTE; i++) expect((await state(phrase, generateSecret())).status).toBe(401);
+    expect((await state(phrase, secret)).status).toBe(429);
+    const other = generatePhrase();
+    expect((await state(other, generateSecret())).status).toBe(401);
+  });
+
+  it("successful lookups give the reserved try back, so an owner never spends the budget", async () => {
+    for (let i = 0; i < AUTH_FAILS_PER_MINUTE - 1; i++) expect((await state(phrase, generateSecret())).status).toBe(401);
+    for (let i = 0; i < 10; i++) expect((await state(phrase, secret)).status).toBe(200);
+    expect((await state(phrase, generateSecret())).status).toBe(401);
+    expect((await state(phrase, generateSecret())).status).toBe(429);
+  });
+});

@@ -12,8 +12,23 @@ export interface LimitRule {
 }
 
 export class LimiterDO extends DurableObject<Env> {
+  // A real object serialises calls through its input gate. This queue keeps
+  // read-then-write pairs atomic in any harness too, so a concurrent burst
+  // can never read the same count twice.
+  private queue: Promise<unknown> = Promise.resolve();
+
+  private serial<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(fn, fn);
+    this.queue = run.catch(() => {});
+    return run;
+  }
+
   /** Counts one hit only if every rule allows it. */
-  async hit(rules: LimitRule[]): Promise<{ allowed: boolean; retry_after_s: number; rule?: string }> {
+  hit(rules: LimitRule[]): Promise<{ allowed: boolean; retry_after_s: number; rule?: string }> {
+    return this.serial(() => this.hitNow(rules));
+  }
+
+  private async hitNow(rules: LimitRule[]): Promise<{ allowed: boolean; retry_after_s: number; rule?: string }> {
     const now = Date.now();
     const next: Record<string, RateWindow> = {};
     for (const r of rules) {
@@ -36,6 +51,22 @@ export class LimiterDO extends DurableObject<Env> {
       if (!p.allowed) return { allowed: false, retry_after_s: p.retry_after_s, rule: r.name };
     }
     return { allowed: true, retry_after_s: 0 };
+  }
+
+  /** Give back one counted hit in the current window (a reserved try that succeeded). */
+  release(rules: LimitRule[]): Promise<void> {
+    return this.serial(() => this.releaseNow(rules));
+  }
+
+  private async releaseNow(rules: LimitRule[]): Promise<void> {
+    const now = Date.now();
+    const next: Record<string, RateWindow> = {};
+    for (const r of rules) {
+      const w = await this.ctx.storage.get<RateWindow>(r.name);
+      if (!w || w.count <= 0 || now - w.start_ms >= r.windowMs || now < w.start_ms) continue;
+      next[r.name] = { start_ms: w.start_ms, count: w.count - 1 };
+    }
+    if (Object.keys(next).length) await this.ctx.storage.put(next);
   }
 
   async alarm(): Promise<void> {
