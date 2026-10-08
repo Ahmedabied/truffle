@@ -6,7 +6,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 
-const val DEFAULT_SERVER = "https://truffle.<account>.workers.dev"
+/** The old placeholder from the feeder days. It is not a valid origin. */
+const val PLACEHOLDER_SERVER = "https://truffle.<account>.workers.dev"
 
 data class FeedConfig(val phrase: String, val server: String) {
     val endpoint: String get() = "$server/feed"

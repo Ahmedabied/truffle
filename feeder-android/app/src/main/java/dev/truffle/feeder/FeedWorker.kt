@@ -31,7 +31,7 @@ class FeedWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
             settings.setStatus(missing.message.orEmpty(), needsPermission = true)
             Result.failure()
         } catch (_: SecurityException) {
-            if (retryRun) settings.setStatus("Open Truffle Feeder and tap Feed now to finish this sync.")
+            if (retryRun) settings.setStatus("Open Truffle and tap Feed now to finish this sync.")
             else settings.setStatus("Grant steps permission. Health Connect access was revoked.", needsPermission = true)
             Result.failure()
         } catch (unavailable: HealthUnavailableException) {
@@ -47,7 +47,7 @@ class FeedWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
             settings.setStatus(invalid.message ?: "Check the pairing phrase and server URL.")
             Result.failure()
         } catch (_: Exception) {
-            settings.setStatus("Sync failed. Open Truffle Feeder and try Feed now.")
+            settings.setStatus("Sync failed. Open Truffle and try Feed now.")
             Result.failure()
         }
     }

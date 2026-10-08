@@ -32,14 +32,22 @@ fun feederPreferences(context: Context): SharedPreferences =
     context.getSharedPreferences("feeder", Context.MODE_PRIVATE)
 
 /**
- * Stored phrase, server, status and the Truffle's active zone. Nothing here
- * ever clears the phrase: only the person typing in the field changes it.
+ * Stored phrase, server, status and the Truffle's active zone, plus the pet's
+ * secret and the web origin once the app owns the pet. Feeding never clears the
+ * phrase. Only the person typing, or "forget this truffle", changes it.
  */
 class FeedSettings(private val store: FeedStore) {
     constructor(context: Context) : this(PreferencesStore(feederPreferences(context)))
 
     val phrase: String get() = store.getString("phrase").orEmpty()
-    val server: String get() = store.getString("server") ?: DEFAULT_SERVER
+    /** The API origin. The old placeholder from 0.1 counts as unset. */
+    val server: String get() = store.getString("server")?.takeIf { it.isNotBlank() && it != PLACEHOLDER_SERVER } ?: DEFAULT_API_ORIGIN
+    val webOrigin: String get() = AppLink.parseOrigin(store.getString("web_origin")) ?: DEFAULT_WEB_ORIGIN
+    /** The raw web origin text, for the settings field. */
+    val webOriginText: String get() = store.getString("web_origin")?.takeIf { it.isNotBlank() } ?: DEFAULT_WEB_ORIGIN
+
+    /** The pet this app owns, or null. Present only after pairing or a valid deep link. */
+    val creds: TruffleCreds? get() = TruffleCreds.of(store.getString("phrase"), store.getString("secret"))
     val status: String get() = store.getString("status") ?: "Pair with Truffle, then tap Feed now."
     val needsPermission: Boolean get() = store.getBoolean("needs_permission")
 
@@ -55,6 +63,31 @@ class FeedSettings(private val store: FeedStore) {
             if (changed) putString("active_tz", "")
             putString("phrase", phrase)
             putString("server", server)
+        }
+    }
+
+    fun saveWebOrigin(text: String) {
+        store.edit { putString("web_origin", text) }
+    }
+
+    /** The app now owns this pet. The feeder phrase follows it. */
+    fun saveCreds(creds: TruffleCreds) {
+        val changed = creds.phrase != phrase.trim().lowercase()
+        store.edit {
+            if (changed) putString("active_tz", "")
+            putString("phrase", creds.phrase)
+            putString("secret", creds.secret)
+        }
+    }
+
+    /** Drops the pet from this phone. Server and web origins stay. */
+    fun forget() {
+        store.edit {
+            putString("phrase", "")
+            putString("secret", "")
+            putString("active_tz", "")
+            putString("status", "Forgotten. Make a truffle or open one from the web.")
+            putBoolean("needs_permission", false)
         }
     }
 

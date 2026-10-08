@@ -1,8 +1,55 @@
-# Truffle Feeder
+# The Truffle app
 
 A small Kotlin app with plain Android Views. Android 9 or newer is required.
-It reads today's aggregated Health Connect steps. It sends the absolute total to
+The directory is still `feeder-android/`. The application ID is still
+`dev.truffle.feeder`, so version 0.2.0 installs over the 0.1 feeder in place.
+Decision record: `decisions/0016_truffle_phone_app.md`.
+
+## Three screens
+
+A bottom bar switches between them. One Activity, three plain views.
+
+- **World.** The deployed web app in a WebView
+  (`https://truffle-web.ahmed-abied.workers.dev`). On first run with no pet,
+  World shows one button, **make my truffle**. It calls `POST /pair` on the API
+  origin, keeps the phrase and secret in private storage, and fills the Feed
+  phrase. The page gets the credentials once per fresh load in the URL fragment,
+  `#creds=<phrase>.<secret>`. A fragment is never sent to a server. The page
+  stores them and strips the fragment. There is no query token, no cookie and no
+  JavaScript bridge. **refresh** reloads the page. Back moves through the page's
+  own history first.
+- **Walk.** Health Connect steps drawn as monospace text in the Truffle palette:
+  today by hour, the last 30 days by day, today's total, the 7 day average, the
+  best day in 30, the streak of days at or above 3,000 steps, and today's distance
+  when that grant exists. Steps and distance only. No calories, weight, heart rate
+  or sleep. The numbers stay on the phone. The text builders live in
+  `WalkChart.kt` and are unit tested.
+- **Feed.** The 0.1 feeder, same behaviour. The phrase comes from the app's
+  credentials and is read-only while the app owns the pet. Settings for the API
+  origin and the web origin sit here. **Forget this truffle** removes the phrase,
+  the secret and the page's stored data from the phone. The pet stays on the server.
+
+The app reads only aggregated totals. Feed sends today's absolute total to
 `POST /feed`. It never sends raw step records.
+
+### Moving a web pet into the app
+
+The web app's **Open in the Truffle app** link launches
+`truffle://pair?creds=<phrase>.<secret>`. The custom scheme goes from the browser
+to this app and never reaches a server. The app checks both formats (three
+lowercase words, and a base64url secret of 16 to 64 characters), stores them, and
+shows the World. If the phone already holds a different pet, it asks first. The
+link is dropped after one use, so recents cannot replay it.
+
+### WebView settings
+
+JavaScript and DOM storage on. File and content access off. Mixed content never
+allowed. Geolocation off. No pop-up windows. No JavaScript interface. The user
+agent is the default plus ` TruffleApp/0.2`, so the page can hide its own pairing
+UI and the app link. Only HTTPS pages on the configured web origin load inside.
+A tapped link to any other web address opens in the browser. Other schemes are
+dropped. WebView remote debugging is off even in this debug build, so USB
+inspection cannot read the stored secret.
 
 ## Samsung first run
 
@@ -16,22 +63,24 @@ It reads today's aggregated Health Connect steps. It sends the absolute total to
 4. Copy `app-debug.apk` to the phone. Open it in My Files. Allow this one install
    from that source if prompted. Turn that source's install permission off again.
    The application ID is `dev.truffle.feeder`.
-5. Open the Truffle web app. Create a pet and copy its three-word pairing phrase.
-   Enter that phrase in the feeder. Replace
-   `https://truffle.<account>.workers.dev` with your deployed HTTPS Worker origin.
-   Do not add `/feed`. Do not put an API token in the URL.
-6. Tap **Grant steps permission**. Allow Steps read access. On devices that expose
+5. Open Truffle. Tap **make my truffle** on the World screen. Or open the web
+   app in the phone's browser and tap **Open in the Truffle app** to bring an
+   existing pet. The API origin defaults to
+   `https://truffle.ahmed-abied.workers.dev`. To use your own Worker, change it
+   under Feed before pairing. Do not add `/feed`. Do not put a token in the URL.
+6. Tap **Grant steps permission**. Allow Steps read access. Distance is asked
+   in the same dialog. It is optional and only adds a line to Walk. On devices that expose
    background reads, also allow background health access. If the dialog stops
    appearing after a denial, use **Health Connect settings** to grant it there.
 7. Tap **Feed now**. The status should show the sent total, the Truffle's day and
    the returned pet state.
    Check today's total against Samsung Health after it finishes syncing. Target
    a difference below 2%. No phone comparison has been performed by this packet.
-8. For hourly sync, set **Settings > Apps > Truffle Feeder > Battery >
+8. For hourly sync, set **Settings > Apps > Truffle > Battery >
    Unrestricted**. Remove it from Samsung's sleeping and deep sleeping app lists.
    Keep Samsung Health able to run too. No battery exemption permission is
    requested by this app.
-9. Reopen the feeder after a reboot or force stop. This build has no boot
+9. Reopen the app after a reboot or force stop. This build has no boot
    permission. Android can delay hourly work for Doze, battery, or network limits.
 
 Background support is checked with
@@ -63,9 +112,9 @@ ssh workstation 'cd ~/truffle-build/feeder-android && \
          ANDROID_HOME=/home/tamlik/Android/Sdk && \
   ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon \
     -Dorg.gradle.java.home=/home/tamlik/jdks/jdk-17.0.20.1+1'
-mkdir -p /home/abied/Desktop/Truffle/fleet/outbox/S02/raw
+mkdir -p /home/abied/Desktop/Truffle/fleet/outbox/B14/raw
 scp workstation:~/truffle-build/feeder-android/app/build/outputs/apk/debug/app-debug.apk \
-  /home/abied/Desktop/Truffle/fleet/outbox/S02/raw/app-debug.apk
+  /home/abied/Desktop/Truffle/fleet/outbox/B14/raw/app-debug.apk
 ```
 
 The workstation JBR is Java 25. Gradle 8.12's build daemon uses the already
@@ -111,6 +160,7 @@ The verified debug APK requests exactly these permissions:
 
 - `android.permission.INTERNET`
 - `android.permission.health.READ_STEPS`
+- `android.permission.health.READ_DISTANCE` (since 0.2.0, Walk screen only, optional)
 - `android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND`
 
 WorkManager normally merges network-state, wake-lock, boot, and foreground-service
@@ -179,7 +229,7 @@ an unknown phrase, so 404 gets the same line as 401.
   Only known display fields are shown. Raw HTTP error bodies are not displayed.
 - The editable server must be an HTTPS origin. Redirects are rejected to avoid
   sending the phrase to another server. No custom trust manager is installed.
-- Phrase and server URL live in private SharedPreferences. The latest status is
+- Phrase, secret, API origin and web origin live in private SharedPreferences. The latest status is
   stored there too. Backup and device transfer are disabled. There is no analytics
   SDK, location trail, or application logging of payloads.
 - The permission rationale Activity supports both the Health Connect APK intent
@@ -274,6 +324,12 @@ Do not run both bridge and feeder hourly jobs for normal use. Identical absolute
 counts are safe for the engine, but duplicate calls waste the phrase rate limit.
 
 ## Verification completed
+
+B14 (0.2.0, the Truffle app): the workstation build, 54 JVM unit tests and
+Android lint passed. Lint has no errors. The packaged manifest has the four
+permissions above, label Truffle, versionCode 2, and the `truffle://pair` filter.
+The three screens, pairing and the deep link are not yet checked on a phone. See
+`fleet/outbox/B14/RESULT.md` from the repository root.
 
 B07 (SDK 36): the workstation build, 27 JVM unit tests and Android lint passed.
 Lint has no errors and 20 warnings (English-only strings, two newer library

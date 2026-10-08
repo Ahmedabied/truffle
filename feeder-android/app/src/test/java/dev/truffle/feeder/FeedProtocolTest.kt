@@ -48,7 +48,7 @@ class FeedProtocolTest {
         for (phrase in listOf("", "sand-moon", "sand moon fig", "sand-moon-fig-extra", "sand-\"-fig")) {
             assertThrows(IllegalArgumentException::class.java) { FeedConfig.parse(phrase, config.server) }
         }
-        for (url in listOf(DEFAULT_SERVER, "http://example.org", "https://user:pass@example.org", "https://example.org/feed", "https://example.org?q=x", "https://example.org#x", "https://example.org:99999")) {
+        for (url in listOf(PLACEHOLDER_SERVER, "http://example.org", "https://user:pass@example.org", "https://example.org/feed", "https://example.org?q=x", "https://example.org#x", "https://example.org:99999")) {
             assertThrows(IllegalArgumentException::class.java) { FeedConfig.parse(config.phrase, url) }
         }
     }
