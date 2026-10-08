@@ -8,41 +8,7 @@ import type { TruffleState } from "../../worker/src/engine";
 import type { Backend, ChatEvent, Creds, Lang, PairResult, StateSummary, WeatherSummary } from "./types";
 import { ApiError } from "./errors";
 import { MOMENT_KINDS, type Moment, type MomentKind } from "./moments";
-
-const STAGE_ORDER = ["Spore", "Sprout", "Truffle", "Elder"] as const;
-const LIFETIME_MARKS = [10_000, 50_000, 100_000, 250_000, 500_000];
-const STREAK_MARKS = [3, 7, 14, 30];
-
-/**
- * A small stand-in for the engine's momentsFor (decision 0017, B12) so the
- * offline demo can show proud moments. The Worker's function is the law; this
- * only follows the same rules closely enough for screenshots and judge mode.
- */
-function mockMoments(before: TruffleState, after: TruffleState, firedToday: Set<MomentKind>, midnight: boolean): { kind: MomentKind; value: number }[] {
-  const out: { kind: MomentKind; value: number }[] = [];
-  const once = (kind: MomentKind, value: number) => {
-    if (firedToday.has(kind)) return;
-    firedToday.add(kind);
-    out.push({ kind, value });
-  };
-  if (midnight) {
-    let run = 0;
-    for (let i = after.history7.length - 1; i >= 0 && after.history7[i] >= 3000; i--) run++;
-    if (STREAK_MARKS.includes(run)) out.push({ kind: "streak", value: run });
-    return out;
-  }
-  const b = before.steps_today;
-  const a = after.steps_today;
-  const si = (st: TruffleState) => STAGE_ORDER.indexOf(st.stage);
-  if (si(after) > si(before)) out.push({ kind: "stage_up", value: si(after) });
-  const best = Math.max(0, ...before.history7);
-  if (before.history7.length && a > best && b <= best && a >= 2000) once("best_day", a);
-  if (after.avg7 > 0 && b < after.avg7 && a >= after.avg7) once("beat_avg7", a);
-  if (b < 10_000 && a >= 10_000) once("day_10k", a);
-  if (after.burrowed && b < 2000 && a >= 2000) once("heat_day_indoor", a);
-  for (const m of LIFETIME_MARKS) if (before.lifetime_steps < m && after.lifetime_steps >= m) out.push({ kind: "lifetime", value: m });
-  return out;
-}
+import { momentsFor, nextStreak, ONCE_PER_DAY, trailingStreak } from "../../worker/src/moments";
 
 const PHRASE = "sand-moon-fig";
 const SECRET = "offline-demo";
@@ -126,6 +92,8 @@ export class MockBackend implements Backend {
   private country: string;
   private moments: Moment[] = [];
   private firedToday = new Set<MomentKind>();
+  private streak = 0;
+  private generation = 0;
 
   constructor(params: URLSearchParams, demo: boolean) {
     this.key = demo ? "truffle.mock.demo" : "truffle.mock.main";
@@ -160,6 +128,11 @@ export class MockBackend implements Backend {
     } catch {
       this.moments = [];
     }
+    try {
+      const meta = scene ? null : JSON.parse(localStorage.getItem(this.key + ".rewardState") || "null");
+      this.streak = Number.isSafeInteger(meta?.streak) ? meta.streak : trailingStreak(this.s.history7);
+      this.firedToday = new Set((meta?.firedToday || []).filter((k: MomentKind) => MOMENT_KINDS.includes(k)));
+    } catch { this.streak = trailingStreak(this.s.history7); }
     // Debug knob for screenshots: ?moment=<kind>[&mv=<value>] adds one fresh moment.
     const mk = params.get("moment");
     if (mk && (MOMENT_KINDS as readonly string[]).includes(mk)) {
@@ -184,6 +157,7 @@ export class MockBackend implements Backend {
   private save(): void {
     try {
       localStorage.setItem(this.key, JSON.stringify(this.s));
+      localStorage.setItem(this.key + ".rewardState", JSON.stringify({ streak: this.streak, firedToday: [...this.firedToday] }));
     } catch {
       /* fine, memory only */
     }
@@ -226,42 +200,59 @@ export class MockBackend implements Backend {
     return this.summary();
   }
   spore(_c: Creds) {
+    if (this.s.dead) { this.generation++; this.streak = 0; this.firedToday.clear(); }
     return this.update(this.s.dead ? engine.newSpore(this.s) : this.s);
+  }
+  private reward(after: TruffleState, event: "feed" | "midnight"): void {
+    const list = momentsFor(this.s, after, { event, now_ms: Date.now(), next_id: 1, already_today: [...this.firedToday], streak_before: this.streak });
+    this.addMoments(list);
+    for (const m of list) if (ONCE_PER_DAY.includes(m.kind)) this.firedToday.add(m.kind);
   }
   slider(_c: Creds, steps: number) {
     const after = engine.feed(this.s, steps);
-    this.addMoments(mockMoments(this.s, after, this.firedToday, false));
+    this.reward(after, "feed");
     return this.update(after);
   }
   midnight(_c: Creds) {
     const after = engine.midnight(this.s, false, "You walked me to the sea once.");
+    this.reward(after, "midnight");
+    this.streak = nextStreak(this.streak, this.s.steps_today);
     this.firedToday.clear();
-    this.addMoments(after.dead ? [] : mockMoments(this.s, after, this.firedToday, true));
     return this.update(after);
   }
   heat(_c: Creds, on: boolean) {
     return this.update({ ...this.s, burrowed: on });
   }
   reset(_c: Creds) {
+    this.generation++;
+    this.moments = [];
+    this.addMoments([]);
+    this.streak = 0;
     this.firedToday.clear();
     return this.update(structuredClone(engine.DEFAULT_STATE));
   }
 
   async *chat(_c: Creds, message: string, lang: Lang, requested?: Tier): AsyncGenerator<ChatEvent> {
     this.lang = lang;
+    const generation = this.generation;
     if (this.s.dead) throw new ApiError(409, "truffle is dead; POST /spore to plant a new one");
     const decision = engine.decideTier(this.s, requested);
     const half = this.cold || (decision.model_call && ++this.turn % 5 === 0);
     await wait(decision.model_call ? (half ? 3400 : 700) : 150);
+    if (generation !== this.generation) return;
     const brain = decision.model_call ? (half ? "workers-ai" : "modal") : "none";
     yield { type: "brain", brain, half_awake: half };
     const pool = decision.tier === "asleep" ? SLEEPY[lang] : REPLIES[lang][decision.tier];
-    const text = pool[(message.length + this.turn) % pool.length];
+    const text = this.s.burrowed
+      ? lang === "ar" ? "أنا تحت الرمل بعيد عن الحر. خذ راحتك في مكان بارد." : "I'm under the sand, out of the heat. Stay comfortable somewhere cool."
+      : pool[(message.length + this.turn) % pool.length];
     if (decision.tier === "asleep") yield { type: "token", text };
     else for (const chunk of text.match(/.{1,6}/gsu) ?? []) {
       await wait(45);
+      if (generation !== this.generation) return;
       yield { type: "token", text: chunk };
     }
+    if (generation !== this.generation) return;
     this.s = engine.chargeChat(this.s, decision);
     this.save();
     yield { type: "done", tier: decision.tier, brain, half_awake: half, spent: TIERS[decision.tier].cost, partial: false, summary: this.summary() };

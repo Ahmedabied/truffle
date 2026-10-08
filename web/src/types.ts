@@ -55,7 +55,7 @@ export interface Backend {
   pair(lang?: Lang): Promise<PairResult>;
   spawn(lang?: Lang): Promise<PairResult>;
   state(c: Creds): Promise<StateSummary>;
-  chat(c: Creds, message: string, lang: Lang, requested?: Tier): AsyncGenerator<ChatEvent>;
+  chat(c: Creds, message: string, lang: Lang, requested?: Tier, signal?: AbortSignal): AsyncGenerator<ChatEvent>;
   spore(c: Creds): Promise<StateSummary>;
   slider(c: Creds, steps: number): Promise<StateSummary>;
   midnight(c: Creds): Promise<StateSummary>;

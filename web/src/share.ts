@@ -40,6 +40,7 @@ export interface CardText {
   moment: string;
   tag: string;
   host: string;
+  provenance?: string;
 }
 
 /** Colour stops of a CSS linear-gradient, as the browser reports it (hex or rgb()). */
@@ -168,6 +169,15 @@ export function drawCard(canvas: HTMLCanvasElement, pic: WorldPicture, t: CardTe
     ctx.drawImage(pic.image, x0, y0, w, h);
   }
   ctx.restore();
+
+  // Exported simulations must remain identifiable outside the application.
+  if (t.provenance) {
+    ctx.fillStyle = t.muted;
+    ctx.textAlign = "center";
+    ctx.direction = t.lang === "ar" ? "rtl" : "ltr";
+    fit(ctx, t.provenance, "600", 23, maxW, SANS);
+    ctx.fillText(t.provenance, CARD_W / 2, 42);
+  }
 
   // Text under the world. Arabic flows right to left from the right edge.
   const rtl = t.lang === "ar";

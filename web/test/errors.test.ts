@@ -166,7 +166,7 @@ describe("describeError", () => {
     const v = describeError(new ApiError(500, "internal error"), "en", "demo", true);
     expect(v.kind).toBe("server");
     expect(v.text).not.toContain("internal error");
-    expect(describeError(new ApiError(500, "internal error"), "en", "chat", false).text).toBe("Truffle could not answer right now. Nothing was charged.");
+    expect(describeError(new ApiError(500, "internal error"), "en", "chat", false).text).toBe("Truffle could not finish the reply. Try again in a little while.");
   });
 
   it("no copy contains an em or en dash", () => {

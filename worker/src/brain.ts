@@ -55,14 +55,24 @@ export function hasVisibleText(text: string): boolean {
 }
 
 /** Split an SSE byte stream into `data:` payloads. */
-export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+export async function* sseData(body: ReadableStream<Uint8Array>, signal?: AbortSignal): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
   let buf = "";
+  let complete = false;
+  const stop = () => { void reader.cancel(signal?.reason).catch(() => {}); };
+  signal?.addEventListener("abort", stop, { once: true });
   try {
+    signal?.throwIfAborted();
     for (;;) {
       const { value, done } = await reader.read();
-      if (done) break;
-      buf += value;
+      signal?.throwIfAborted();
+      if (done) {
+        complete = true;
+        buf += decoder.decode();
+        break;
+      }
+      buf += decoder.decode(value, { stream: true });
       let i: number;
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i).replace(/\r$/, "");
@@ -72,6 +82,8 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
     }
     if (buf.startsWith("data:")) yield buf.slice(5).trim();
   } finally {
+    signal?.removeEventListener("abort", stop);
+    if (!complete) void reader.cancel(signal?.reason).catch(() => {});
     reader.releaseLock();
   }
 }
@@ -149,39 +161,84 @@ export class ThoughtStripper {
 }
 
 /** Visible text deltas from an OpenAI-compatible SSE byte stream. */
-function textStream(payloads: AsyncGenerator<string>, first?: string): ReadableStream<string> {
+function textStream(body: ReadableStream<Uint8Array>, signal?: AbortSignal, onFinish?: () => void): ReadableStream<string> {
   const strip = new ThoughtStripper();
-  let pending = first;
+  const ctrl = new AbortController();
+  const payloads = sseData(body, ctrl.signal);
+  let cancelled = false;
+  let finished = false;
+  const stop = () => ctrl.abort(signal?.reason);
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    signal?.removeEventListener("abort", stop);
+    onFinish?.();
+  };
+  if (signal?.aborted) stop();
+  else signal?.addEventListener("abort", stop, { once: true });
   return new ReadableStream<string>({
     async pull(controller) {
       try {
         for (;;) {
-          let payload: string;
-          if (pending !== undefined) {
-            payload = pending;
-            pending = undefined;
-          } else {
-            const n = await payloads.next();
-            if (n.done) {
-              const tail = strip.flush();
-              if (tail) controller.enqueue(tail);
-              controller.close();
-              return;
-            }
-            payload = n.value;
+          const n = await payloads.next();
+          if (cancelled) return;
+          ctrl.signal.throwIfAborted();
+          if (n.done || n.value === "[DONE]") {
+            const tail = strip.flush();
+            if (tail) controller.enqueue(tail);
+            controller.close();
+            finish();
+            await payloads.return(undefined);
+            return;
           }
-          const t = strip.push(chunkText(payload));
+          const t = strip.push(chunkText(n.value));
           if (t) {
             controller.enqueue(t);
             return;
           }
         }
       } catch (e) {
-        controller.error(e);
+        if (!cancelled) controller.error(e);
+        finish();
       }
     },
-    async cancel() {
+    async cancel(reason) {
+      cancelled = true;
+      // AsyncGenerator.return waits behind a pending next. Abort its byte
+      // reader first so cancellation cannot queue behind a silent provider.
+      ctrl.abort(reason);
+      finish();
       await payloads.return(undefined);
+      // The generator may have been cancelled before its first pull.
+      if (!body.locked) await body.cancel(reason).catch(() => {});
+    }
+  });
+}
+
+/** Preserve the first visible chunk consumed while choosing the provider. */
+function prependStream(reader: ReadableStreamDefaultReader<string>, first: string): ReadableStream<string> {
+  let cancelled = false;
+  return new ReadableStream<string>({
+    start(controller) { controller.enqueue(first); },
+    async pull(controller) {
+      try {
+        const next = await reader.read();
+        if (cancelled) return;
+        if (next.done) {
+          reader.releaseLock();
+          controller.close();
+        } else controller.enqueue(next.value);
+      } catch (e) {
+        if (!cancelled) {
+          reader.releaseLock();
+          controller.error(e);
+        }
+      }
+    },
+    async cancel(reason) {
+      cancelled = true;
+      await reader.cancel(reason);
+      reader.releaseLock();
     }
   });
 }
@@ -209,6 +266,11 @@ async function askModal(env: Env, req: BrainRequest, fetchFn: typeof fetch): Pro
   const stop = () => ctrl.abort(req.signal?.reason);
   if (req.signal?.aborted) stop();
   req.signal?.addEventListener("abort", stop, { once: true });
+  const finish = () => {
+    clearTimeout(timer);
+    req.signal?.removeEventListener("abort", stop);
+  };
+  let reader: ReadableStreamDefaultReader<string> | undefined;
   try {
     const res = await fetchFn(url, {
       method: "POST",
@@ -228,17 +290,28 @@ async function askModal(env: Env, req: BrainRequest, fetchFn: typeof fetch): Pro
         chat_template_kwargs: { enable_thinking: req.thinking }
       })
     });
-    if (!res.ok || !res.body) throw new Error(`modal http ${res.status}`);
-    const payloads = sseData(res.body);
-    // Any first event (content or reasoning) proves the brain is awake.
-    const first = await payloads.next();
+    if (!res.ok || !res.body) {
+      void res.body?.cancel().catch(() => {});
+      throw new Error(`modal http ${res.status}`);
+    }
+    reader = textStream(res.body, ctrl.signal, finish).getReader();
+    // Role events, reasoning, whitespace and stripped thoughts are not a
+    // reply. Keep the fallback deadline until actual visible text arrives.
+    let first = "";
+    while (!hasVisibleText(first)) {
+      const next = await reader.read();
+      if (next.done) throw new Error("modal empty stream");
+      first += next.value;
+    }
     clearTimeout(timer);
-    if (first.done) throw new Error("modal empty stream");
-    return { stream: textStream(payloads, first.value), brain: "modal", half_awake: false, retry: { retried: false } };
+    return { stream: prependStream(reader, first), brain: "modal", half_awake: false, retry: { retried: false } };
   } catch (e) {
-    clearTimeout(timer);
-    req.signal?.removeEventListener("abort", stop);
+    finish();
     ctrl.abort();
+    if (reader) {
+      await reader.cancel().catch(() => {});
+      reader.releaseLock();
+    }
     throw e;
   }
 }
@@ -259,7 +332,7 @@ async function askWorkersAI(env: Env, req: BrainRequest, maxTokens = tokenLimit(
     ? env.AI.run(model, input as never, { signal: req.signal })
     : env.AI.run(model, input as never))) as unknown;
   if (!(out instanceof ReadableStream)) throw new Error("workers-ai did not stream");
-  return textStream(sseData(out as ReadableStream<Uint8Array>));
+  return textStream(out as ReadableStream<Uint8Array>, req.signal);
 }
 
 export async function askBrain(
@@ -267,6 +340,7 @@ export async function askBrain(
   req: BrainRequest,
   fetchFn: typeof fetch = fetch
 ): Promise<BrainResult> {
+  req.signal?.throwIfAborted();
   let reason = "MODAL_URL unset";
   if (env.MODAL_URL) {
     try {
@@ -299,31 +373,50 @@ export function retryIfEmpty(
   again: () => Promise<ReadableStream<string>>,
   info: { retried: boolean }
 ): ReadableStream<string> {
-  let reader = first.getReader();
+  let reader: ReadableStreamDefaultReader<string> | null = first.getReader();
   let visible = false;
+  let cancelled = false;
+  let cancelReason: unknown;
   return new ReadableStream<string>({
     async pull(controller) {
       try {
         for (;;) {
-          const { value, done } = await reader.read();
+          const { value, done } = await reader!.read();
+          if (cancelled) return;
           if (!done) {
             if (hasVisibleText(value)) visible = true;
             controller.enqueue(value);
             return;
           }
+          reader!.releaseLock();
+          reader = null;
           if (visible || info.retried) {
             controller.close();
             return;
           }
           info.retried = true;
-          reader = (await again()).getReader();
+          const next = await again();
+          if (cancelled) {
+            await next.cancel(cancelReason);
+            return;
+          }
+          reader = next.getReader();
         }
       } catch (e) {
-        controller.error(e);
+        if (!cancelled) controller.error(e);
+        reader?.releaseLock();
+        reader = null;
       }
     },
     async cancel(reason) {
-      await reader.cancel(reason);
+      cancelled = true;
+      cancelReason = reason;
+      const current = reader;
+      reader = null;
+      if (current) {
+        await current.cancel(reason);
+        current.releaseLock();
+      }
     }
   });
 }

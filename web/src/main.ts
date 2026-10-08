@@ -1,8 +1,10 @@
 // Boot, pairing, polling, language, settings and judge mode.
 
 import "./style.css";
-import { ApiError, apiBase, connect, setApiBase } from "./api";
+import { ApiError, DEFAULT_API, apiBase, connect, setApiBase } from "./api";
+import { credentialKey, normalizeApiOrigin, verifyImportedPet } from "./credentials";
 import { Chat } from "./chat";
+import { MockBackend } from "./mock";
 import { Cooldown, describeError, waitText, type ErrorCtx } from "./errors";
 import { FpsMeter, fpsEnabled, fpsText } from "./fps";
 import { COPY, MOOD_WORD, STAGE_WORD, TIER_WORD, explainGrew, explainMidnight, explainSteps, momentLine, type CopyKey, type Lang } from "./copy";
@@ -54,8 +56,9 @@ const store = {
 };
 
 // Credentials from the Truffle app arrive once as #creds=<phrase>.<secret>.
-// Store them like a pairing and strip the fragment before anything else reads the URL.
-takeCredsFromHash(location, history, (c) => store.set(K.creds, c));
+// Strip immediately; adoption happens only after consent and server validation.
+const importedCreds = takeCredsFromHash(location, history, () => {});
+const petKey = () => credentialKey(apiBase(), DEFAULT_API, DEMO);
 const IN_APP = inApp(navigator.userAgent);
 if (IN_APP) document.documentElement.classList.add("in-app");
 
@@ -64,8 +67,9 @@ if (IN_APP) document.documentElement.classList.add("in-app");
 let backend: Backend;
 let creds: Creds | null = null;
 let summary: StateSummary | null = null;
-let lang: Lang = store.get<Lang>(K.lang) ?? (navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en");
-let langChosen = store.get<Lang>(K.lang) !== null;
+const savedLang = store.get<unknown>(K.lang);
+let lang: Lang = savedLang === "ar" || savedLang === "en" ? savedLang : (navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en");
+let langChosen = savedLang === "ar" || savedLang === "en";
 let halfAwake = false;
 let lastWhy = "";
 
@@ -73,7 +77,7 @@ const world = new World($("world"));
 const media = matchMedia("(prefers-reduced-motion: reduce)");
 const motionBox = $<HTMLInputElement>("motion");
 motionBox.checked = store.get<boolean>(K.motion) ?? false;
-const reduced = () => media.matches || motionBox.checked;
+const reduced = () => media.matches || motionBox.checked || $<HTMLDialogElement>("pauseDialog").open;
 
 const hourParam = params.get("hour");
 world.set({ hourOverride: hourParam !== null && Number.isFinite(Number(hourParam)) ? Number(hourParam) % 24 : null });
@@ -104,7 +108,12 @@ const chat = new Chat(
     onExplain: (t) => explain(t),
     afterChat: () => void poll(),
     demo: DEMO,
-    openSettings: () => openSettings()
+    openSettings: () => openSettings(),
+    blocked: () => actionBusy || sliderPending,
+    onBusy: (busy) => {
+      chatBusy = busy;
+      setActDisabled(actCooldown.active());
+    }
   }
 );
 
@@ -130,6 +139,8 @@ function applyLang(): void {
   document.title = DEMO ? `${c.title} | ${c.judgeTitle}` : c.title;
   if (summary) render(summary);
   chat.refresh();
+  if (backend?.mock) $("judgeIntro").textContent = c.offlineIntro;
+  $("tryDemo").hidden = DEMO || IN_APP;
 }
 
 $("langBtn").addEventListener("click", () => {
@@ -137,6 +148,7 @@ $("langBtn").addEventListener("click", () => {
   langChosen = true;
   store.set(K.lang, lang);
   applyLang();
+  if (summary) explain(explainSteps(lang, summary.state.steps_today, summary.energy_pct, summary.tier, summary.state.burrowed));
 });
 
 // ---------- rendering ----------
@@ -186,8 +198,7 @@ function render(s: StateSummary): void {
   onMoments(s);
   $("world").setAttribute(
     "aria-label",
-    `${MOOD_WORD.en[s.mood]} ${st.stage}. Energy ${s.energy_pct} percent. ${st.steps_today} steps today. Effort ${s.tier}.` +
-      (s.weather?.text ? ` Weather: ${s.weather.text}.` : "")
+    hud.join(". ")
   );
 
   const last = st.gravestones[st.gravestones.length - 1];
@@ -208,6 +219,7 @@ function render(s: StateSummary): void {
     heat.textContent = st.burrowed ? t("heatOn") : t("heatOff");
   }
   chat.refresh();
+  $("chatHint").textContent = st.dead ? t("placeholderDead") : st.burrowed ? t("heatRest") : s.tier === "asleep" ? t("chatHint") : t("chatReady");
 }
 
 // ---------- proud moments (decision 0017) ----------
@@ -242,7 +254,7 @@ function nextMoment(): void {
   }
   // The world draws the celebration (B15). Guarded: it may not exist yet, and reduced motion skips it.
   const w = world as unknown as { celebrate?: (kind: MomentKind, value: number) => void };
-  if (typeof w.celebrate === "function" && !reduced()) {
+  if (typeof w.celebrate === "function") {
     try {
       w.celebrate(m.kind, m.value);
     } catch {
@@ -295,7 +307,8 @@ function makeCard(): HTMLCanvasElement {
     hud: $("hudText").textContent ?? "",
     moment: newest ? momentLine(lang, newest.kind, newest.value) : "",
     tag: t("shareTag"),
-    host: cardHost(location.host)
+    host: cardHost(location.host),
+    provenance: backend.mock || summary?.demo || DEMO ? t("shareDemo") : ""
   });
   return canvas;
 }
@@ -342,7 +355,7 @@ function openSettings(): void {
 }
 
 // Judge controls and the spore buttons share one countdown after a 429 or a 400 with retry_after_s.
-const ACT_BUTTONS = "#judge button, #judge input, #sporeBtn, #sporeBtn2";
+const ACT_BUTTONS = "#judge button, #judge input, #walkBtn, #sporeBtn, #sporeBtn2";
 let actFailText = "";
 const actCooldown = new Cooldown(
   (left) => explain(`${actFailText} ${waitText(lang, left)}`),
@@ -352,7 +365,9 @@ const actCooldown = new Cooldown(
   }
 );
 function setActDisabled(on: boolean): void {
-  document.querySelectorAll<HTMLButtonElement | HTMLInputElement>(ACT_BUTTONS).forEach((b) => (b.disabled = on));
+  document.querySelectorAll<HTMLButtonElement | HTMLInputElement>(ACT_BUTTONS).forEach((b) => {
+    b.disabled = on || actionBusy || (chatBusy && b.id !== "resetBtn");
+  });
 }
 
 /** Show a failed call as the Worker's calm text in the UI language. Returns the view for callers that need it. */
@@ -371,21 +386,32 @@ function failed(e: unknown, ctx: ErrorCtx) {
 let authLost = false;
 
 async function poll(): Promise<void> {
-  if (!creds || document.hidden || authLost) return;
+  if (!creds || document.hidden || authLost || actionBusy || sliderPending || chatBusy) return;
+  const epoch = stateEpoch;
   try {
-    render(await backend.state(creds));
+    const next = await backend.state(creds);
+    if (epoch === stateEpoch && !actionBusy && !sliderPending && !chatBusy) {
+      render(next);
+      $("recovery").hidden = true;
+    }
   } catch (e) {
     if (isAuthLoss(e) && !backend.mock) {
       if (DEMO) {
         // Demo Truffles expire after 24 hours. Plant a fresh one.
-        store.del(K.demo);
+        store.del(petKey());
         creds = null;
         await ensurePaired();
       } else {
         // A real Truffle is never replaced behind your back. Say so and show Settings.
         authLost = true;
         failed(e, "state");
+        $("syncNote").textContent = t("syncPaused");
+        $("recovery").hidden = false;
+        openSettings();
       }
+    } else {
+      $("syncNote").textContent = t("syncPaused");
+      $("recovery").hidden = false;
     }
   }
 }
@@ -397,19 +423,34 @@ async function ensurePaired(): Promise<void> {
     if (!langChosen) lang = r.lang;
     return;
   }
-  const key = DEMO ? K.demo : K.creds;
+  const key = petKey();
   const saved = store.get<Creds & { expires_ms?: number }>(key);
+  if (importedCreds && !DEMO && (importedCreds.phrase !== saved?.phrase || importedCreds.secret !== saved?.secret)) {
+    if (confirm(`${t("importPet")}\n${importedCreds.phrase}`)) {
+      try {
+        const s = await verifyImportedPet(importedCreds, c => backend.state(c));
+        creds = importedCreds;
+        store.set(key, creds);
+        if (!langChosen) lang = s.lang;
+        render(s);
+        return;
+      } catch {
+        explain(t("importFailed"));
+      }
+    }
+  }
   if (saved?.phrase && saved.secret && !(saved.expires_ms && saved.expires_ms < Date.now())) {
     try {
       creds = { phrase: saved.phrase, secret: saved.secret };
       const s = await backend.state(creds);
+      if (s.demo !== DEMO) throw new ApiError(404, "wrong pet mode");
       if (!langChosen) lang = s.lang;
       render(s);
       return;
     } catch (e) {
       if (!isAuthLoss(e)) throw e;
       // Demo: expired, plant a fresh one. Real: keep the saved phrase and let the person decide in Settings.
-      if (!DEMO && e instanceof ApiError && e.status === 401) {
+      if (!DEMO && isAuthLoss(e)) {
         authLost = true;
         throw e;
       }
@@ -428,14 +469,28 @@ async function ensurePaired(): Promise<void> {
 async function act(
   fn: () => Promise<StateSummary>,
   why: (before: StateSummary, after: StateSummary) => string,
-  ctx: ErrorCtx = "demo"
+  ctx: ErrorCtx = "demo",
+  resetConversation = false
 ): Promise<void> {
-  if (!creds || !summary || actCooldown.active()) return;
+  if (!creds || !summary || actionBusy || actCooldown.active()) return;
+  clearTimeout(sliderTimer);
+  sliderPending = false;
+  stateEpoch++;
+  actionBusy = true;
+  if (resetConversation) chat.clear();
+  chat.refresh();
   const before = summary;
-  const buttons = document.querySelectorAll<HTMLButtonElement>("#judge button, #sporeBtn, #sporeBtn2");
+  const buttons = document.querySelectorAll<HTMLInputElement | HTMLButtonElement>(ACT_BUTTONS);
   buttons.forEach((b) => (b.disabled = true));
   try {
     const after = await fn();
+    if (resetConversation) {
+      clearTimeout(momentTimer);
+      momentQueue = [];
+      showing = null;
+      $("moment").hidden = true;
+      store.del(lastIdKey(creds.phrase));
+    }
     render(after);
     let text = why(before, after);
     if (after.state.stage !== before.state.stage && !after.state.dead && after.state.lifetime_steps > before.state.lifetime_steps) {
@@ -445,7 +500,9 @@ async function act(
   } catch (e) {
     failed(e, ctx);
   } finally {
-    if (!actCooldown.active()) buttons.forEach((b) => (b.disabled = false));
+    actionBusy = false;
+    setActDisabled(actCooldown.active());
+    chat.refresh();
   }
 }
 
@@ -455,7 +512,8 @@ const plantSpore = () =>
   act(
     () => backend.spore(creds!),
     () => t("newSporeDone"),
-    "spore"
+    "spore",
+    true
   );
 $("sporeBtn").addEventListener("click", plantSpore);
 $("sporeBtn2").addEventListener("click", plantSpore);
@@ -474,7 +532,8 @@ $("copyBtn").addEventListener("click", async () => {
   setTimeout(() => ($("copyBtn").textContent = t("copy")), 1500);
 });
 
-let scale = store.get<number>(K.font) ?? 1;
+const savedScale = store.get<unknown>(K.font);
+let scale = typeof savedScale === "number" && Number.isFinite(savedScale) ? Math.min(1.5, Math.max(0.85, savedScale)) : 1;
 const applyScale = () => document.documentElement.style.setProperty("--ui-scale", String(scale));
 applyScale();
 $("fontDown").addEventListener("click", () => {
@@ -490,6 +549,7 @@ $("fontUp").addEventListener("click", () => {
 
 function syncMotion(): void {
   world.setReduced(reduced());
+  world.draw();
   document.documentElement.classList.toggle("reduced", reduced());
   $("motionNote").hidden = !media.matches;
   motionBox.disabled = media.matches;
@@ -501,13 +561,34 @@ motionBox.addEventListener("change", () => {
 });
 media.addEventListener?.("change", syncMotion);
 
+// A brief invitation to leave the screen. No target, timer, location or note is recorded.
+const pauseDialog = $<HTMLDialogElement>("pauseDialog");
+$("pauseBtn").addEventListener("click", () => {
+  $("pauseText").textContent = summary?.state.burrowed ? t("pauseHeat") : t("pauseNotice");
+  pauseDialog.dir = lang === "ar" ? "rtl" : "ltr";
+  pauseDialog.showModal();
+  syncMotion();
+});
+$("backBtn").addEventListener("click", () => pauseDialog.close());
+pauseDialog.addEventListener("close", () => {
+  syncMotion();
+  explain(t("returnNotice"));
+  void poll();
+  if (!$<HTMLInputElement>("msg").disabled) $("msg").focus();
+});
+
 $<HTMLInputElement>("api").value = apiBase();
 $("apiSave").addEventListener("click", () => {
-  setApiBase($<HTMLInputElement>("api").value);
+  const value = $<HTMLInputElement>("api").value;
+  const next = value.trim() ? normalizeApiOrigin(value, import.meta.env.DEV) : DEFAULT_API;
+  if (!next) { explain(t("apiInvalid")); return; }
+  if (next !== apiBase() && !confirm(t("apiChange"))) return;
+  if (!setApiBase(value)) return;
   location.reload();
 });
 $("forgetBtn").addEventListener("click", () => {
-  store.del(DEMO ? K.demo : K.creds);
+  if (!confirm(t("forgetConfirm"))) return;
+  store.del(petKey());
   location.reload();
 });
 
@@ -515,18 +596,24 @@ $("forgetBtn").addEventListener("click", () => {
 
 let sliderPending = false;
 let sliderTimer = 0;
+let actionBusy = false;
+let chatBusy = false;
+let stateEpoch = 0;
 
 function setupJudge(): void {
   const judge = $("judge");
   judge.hidden = false;
-  // Judges come for the controls: put them right under the world, with the explanation line.
-  $("sporeBtn").after(judge);
-  judge.append($("why"));
+  $("walkBtn").hidden = false;
+  $("walkBtn").addEventListener("click", () => void act(
+    () => backend.slider(creds!, Math.max(4000, summary?.state.steps_today ?? 0)),
+    (_b, a) => explainSteps(lang, a.state.steps_today, a.energy_pct, a.tier, a.state.burrowed)
+  ));
   const slider = $<HTMLInputElement>("steps");
   slider.addEventListener("input", () => {
     const steps = Number(slider.value);
     $("stepsOut").textContent = steps.toLocaleString("en-US");
     sliderPending = true;
+    chat.refresh();
     clearTimeout(sliderTimer);
     sliderTimer = window.setTimeout(() => {
       sliderPending = false;
@@ -563,12 +650,19 @@ function setupJudge(): void {
   $("resetBtn").addEventListener("click", () =>
     act(
       () => backend.reset(creds!),
-      () => t("freshSpore")
+      () => t("freshSpore"),
+      "demo",
+      true
     )
   );
 }
 
 // ---------- boot ----------
+
+$("retryBtn").addEventListener("click", () => {
+  if (!summary || authLost) location.reload();
+  else void poll();
+});
 
 // ---------- phone prep: ?fps=1 ----------
 
@@ -594,13 +688,28 @@ async function boot(): Promise<void> {
 
   backend = await connect(params, DEMO);
   $("offline").hidden = !backend.mock;
+  if (backend.mock) $("judgeIntro").textContent = t("offlineIntro");
   try {
     await ensurePaired();
     if (backend.mock && creds) render(await backend.state(creds));
   } catch (e) {
+    // A busy public judge pool should still let visitors explore a clearly
+    // labelled sample. Never substitute a simulated pet for a real owner.
+    if (DEMO && e instanceof ApiError && e.status === 429) {
+      backend = new MockBackend(new URLSearchParams(), true);
+      $("offline").hidden = false;
+      await ensurePaired();
+      render(await backend.state(creds!));
+      $("status").textContent = "";
+      explain(t("demoBusy"));
+    } else {
     const v = failed(e, "pair");
+    $("status").textContent = "";
     $("hudText").textContent = v.kind === "network" ? t("networkError") : v.text;
+    $("syncNote").textContent = "";
+    $("recovery").hidden = false;
     return;
+    }
   }
   $("phrase").textContent = creds?.phrase ?? "";
   setupHandoff();

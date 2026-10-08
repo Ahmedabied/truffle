@@ -14,8 +14,8 @@ export const RELEASES_URL = "https://github.com/ahmedabied/Truffle/releases";
 // The Worker checks the words against its list; a wrong phrase gets its calm 401.
 const PHRASE = /^[a-z]{2,20}-[a-z]{2,20}-[a-z]{2,20}$/;
 // The secret is base64url (worker/src/pairing.ts generateSecret: 16 bytes, 22 chars).
-// The range also admits the offline demo's secret. No dots, so the first dot splits.
-const SECRET = /^[A-Za-z0-9_-]{8,128}$/;
+// Same accepted envelope as the Worker and Android. Offline pets cannot be moved.
+const SECRET = /^[A-Za-z0-9_-]{16,64}$/;
 
 /** Creds from a location.hash like "#creds=sand-moon-fig.AbC_d-123", or null. */
 export function parseCredsHash(hash: string): Creds | null {

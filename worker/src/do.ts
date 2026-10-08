@@ -610,12 +610,22 @@ export class TruffleDO extends DurableObject<Env> {
     const lang = m.lang;
     const today = localDayKey(now, m.tz);
     const enc = new TextEncoder();
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
-    const writer = writable.getWriter();
+    let output: ReadableStreamDefaultController<Uint8Array> | null = null;
+    const readable = new ReadableStream<Uint8Array>({
+      start(controller) { output = controller; },
+      cancel() { output = null; }
+    });
     // A client that hangs up must not stop the charge for a reply that was
-    // produced, so writes never throw.
-    const send = (event: string, data: unknown) =>
-      writer.write(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)).catch(() => {});
+    // produced. Queue this finite, token-capped reply without awaiting client
+    // reads: TransformStream backpressure can otherwise trap even the deadline
+    // cleanup in writer.write/close when a tab stops reading but stays open.
+    const send = async (event: string, data: unknown) => {
+      try {
+        output?.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      } catch {
+        output = null; // delivery never prevents accounting or cleanup
+      }
+    };
 
     /** Why this chat no longer owns its slot or its life, or null if it still does. */
     const fenced = (row: Row | null): string | null => {
@@ -765,7 +775,8 @@ export class TruffleDO extends DurableObject<Env> {
         const reader = res.stream.getReader();
         // A provider may ignore the signal once it streams: cancel our side too.
         const stop = () => void reader.cancel(ctrl.signal.reason).catch(() => {});
-        ctrl.signal.addEventListener("abort", stop, { once: true });
+        if (ctrl.signal.aborted) stop();
+        else ctrl.signal.addEventListener("abort", stop, { once: true });
         try {
           for (;;) {
             const { value, done } = await reader.read();
@@ -774,6 +785,7 @@ export class TruffleDO extends DurableObject<Env> {
           }
         } finally {
           ctrl.signal.removeEventListener("abort", stop);
+          reader.releaseLock();
         }
         ctrl.signal.throwIfAborted();
         await endStream(res.brain);
@@ -807,7 +819,8 @@ export class TruffleDO extends DurableObject<Env> {
           delete cur.m.chat;
           this.save(cur.s, cur.m);
         }
-        await writer.close().catch(() => {});
+        output?.close();
+        output = null;
       }
     };
     this.ctx.waitUntil(run());

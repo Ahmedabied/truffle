@@ -11,13 +11,13 @@ describe("parseCredsHash: #creds=<phrase>.<secret> from the Truffle app", () => 
     expect(parseCredsHash(`creds=sand-moon-fig.${SECRET}`)?.phrase).toBe("sand-moon-fig");
   });
   it("splits on the first dot, so a secret with hyphens and underscores survives", () => {
-    expect(parseCredsHash("#creds=olive-kite-reef.-_-_abcdEFGH")).toEqual({ phrase: "olive-kite-reef", secret: "-_-_abcdEFGH" });
+    expect(parseCredsHash("#creds=olive-kite-reef.-_-_abcdEFGH123456")).toEqual({ phrase: "olive-kite-reef", secret: "-_-_abcdEFGH123456" });
   });
   it("decodes percent escapes and lowercases the phrase", () => {
     expect(parseCredsHash(`#creds=Sand-Moon-Fig%2E${SECRET}`)).toEqual({ phrase: "sand-moon-fig", secret: SECRET });
   });
-  it("accepts the offline demo secret", () => {
-    expect(parseCredsHash("#creds=sand-moon-fig.offline-demo")).toEqual({ phrase: "sand-moon-fig", secret: "offline-demo" });
+  it("refuses offline demo credentials", () => {
+    expect(parseCredsHash("#creds=sand-moon-fig.offline-demo")).toBeNull();
   });
   it.each([
     ["", "empty"],

@@ -1,13 +1,13 @@
 # web
 
-The ASCII world, chat and judge mode. Vanilla TypeScript and Vite. No framework, no canvas. See docs/01 (ASCII world, judge mode) and docs/02.
+The ASCII world, chat and judge mode. Vanilla TypeScript and Vite. No framework. A cached glyph-atlas canvas renders the ASCII grid. See docs/01 (ASCII world, judge mode) and docs/02.
 
 ## Run
 
 ```
 npm run dev          # http://localhost:5173, talks to http://localhost:8787
 npm run typecheck
-npm run build        # dist/, about 39 KB of JS
+npm run build        # dist/, about 97 KB of JS before gzip
 ```
 
 `VITE_API_BASE` sets the Worker URL at build time. The default in production is `https://truffle.ahmed-abied.workers.dev`. You can also change it at runtime in Settings. It is stored in localStorage.
@@ -27,13 +27,13 @@ Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|
 
 - Proud moments (decision 0017) come in every summary. The page remembers the last id it showed per phrase and shows each new one once, as one quiet line under the HUD for 6 seconds. Tap the HUD for the last five.
 - Share makes a 1080 x 1350 PNG on the device: the world, the HUD line, the newest moment. It opens the share sheet when the browser can share files, else it downloads.
-- The Truffle app opens the page with `#creds=<phrase>.<secret>`. The page stores them and strips the fragment at once. Inside the app (user agent mark `TruffleApp/`) the phrase and forget controls are hidden. On Android Chrome a real Truffle gets "Open in the Truffle app" (`truffle://pair?creds=...`, never sent to a server) and a link to the releases page.
+- The Truffle app opens the page with `#creds=<phrase>.<secret>`. The page strips the fragment immediately, then confirms and verifies a different pet before saving it. Inside the app (user agent mark `TruffleApp/`) the phrase and forget controls are hidden. On Android Chrome a real Truffle gets "Open in the Truffle app" (`truffle://pair?creds=...`, never sent to a server) and a link to the releases page.
 
 ## Files
 
 - `src/api.ts`: typed client, SSE parser for `/chat`, timeouts, backend selection.
 - `src/mock.ts`: the offline demo backend.
-- `src/scene/`: grid fitting (`grid.ts`), palette (`palette.ts`), sun and moon (`astro.ts`), the luminance raster and dither (`raster.ts`), the Truffle model (`pet.ts`), the scene and the 12 fps loop (`world.ts`).
+- `src/scene/`: grid fitting (`grid.ts`), palette (`palette.ts`), sun and moon (`astro.ts`), the luminance raster and dither (`raster.ts`), the Truffle model (`pet.ts`), the scene and the 30 fps target loop (`world.ts`).
 - `src/chat.ts`: input line, tier-speed typing, yawn, explanation line.
 - `src/copy.ts`: UI copy in English and Arabic.
 - `src/moments.ts`: proud moment types and which ones to show.
@@ -44,3 +44,7 @@ Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|
 ## Deploy
 
 `wrangler.jsonc` serves `dist/` as Workers static assets with single-page fallback, so `/demo` works. Build, then `npx wrangler deploy` from this folder. Add the site's origin to the Worker's `ALLOWED_ORIGINS`.
+
+## Browser regression checks
+
+Run `npm install` and `npx playwright install chromium`, start Vite on port 5191, then `npm run test:browser`. Set `CHROME_BIN` to use an existing Chrome binary, or `TRUFFLE_TEST_URL` for a different local port. The suite uses synthetic credentials and blocks public service requests. It covers reset/chat races, origin isolation, recovery, RTL, reduced motion, share provenance and the pause/return ritual.

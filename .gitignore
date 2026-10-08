@@ -41,3 +41,8 @@ fleet/outbox/**/raw/
 # fleet scratch workers
 fleet/outbox/**/node_modules/
 fleet/outbox/**/.wrangler/
+
+# Local browser verification and agent runtimes
+.playwright-mcp/
+fleet/outbox/**/runtime/
+*.sock

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { askBrain, chunkText, extractFacts, FALLBACK_MODEL, ThoughtStripper, type BrainRequest } from "../src/brain";
+import { askBrain, chunkText, extractFacts, FALLBACK_MODEL, retryIfEmpty, ThoughtStripper, type BrainRequest } from "../src/brain";
 import type { Env } from "../src/types";
 
 const enc = new TextEncoder();
@@ -114,6 +114,110 @@ describe("brain routing", () => {
     expect(b.chat_template_kwargs).toEqual({ enable_thinking: true });
     expect(b.max_tokens).toBeGreaterThan(1200); // thinking budget on top
   });
+
+  it("role, reasoning and hidden thoughts do not disarm the visible-text deadline", async () => {
+    const { env } = mockEnv({ MODAL_URL: "https://modal.example", BRAIN_TIMEOUT_MS: "20" });
+    const cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(enc.encode('data: {"choices":[{"delta":{"role":"assistant","reasoning_content":"planning"}}]}\n\n'));
+        c.enqueue(enc.encode('data: {"choices":[{"delta":{"content":"<think>still planning</think>  "}}]}\n\n'));
+      },
+      cancel: cancelled
+    });
+    const r = await askBrain(env, req, (async () => new Response(body)) as typeof fetch);
+    expect(r.brain).toBe("workers-ai");
+    expect(await readAll(r.stream)).toBe("sleepy hello");
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
+  it("an already cancelled request never starts a provider", async () => {
+    const { env, run } = mockEnv({ MODAL_URL: "https://modal.example" });
+    const ctrl = new AbortController();
+    ctrl.abort(new Error("left chat"));
+    const f = vi.fn(async () => new Response(sse(["late reply"])));
+    await expect(askBrain(env, { ...req, signal: ctrl.signal }, f as typeof fetch)).rejects.toThrow("left chat");
+    expect(f).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("a caller abort stops a silent Modal stream without starting fallback", async () => {
+    const { env, run } = mockEnv({ MODAL_URL: "https://modal.example" });
+    const ctrl = new AbortController();
+    const cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({ cancel: cancelled });
+    const result = askBrain(env, { ...req, signal: ctrl.signal }, (async () => new Response(body)) as typeof fetch);
+    const rejected = expect(result).rejects.toThrow("chat deadline");
+    ctrl.abort(new Error("chat deadline"));
+    await rejected;
+    expect(cancelled).toHaveBeenCalledOnce();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("a completed Modal reply releases its caller abort listener", async () => {
+    const { env } = mockEnv({ MODAL_URL: "https://modal.example" });
+    const ctrl = new AbortController();
+    let providerSignal: AbortSignal | null | undefined;
+    const f = (async (_url: unknown, init?: RequestInit) => {
+      providerSignal = init?.signal;
+      return new Response(sse(["hello"]));
+    }) as typeof fetch;
+    const r = await askBrain(env, { ...req, signal: ctrl.signal }, f);
+    expect(await readAll(r.stream)).toBe("hello");
+    ctrl.abort(new Error("later navigation"));
+    expect(providerSignal?.aborted).toBe(false);
+  });
+
+  it.each(["modal", "workers-ai"])("cancelling %s unblocks a pending read and cancels its byte source", async (brain) => {
+    let source!: ReadableStreamDefaultController<Uint8Array>;
+    const cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        source = c;
+        c.enqueue(enc.encode('data: {"response":"hello"}\n\n'));
+      },
+      cancel: cancelled
+    });
+    const { env } = mockEnv({
+      ...(brain === "modal" ? { MODAL_URL: "https://modal.example" } : {}),
+      AI: { run: async () => body } as unknown as Ai
+    });
+    const r = await askBrain(env, req, (async () => new Response(body)) as typeof fetch);
+    const reader = r.stream.getReader();
+    expect((await reader.read()).value).toBe("hello");
+    const pending = reader.read();
+    await Promise.resolve();
+    const outcome = await Promise.race([
+      reader.cancel("left chat").then(() => "cancelled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("stalled"), 100))
+    ]);
+    // Free the fixture on the failing implementation too.
+    if (!cancelled.mock.calls.length) source.close();
+    await pending;
+    expect(outcome).toBe("cancelled");
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
+
+  it("[DONE] ends a reply even when the provider leaves its connection open", async () => {
+    let source!: ReadableStreamDefaultController<Uint8Array>;
+    const cancelled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        source = c;
+        c.enqueue(enc.encode('data: {"response":"hello"}\n\ndata: [DONE]\n\n'));
+      },
+      cancel: cancelled
+    });
+    const { env } = mockEnv({ AI: { run: async () => body } as unknown as Ai });
+    const r = await askBrain(env, req);
+    const outcome = await Promise.race([
+      readAll(r.stream),
+      new Promise<string>((resolve) => setTimeout(() => resolve("stalled"), 100))
+    ]);
+    if (!cancelled.mock.calls.length) source.close();
+    expect(outcome).toBe("hello");
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
 });
 
 describe("stream helpers", () => {
@@ -195,14 +299,33 @@ describe("empty reply retry on Workers AI (S03, B06 item 7)", () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
-  it("Modal is not retried here (it has its own fallback)", async () => {
+  it("Modal reasoning-only output falls back without presenting an empty reply", async () => {
     const { env, run } = mockEnv({ MODAL_URL: "https://modal.example" });
     const f = (async () => new Response(sse([], ["hmm"]), { status: 200 })) as unknown as typeof fetch;
     const r = await askBrain(env, high, f);
-    expect(r.brain).toBe("modal");
-    expect(await readAll(r.stream)).toBe("");
+    expect(r.brain).toBe("workers-ai");
+    expect(await readAll(r.stream)).toBe("sleepy hello");
     expect(r.retry.retried).toBe(false);
-    expect(run).not.toHaveBeenCalled();
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a retry that arrives after its consumer left", async () => {
+    let arrive!: (stream: ReadableStream<string>) => void;
+    let started!: () => void;
+    const retryStarted = new Promise<void>((resolve) => { started = resolve; });
+    const cancelled = vi.fn();
+    const stream = retryIfEmpty(new ReadableStream({ start(c) { c.close(); } }), () => {
+      started();
+      return new Promise((resolve) => { arrive = resolve; });
+    }, { retried: false });
+    const reader = stream.getReader();
+    const pending = reader.read();
+    await retryStarted;
+    await reader.cancel("left chat");
+    arrive(new ReadableStream({ cancel: cancelled }));
+    await pending;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(cancelled).toHaveBeenCalledWith("left chat");
   });
 });
 

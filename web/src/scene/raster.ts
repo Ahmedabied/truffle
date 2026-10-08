@@ -47,8 +47,10 @@ export function noise(x: number, y: number, seed = 0): number {
   const sx = fx * fx * (3 - 2 * fx);
   const sy = fy * fy * (3 - 2 * fy);
   const h = (i: number, j: number) => hash(i * 7349 + j * 15731 + seed * 31) * 2 - 1;
-  const a = h(xi, yi) + (h(xi + 1, yi) - h(xi, yi)) * sx;
-  const b = h(xi, yi + 1) + (h(xi + 1, yi + 1) - h(xi, yi + 1)) * sx;
+  const h00 = h(xi, yi);
+  const h01 = h(xi, yi + 1);
+  const a = h00 + (h(xi + 1, yi) - h00) * sx;
+  const b = h01 + (h(xi + 1, yi + 1) - h01) * sx;
   return a + (b - a) * sy;
 }
 
@@ -65,17 +67,47 @@ export function glyph(lum: number, x: number, y: number, inkLight: boolean, ramp
   return ramp[i];
 }
 
-/** One layer: a luminance per cell, negative for empty. */
+/** Ramp index for a luminance at a cell (the same ordered dither as glyph). */
+export function glyphIndex(lum: number, x: number, y: number, inkLight: boolean, n: number, floor = 0): number {
+  const b = (BAYER[((y & 3) << 2) | (x & 3)] + 0.5) / 16;
+  let i = Math.floor((lum < 0 ? 0 : lum > 1 ? 1 : lum) * n + b);
+  if (i > n) i = n;
+  if (!inkLight) i = n - i;
+  if (i < floor) i = floor;
+  return i;
+}
+
+/** One layer: a luminance per cell, negative for empty. Tracks the rows it touched so clear and paint skip the rest. */
 export class Layer {
   lum = new Float32Array(W * H).fill(-1);
+  /** First and last row written since the last clear (y0 > y1 when empty). */
+  y0 = H;
+  y1 = -1;
 
   clear(): void {
-    this.lum.fill(-1);
+    if (this.y1 >= this.y0) this.lum.fill(-1, this.y0 * W, (this.y1 + 1) * W);
+    this.y0 = H;
+    this.y1 = -1;
+  }
+
+  /** Copy another layer's cells (used to restore a cached base each frame). */
+  copy(from: Layer): void {
+    this.lum.set(from.lum);
+    this.y0 = from.y0;
+    this.y1 = from.y1;
+  }
+
+  private touch(y: number): void {
+    if (y < this.y0) this.y0 = y;
+    if (y > this.y1) this.y1 = y;
   }
 
   set(x: number, y: number, l: number): void {
+    x |= 0;
+    y |= 0;
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     this.lum[y * W + x] = l;
+    if (l >= 0) this.touch(y);
   }
 
   get(x: number, y: number): number {
@@ -85,41 +117,43 @@ export class Layer {
 
   /** Keep the brighter of the two values (for glows and sparkles). */
   add(x: number, y: number, l: number): void {
+    x |= 0;
+    y |= 0;
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     const i = y * W + x;
-    if (l > this.lum[i]) this.lum[i] = l;
+    if (l > this.lum[i]) {
+      this.lum[i] = l;
+      this.touch(y);
+    }
   }
 
   /** Scale a cell that is already drawn (for shadows). */
   mul(x: number, y: number, k: number): void {
+    x |= 0;
+    y |= 0;
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     const i = y * W + x;
     if (this.lum[i] >= 0) this.lum[i] *= k;
   }
 
-  /** Render to text. Cells under the mask are left blank. */
-  text(inkLight: boolean, ramp = RAMP, mask?: Uint8Array, floor = 0): string {
+  /** Rows of text, one string per row. Cells under the mask are left blank. */
+  rows(inkLight: boolean, ramp = RAMP, mask?: Uint8Array, floor = 0): string[] {
     const rows: string[] = new Array(H);
-    const n = ramp.length - 1;
     for (let y = 0; y < H; y++) {
       let s = "";
       const base = y * W;
       for (let x = 0; x < W; x++) {
         const l = this.lum[base + x];
-        if (l < 0 || (mask && mask[base + x])) {
-          s += " ";
-          continue;
-        }
-        const b = (BAYER[((y & 3) << 2) | (x & 3)] + 0.5) / 16;
-        let i = Math.floor(clamp(l, 0, 1) * n + b);
-        if (i > n) i = n;
-        if (!inkLight) i = n - i;
-        if (i < floor) i = floor;
-        s += ramp[i];
+        s += l < 0 || (mask && mask[base + x]) ? " " : ramp[glyphIndex(l, x, y, inkLight, ramp.length - 1, floor)];
       }
       rows[y] = s;
     }
-    return rows.join("\n");
+    return rows;
+  }
+
+  /** Render to text. Cells under the mask are left blank. */
+  text(inkLight: boolean, ramp = RAMP, mask?: Uint8Array, floor = 0): string {
+    return this.rows(inkLight, ramp, mask, floor).join("\n");
   }
 }
 
@@ -201,7 +235,13 @@ export function hitEllipsoids(shapes: Ellipsoid[], X: number, Y: number, out: Hi
     out.flat = e.flat ?? -1;
     out.d = d;
     // Gradient of (u^2 + v^2 + (z/rz)^2).
-    out.n = normalize([u / e.rx, v / e.ry, h / rz]);
+    const nx = u / e.rx;
+    const ny = v / e.ry;
+    const nz = h / rz;
+    const length = Math.hypot(nx, ny, nz) || 1;
+    out.n[0] = nx / length;
+    out.n[1] = ny / length;
+    out.n[2] = nz / length;
   }
   return found;
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Truffle is a small AI pet whose brain only works when you walk." />
+    <link rel="icon" type="image/svg+xml" href="/truffle.svg" />
     <title>Truffle</title>
   </head>
   <body>
@@ -17,12 +18,22 @@
         <button id="langBtn" type="button" class="ghost small" data-c="langToggle" lang="ar">عربي</button>
       </header>
 
+      <div class="intro">
+        <h1 data-c="welcomeTitle"></h1>
+        <p data-c="welcomeBody"></p>
+        <a id="tryDemo" href="/demo" data-c="tryDemo" hidden></a>
+      </div>
+
+      <main class="experience">
+      <div class="world-pane">
+
       <div id="scene" class="scene">
         <div id="world" class="grid-font" dir="ltr" role="img" aria-label="Truffle's ASCII world"></div>
       </div>
       <span id="probe" class="grid-font" aria-hidden="true"></span>
 
       <p id="hud" class="hud" aria-live="off" role="button" tabindex="0" aria-expanded="false" aria-controls="momentBox"><span id="hudText"></span><span id="fps" class="fps" dir="ltr" hidden></span></p>
+      <div id="recovery" class="row" hidden><span id="syncNote" class="hint" role="status"></span><button id="retryBtn" type="button" class="small" data-c="retry"></button></div>
       <p id="moment" class="moment" dir="auto" role="status" aria-live="polite" hidden></p>
       <section id="momentBox" class="moments" aria-labelledby="momentsTitle" hidden>
         <h2 id="momentsTitle" data-c="moments"></h2>
@@ -32,12 +43,17 @@
       <p id="memory" class="memory" dir="auto" hidden></p>
       <button id="sporeBtn" type="button" class="primary wide" data-c="sporeButton" hidden></button>
       <div class="row tools">
+        <button id="walkBtn" type="button" class="primary" data-c="tryWalk" hidden></button>
+        <button id="pauseBtn" type="button" data-c="pause"></button>
         <button id="shareBtn" type="button" class="small" data-c="share"></button>
         <button id="appBtn" type="button" class="small primary" data-c="openApp" hidden></button>
         <a id="getApp" class="small-link" href="https://github.com/ahmedabied/Truffle/releases" target="_blank" rel="noopener" data-c="getApp" hidden></a>
       </div>
+      </div>
 
+      <div class="interaction-pane">
       <section class="chat" aria-label="Chat">
+        <p id="chatHint" class="hint" data-c="chatHint"></p>
         <p id="reply" class="reply" dir="auto" aria-hidden="true"></p>
         <p id="replySr" class="sr-only" role="status" aria-atomic="true" dir="auto"></p>
         <form id="chatForm" class="chatline" autocomplete="off">
@@ -50,7 +66,7 @@
 
       <section id="judge" class="judge" aria-labelledby="judgeTitle" hidden>
         <h2 id="judgeTitle" data-c="judgeTitle"></h2>
-        <p class="hint" data-c="judgeIntro"></p>
+        <p id="judgeIntro" class="hint" data-c="judgeIntro"></p>
         <label for="steps" class="range-label"><span data-c="sliderLabel"></span><output id="stepsOut" for="steps">0</output></label>
         <input id="steps" type="range" min="0" max="15000" step="100" value="0" />
         <div class="row">
@@ -92,7 +108,16 @@
           <button id="forgetBtn" type="button" class="ghost small pairing" data-c="forget"></button>
         </div>
       </details>
+      </div>
+      </main>
+      <footer class="footer"><span data-c="footerNote"></span><a href="https://github.com/Ahmedabied/truffle" target="_blank" rel="noopener" data-c="sourceCode"></a></footer>
     </div>
+    <dialog id="pauseDialog" aria-labelledby="pauseTitle" aria-describedby="pauseText">
+      <p class="pause-mark" aria-hidden="true">· · ·</p>
+      <h2 id="pauseTitle" data-c="pause"></h2>
+      <p id="pauseText"></p>
+      <button id="backBtn" type="button" class="primary" data-c="back"></button>
+    </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

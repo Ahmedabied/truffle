@@ -32,6 +32,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -48,6 +49,66 @@ async function finishHeld(held: { push(t: string): void; end(): void }, text = "
 // ---------- D01 ----------
 
 describe("D01 pending chat admission and deadline (S11-01)", () => {
+  it("an unread response reaches its deadline and returns its unused demo slot", async () => {
+    const f = await truffle({ state: LIVE_HIGH, meta: { demo: true } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const held = f.ai.hold();
+    const result = await f.obj.chat(f.secret, "Hello Truffle.", "low", "en");
+    if (!result.ok) throw new Error(result.error);
+    await settle();
+    expect(f.meta().demo_replies?.count).toBe(1);
+    await vi.advanceTimersByTimeAsync(60_001);
+    let drained = false;
+    const done = f.drain().then(() => { drained = true; });
+    await settle();
+    const releasedOnTime = f.meta().chat === undefined;
+    const refundedOnTime = f.meta().demo_replies?.count;
+    const drainedOnTime = drained;
+    // Clean up the fixture even when the old implementation is stuck writing.
+    await result.value.cancel();
+    await done;
+    expect(held.aborted).toBe(true);
+    expect(drainedOnTime).toBe(true);
+    expect(releasedOnTime).toBe(true);
+    expect(refundedOnTime).toBe(0);
+    expect(f.state().energy).toBe(3600);
+    expect(f.turns()).toEqual([]);
+  });
+
+  it("a paused downstream cannot stall partial charging or deadline cleanup", async () => {
+    const f = await truffle({ state: LIVE_HIGH, meta: { demo: true } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const held = f.ai.hold();
+    const result = await f.obj.chat(f.secret, "Hello Truffle.", "low", "en");
+    if (!result.ok) throw new Error(result.error);
+    const reader = result.value.getReader();
+    await reader.read(); // brain event
+    held.push("First words.");
+    await reader.read(); // first token reaches the browser
+    held.push(" More words.");
+    await settle(); // the browser now stops reading without disconnecting
+    await vi.advanceTimersByTimeAsync(60_001);
+    let drained = false;
+    const done = f.drain().then(() => { drained = true; });
+    await settle();
+    const drainedOnTime = drained;
+    const releasedOnTime = f.meta().chat === undefined;
+    const energyOnTime = f.state().energy;
+    await reader.cancel();
+    await done;
+    expect(held.aborted).toBe(true);
+    expect(drainedOnTime).toBe(true);
+    expect(releasedOnTime).toBe(true);
+    expect(energyOnTime).toBe(3580);
+    expect(f.meta().demo_replies?.count).toBe(1);
+    expect(f.turns()).toEqual([
+      { role: "user", content: "Hello Truffle." },
+      { role: "assistant", content: "First words. More words." }
+    ]);
+    expect(f.logs("chat")).toHaveLength(1);
+    expect(f.logs("chat")[0]).toMatchObject({ spent: 20, partial: true });
+  });
+
   it("a second chat gets 429 while the first is in flight", async () => {
     const f = await truffle({ state: LIVE_HIGH });
     const held = f.ai.hold();

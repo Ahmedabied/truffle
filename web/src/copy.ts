@@ -9,18 +9,34 @@ export type Lang = "ar" | "en";
 
 const en = {
   title: "Truffle",
+  pause: "Take a moment",
+  back: "I'm back",
+  pauseNotice: "Wherever you are, notice one small thing: a sound, a shadow, a change in the air. No need to keep this screen open.",
+  pauseHeat: "No rescue mission today. Stay comfortable indoors. Notice the light, or a sound around you. Truffle can wait.",
+  returnNotice: "Welcome back. What did you notice? Share it if you like.",
+  retry: "Try again",
+  syncPaused: "Updates paused. This is your last saved world.",
+  welcomeTitle: "Your steps wake a little world.",
+  welcomeBody: "An AI companion with energy to spend. Walk when it suits you, come back, and tell it what you noticed.",
+  tryDemo: "Try it without a phone",
+  tryWalk: "Try a 4,000-step walk",
+  chatHint: "A little quiet for now. Steps give Truffle energy for a conversation.",
+  chatReady: "There you are. Tell Truffle about your day.",
+  heatRest: "Rest is part of the story. Truffle stays sheltered from the heat.",
+  footerNote: "A small world. Your own pace.",
+  sourceCode: "How it works",
   offline: "offline demo",
   halfAwake: "half-awake (fallback brain)",
   langToggle: "عربي",
   settings: "Settings",
   placeholder: "Say something to Truffle",
-  placeholderAsleep: "Truffle is asleep. A walk wakes it.",
+  placeholderAsleep: "Truffle is asleep. Steps wake it.",
   placeholderDead: "Plant a new spore to talk again.",
   send: "Send",
   thinking: "Truffle is listening...",
   yawning: "Truffle is waking up...",
-  chatError: "Truffle could not answer right now. Nothing was charged.",
-  networkError: "Could not reach Truffle. Check the API address in settings.",
+  chatError: "Truffle could not finish the reply. Try again in a little while.",
+  networkError: "Could not reach Truffle. Try again shortly. If this keeps happening, check the API address in Settings.",
   sporeButton: "Plant a new spore",
   memoryPrefix: "It remembered:",
   energy: "Energy",
@@ -28,7 +44,7 @@ const en = {
   effort: "effort",
   apiBase: "API address",
   save: "Save and reload",
-  phrase: "Your phrase (type it into the feeder app)",
+  phrase: "Pairing phrase",
   copy: "Copy",
   copied: "Copied",
   fontSize: "Text size",
@@ -38,7 +54,7 @@ const en = {
   motionSystem: "Your system asks for less motion, so the sky stays still.",
   forget: "Forget this Truffle on this browser",
   judgeTitle: "Judge mode",
-  judgeIntro: "A fresh demo Truffle, just for you. Real engine. Real brain. Gone in 24 hours.",
+  judgeIntro: "A demo Truffle for trying steps, midnight and heat. Online demos last 24 hours.",
   sliderLabel: "Steps today",
   midnight: "Next midnight",
   heatOn: "Heat day: on",
@@ -49,40 +65,64 @@ const en = {
   working: "Working...",
   loading: "Waking the world...",
   pairing: "Planting your spore...",
-  stepsOnlyUp: "Steps only count up. A lower number adds nothing.",
-  freshSpore: "A fresh spore. Walk to wake it.",
+  stepsOnlyUp: "Today's total keeps the highest count. A lower number adds no steps.",
+  freshSpore: "A fresh spore. Steps will wake it.",
   heatExplainOn: "Heat day. Truffle burrows. No growth today and it cannot die today.",
-  heatExplainOff: "The heat passed. Truffle can come up again.",
+  heatExplainOff: "Heat mode is off. Truffle can come up again.",
   newSporeDone: "A new spore is in the sand. The old stone stays.",
   pollNote: "Updates every 30 seconds.",
-  partial: "The reply was cut short. Only the part you saw was charged.",
+  partial: "The reply ended early. Some text arrived, so the reply's energy cost was used.",
   moments: "Moments",
   momentsShow: "Show moments",
-  momentsEmpty: "No moments yet. They come from walking.",
+  momentsEmpty: "Your moments will appear here.",
   share: "Share",
   shareMaking: "Making the card...",
   shareFailed: "Could not make the card on this browser.",
   shareTag: "truffle, a pet that eats steps",
   openApp: "Open in the Truffle app",
-  getApp: "Get the Android app"
+  getApp: "Get the Android app",
+  shareDemo: "simulated steps · demo Truffle",
+  demoBusy: "The live demo is busy. Try this sample world with simulated steps and replies.",
+  offlineIntro: "Simulated steps and sample replies. The same energy rules run here without a connection.",
+  importPet: "Use this Truffle in this browser? This changes the pet shown here.",
+  importFailed: "That Truffle could not be verified. Your saved pet is unchanged.",
+  apiInvalid: "Use an HTTPS server address without a path, query or password.",
+  apiChange: "Change server? Each server has a separate pet. Your current pet stays saved for this server.",
+  forgetConfirm: "Forget this pet in this browser? Save its app pairing first if you want to return."
 };
 
 export type CopyKey = keyof typeof en;
 
 const ar: Record<CopyKey, string> = {
   title: "ترافل",
+  pause: "خذ لك لحظة",
+  back: "رجعت",
+  pauseNotice: "وين ما كنت، لاحظ شي صغير: صوت، ظل، أو تغيّر في الهوا. ما تحتاج تخلي الشاشة مفتوحة.",
+  pauseHeat: "ما فيه مهمة إنقاذ اليوم. خلك مرتاح داخل. لاحظ النور أو صوت حولك. ترافل ينتظرك على راحته.",
+  returnNotice: "هلا برجعتك. وش لاحظت؟ سولف عنه إذا ودك.",
+  retry: "جرّب مرة ثانية",
+  syncPaused: "التحديثات متوقفة. هذا آخر عالم محفوظ لك.",
+  welcomeTitle: "خطواتك تصحّي عالم صغير.",
+  welcomeBody: "رفيق ذكي طاقته من خطواتك. تحرّك على راحتك، وارجع سولف له عن اللي لاحظته.",
+  tryDemo: "جرّبه بدون هاتف",
+  tryWalk: "جرّب مشية من ٤٬٠٠٠ خطوة",
+  chatHint: "هدوء شوي الحين. الخطوات تعطي ترافل طاقة للسوالف.",
+  chatReady: "هلا فيك. سولف لترافل عن يومك.",
+  heatRest: "الراحة جزء من الحكاية. ترافل يحتمي من الحر.",
+  footerNote: "عالم صغير. وعلى راحتك.",
+  sourceCode: "كيف يشتغل",
   offline: "عرض بدون اتصال",
   halfAwake: "نص صاحي (عقل احتياطي)",
   langToggle: "English",
   settings: "الإعدادات",
   placeholder: "قل شي لترافل",
-  placeholderAsleep: "ترافل نايم. مشية بسيطة تصحّيه.",
+  placeholderAsleep: "ترافل نايم. الخطوات تصحّيه.",
   placeholderDead: "ازرع بذرة جديدة عشان تسولف من جديد.",
   send: "أرسل",
   thinking: "ترافل يسمعك...",
   yawning: "ترافل يصحى...",
-  chatError: "ترافل ما قدر يرد الحين. ما انخصم شي.",
-  networkError: "ما قدرنا نوصل لترافل. شيّك على عنوان الخادم في الإعدادات.",
+  chatError: "ترافل ما قدر يكمّل الرد. جرّب بعد شوي.",
+  networkError: "ما قدرنا نوصل لترافل. جرّب بعد شوي. إذا استمر هالشي، شيّك على عنوان الخادم في الإعدادات.",
   sporeButton: "ازرع بذرة جديدة",
   memoryPrefix: "كان يتذكر:",
   energy: "الطاقة",
@@ -90,7 +130,7 @@ const ar: Record<CopyKey, string> = {
   effort: "الجهد",
   apiBase: "عنوان الخادم",
   save: "احفظ وأعد التحميل",
-  phrase: "عبارتك (اكتبها في تطبيق المغذّي)",
+  phrase: "عبارة الربط",
   copy: "انسخ",
   copied: "تم النسخ",
   fontSize: "حجم النص",
@@ -100,7 +140,7 @@ const ar: Record<CopyKey, string> = {
   motionSystem: "جهازك يطلب حركة أقل، فالسماء ثابتة.",
   forget: "انسَ ترافل هذا على هذا المتصفح",
   judgeTitle: "وضع الحكّام",
-  judgeIntro: "ترافل تجريبي جديد لك. المحرك حقيقي. العقل حقيقي. يختفي بعد 24 ساعة.",
+  judgeIntro: "ترافل تجريبي عشان تجرّب الخطوات ومنتصف الليل والحر. نسخة التجربة على الخادم تنتهي بعد 24 ساعة.",
   sliderLabel: "خطوات اليوم",
   midnight: "منتصف الليل التالي",
   heatOn: "يوم حر: شغّال",
@@ -111,22 +151,30 @@ const ar: Record<CopyKey, string> = {
   working: "لحظة...",
   loading: "العالم يصحى...",
   pairing: "نزرع بذرتك...",
-  stepsOnlyUp: "الخطوات تنحسب للأعلى بس. الرقم الأقل ما يضيف شي.",
-  freshSpore: "بذرة جديدة. امشِ عشان تصحّيها.",
+  stepsOnlyUp: "نحتفظ بأعلى عدد خطوات اليوم. الرقم الأقل ما يضيف خطوات.",
+  freshSpore: "بذرة جديدة. الخطوات تصحّيها.",
   heatExplainOn: "يوم حر. ترافل يختبئ تحت الرمل. ما يكبر اليوم وما يموت اليوم.",
-  heatExplainOff: "راح الحر. ترافل يقدر يطلع من جديد.",
+  heatExplainOff: "طفّينا وضع الحر. ترافل يقدر يطلع من جديد.",
   newSporeDone: "بذرة جديدة في الرمل. الحجر القديم باقي.",
   pollNote: "يتحدّث كل 30 ثانية.",
-  partial: "الرد انقطع. انحسب بس الجزء اللي شفته.",
+  partial: "الرد انقطع. وصل جزء منه، فانحسبت طاقة الرد.",
   moments: "لحظات",
   momentsShow: "اعرض اللحظات",
-  momentsEmpty: "ما فيه لحظات للحين. تجي من المشي.",
+  momentsEmpty: "لحظاتك بتطلع هنا.",
   share: "شارك",
   shareMaking: "نسوي البطاقة...",
   shareFailed: "ما قدرنا نسوي البطاقة على هذا المتصفح.",
   shareTag: "ترافل، حيوان أليف ياكل خطوات",
   openApp: "افتح في تطبيق ترافل",
-  getApp: "نزّل تطبيق أندرويد"
+  getApp: "نزّل تطبيق أندرويد",
+  shareDemo: "خطوات محاكاة · ترافل تجريبي",
+  demoBusy: "التجربة الحية مشغولة. جرّب هذا العالم بخطوات وردود تجريبية.",
+  offlineIntro: "خطوات محاكاة وردود تجريبية. نفس قواعد الطاقة تعمل هنا بدون اتصال.",
+  importPet: "تستخدم ترافل هذا في المتصفح؟ بيتغيّر الرفيق المعروض هنا.",
+  importFailed: "ما قدرنا نتحقق من ترافل هذا. رفيقك المحفوظ ما تغيّر.",
+  apiInvalid: "استخدم عنوان خادم HTTPS بدون مسار أو معاملات أو كلمة مرور.",
+  apiChange: "تغيّر الخادم؟ لكل خادم رفيق مستقل. رفيقك الحالي بيبقى محفوظ لهذا الخادم.",
+  forgetConfirm: "تنسى هذا الرفيق في المتصفح؟ اربطه بالتطبيق أول إذا تبي ترجع له."
 };
 
 export const COPY: Record<Lang, Record<CopyKey, string>> = { en, ar };
@@ -216,7 +264,7 @@ export function explainMidnight(
 }
 
 export function explainGrew(lang: Lang, stage: Stage): string {
-  return lang === "ar" ? `كبر وصار ${STAGE_WORD.ar[stage]}.` : `It grew into a ${stage}.`;
+  return lang === "ar" ? `كبر وصار ${STAGE_WORD.ar[stage]}.` : `It grew into a ${stage}. A bigger body has more room for energy.`;
 }
 
 const STAGE_BY_INDEX: readonly Stage[] = ["Spore", "Sprout", "Truffle", "Elder"];
@@ -248,7 +296,7 @@ export function momentLine(lang: Lang, kind: MomentKind, value: number): string 
       case "lifetime":
         return `${n} خطوة مع بعض لين الحين.`;
       case "heat_day_indoor":
-        return `يوم حر، وبعدك تحركت. ${n} خطوة.`;
+        return `وصلت خطواتك. ${n} اليوم. ما نحتاج مهمة إنقاذ.`;
     }
   }
   switch (kind) {
@@ -265,6 +313,6 @@ export function momentLine(lang: Lang, kind: MomentKind, value: number): string 
     case "lifetime":
       return `${n} steps together so far.`;
     case "heat_day_indoor":
-      return `a hot day, and you still moved. ${n} steps.`;
+      return `your steps arrived. ${n} today. no rescue needed.`;
   }
 }

@@ -1,7 +1,7 @@
 // Phone prep: ?fps=1 shows frames per second and the average compose and
 // paint time per frame over the last second, in the HUD line. Default off.
-// "paint" is the DOM write plus a forced style and layout pass, measured in
-// World.draw. Raster and composite happen later in the browser and are not in it.
+// "paint" is canvas submission time measured in World.draw. Browser
+// rasterisation, compositing and display latency are not included.
 
 export function fpsEnabled(params: URLSearchParams): boolean {
   return params.get("fps") === "1";

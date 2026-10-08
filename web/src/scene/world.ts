@@ -1,7 +1,6 @@
-// The ASCII world. A stack of <pre> layers, each in one colour, each filled
-// from a luminance raster and dithered into glyph density. 100 x 68 cells.
-// Everything that moves is keyed to the frame clock `t`, which freezes under
-// reduced motion. 12 fps.
+// A dense, lit ASCII world at 100 x 68 cells. Static geometry is cached;
+// moving geometry is rasterised at 30 Hz and only changed glyph cells paint.
+// The legacy effects retain a 12 Hz clock. Breathing uses elapsed seconds.
 
 import type { Stage, Tier } from "../../../worker/src/config";
 import type { Gravestone, Mood } from "../../../worker/src/engine";
@@ -9,10 +8,12 @@ import { arc, moonPhase, starField, sunHeight, sunTimes } from "./astro";
 import { COLS, ROWS } from "./grid";
 import { canonicalHour, mix, paletteAt, type Conditions, type Palette } from "./palette";
 import { BITMAPS, drawPet, type Face, type PetInfo } from "./pet";
-import { ASPECT, clamp, disc, hash, Layer, line, luma, noise, normalize, shade, smooth, stamp, SOFT, type Vec3 } from "./raster";
+import { ASPECT, clamp, disc, hash, Layer, line, luma, noise, normalize, shade, smooth, stamp, SOFT, RAMP, type Vec3 } from "./raster";
 import { localHour } from "./sky";
+import { celebration, DURATION, MOMENT_KINDS, type MomentKind } from "./fx";
+import { Surface, type Ink, type Paint } from "./surface";
 
-const PERIOD = 1000 / 12;
+const PERIOD = 1000 / 30;
 export const HORIZON = 40; // first ground row
 const ANCHOR = 58; // ground contact row of the Truffle
 const SKY_TOP = 2;
@@ -285,6 +286,11 @@ const NEAR: CloudSpec[] = [
 ];
 const STORM: CloudSpec = { row: 8, base: 0, speed: 0.8, blobs: [[0, 0, 5], [6, -1.5, 4.2], [-6, 1, 3.8], [12, 0.5, 3.4], [3, 3, 4.6], [-11, 2, 3], [-2, -3.2, 3.2]] };
 
+// Gaussian blobs are separable. Reuse their axis samples for the field and
+// its original finite differences, without changing the noise or the lighting.
+// Float64 keeps the intermediates at JS number precision; no quantised lookup.
+const CLOUD_AXES = new WeakMap<CloudSpec, { x: Float64Array; y: Float64Array }>();
+
 function cloud(L: Layer, cx: number, cy: number, spec: CloudSpec, e: Env, t: number, soft: number): void {
   const blobs = spec.blobs;
   let minX = Infinity;
@@ -301,24 +307,53 @@ function cloud(L: Layer, cx: number, cy: number, spec: CloudSpec, e: Env, t: num
   const x1 = Math.min(COLS - 1, Math.ceil(maxX / ASPECT));
   const y0 = Math.max(0, Math.floor(minY));
   const y1 = Math.min(HORIZON - 1, Math.ceil(maxY));
+  if (x0 > x1 || y0 > y1) return;
   const light: Vec3 = normalize([e.lightSide * 0.6, -0.8, 0.5]);
-  const field = (X: number, Y: number) => {
-    let f = 0;
-    for (const [dx, dy, r] of blobs) {
-      const u = (X - cx - dx) / r;
-      const v = (Y - cy - dy) / (r * 0.78);
-      f += Math.exp(-(u * u + v * v) * 1.6);
+  const count = blobs.length;
+  let axes = CLOUD_AXES.get(spec);
+  if (!axes) {
+    axes = { x: new Float64Array(COLS * 3 * count), y: new Float64Array(HORIZON * 3 * count) };
+    CLOUD_AXES.set(spec, axes);
+  }
+  const xs = axes.x;
+  const ys = axes.y;
+  for (let x = x0; x <= x1; x++) {
+    const X = (x + 0.5) * ASPECT;
+    for (let k = 0; k < 3; k++) {
+      const sample = k === 0 ? X : k === 1 ? X + 0.3 : X - 0.3;
+      for (let i = 0; i < count; i++) {
+        const [dx, , r] = blobs[i];
+        const u = (sample - cx - dx) / r;
+        xs[(x * 3 + k) * count + i] = Math.exp(-(u * u) * 1.6);
+      }
     }
+  }
+  for (let y = y0; y <= y1; y++) {
+    const Y = y + 0.5;
+    for (let k = 0; k < 3; k++) {
+      const sample = k === 0 ? Y : k === 1 ? Y + 0.3 : Y - 0.3;
+      for (let i = 0; i < count; i++) {
+        const [, dy, r] = blobs[i];
+        const v = (sample - cy - dy) / (r * 0.78);
+        ys[(y * 3 + k) * count + i] = Math.exp(-(v * v) * 1.6);
+      }
+    }
+  }
+  const field = (X: number, Y: number, xi: number, yi: number) => {
+    let f = 0;
+    for (let i = 0; i < count; i++) f += xs[xi + i] * ys[yi + i];
     return f + 0.18 * noise(X * 0.55 + t * 0.004, Y * 0.7, 11);
   };
   for (let y = y0; y <= y1; y++) {
     const Y = y + 0.5;
     for (let x = x0; x <= x1; x++) {
       const X = (x + 0.5) * ASPECT;
-      const f = field(X, Y);
+      const xi = x * 3 * count;
+      const yi = y * 3 * count;
+      const f = field(X, Y, xi, yi);
       if (f < 0.55) continue;
-      const gx = field(X + 0.3, Y) - field(X - 0.3, Y);
-      const gy = field(X, Y + 0.3) - field(X, Y - 0.3);
+      const gx = field(X + 0.3, Y, xi + count, yi) - field(X - 0.3, Y, xi + count * 2, yi);
+      const gy = field(X, Y + 0.3, xi, yi + count) - field(X, Y - 0.3, xi, yi + count * 2);
       const n = normalize([-gx * 2.2, -gy * 2.2, 0.55 + Math.min(1, f - 0.55)]);
       let l = shade(n, light, 0.32, 0);
       const edge = smooth(0.55, 0.95, f);
@@ -353,7 +388,7 @@ function cloudsLayer(L: Layer, e: Env, t: number, phase: number, near: boolean):
   for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
 }
 
-function groundLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo): void {
+function groundLayer(L: Layer, v: View, e: Env, t: number): void {
   const sand = e.sand;
   const H = sand ? duneH : hillH;
   const side = e.lightSide;
@@ -439,20 +474,36 @@ function groundLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo): void {
       }
       L.set(px, base, 0.2);
     }
-  } else if (v.mood !== "burrowed") {
-    // Dry tufts that lean with the wind.
-    const lean = Math.sin(t / 7) * Math.min(1, wind / 25);
-    for (const [tx, ty, h] of [[9, 47, 4], [84, 53, 5], [20, 61, 3], [70, 44, 3]] as [number, number, number][]) {
-      for (let k = 0; k < h; k++) {
-        const y = ty - k;
-        const spread = k * 0.9;
-        for (const s of [-1, 0, 1]) {
-          const x = Math.round(tx + s * spread + lean * k * 0.6);
-          L.set(x, y, 0.22 + 0.1 * s * side);
-        }
+  }
+  // Small stones for the Truffles that came before.
+  const past = v.mood === "dead" ? v.gravestones.slice(0, -1) : v.gravestones;
+  past.slice(-6).forEach((_, i) => {
+    const sx = 4 + i * 5;
+    const sy = ROWS - 4;
+    for (let y = sy - 2; y <= sy; y++) for (let x = sx - 1; x <= sx + 1; x++) L.set(x, y, y === sy - 2 && x !== sx ? 0.5 : (x - sx) * side < 0 ? 0.28 : 0.42);
+  });
+}
+
+/** Foreground blades move without recomputing the terrain heightfield. */
+function windLayer(L: Layer, v: View, e: Env, sec: number): void {
+  const wind = clamp(v.windKmh, 0, 70);
+  const amplitude = Math.min(2.6, wind / 18);
+  const speed = 1.1 + wind / 50;
+  const tufts = e.sand
+    ? [[9, 47, 4], [84, 53, 5], [20, 61, 3], [70, 44, 3]]
+    : [[8, 49, 3], [19, 61, 4], [32, 47, 2], [76, 62, 4], [88, 52, 4], [67, 43, 2], [4, 65, 3], [94, 65, 3]];
+  for (const [tx, ty, h] of tufts) {
+    const lean = (Math.sin(sec * speed + tx * 0.2) + Math.sin(sec * speed * 0.47 + ty) * 0.4) * amplitude;
+    for (let k = 0; k < h; k++) {
+      for (const side of [-1, 0, 1]) {
+        const x = Math.round(tx + side * k * 0.8 + lean * (k / h) ** 2);
+        L.set(x, ty - k, 0.22 + 0.1 * side * e.lightSide);
       }
     }
   }
+}
+
+function shadowLayer(L: Layer, e: Env, pet: PetInfo): void {
   // Cast shadow of the Truffle.
   if (pet.shadow) {
     const s = pet.shadow;
@@ -468,13 +519,6 @@ function groundLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo): void {
       }
     }
   }
-  // Small stones for the Truffles that came before.
-  const past = v.mood === "dead" ? v.gravestones.slice(0, -1) : v.gravestones;
-  past.slice(-6).forEach((_, i) => {
-    const sx = 4 + i * 5;
-    const sy = ROWS - 4;
-    for (let y = sy - 2; y <= sy; y++) for (let x = sx - 1; x <= sx + 1; x++) L.set(x, y, y === sy - 2 && x !== sx ? 0.5 : (x - sx) * side < 0 ? 0.28 : 0.42);
-  });
 }
 
 function weatherLayer(L: Layer, v: View, e: Env, t: number): void {
@@ -589,6 +633,16 @@ function fxLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo, reduced: bo
       for (let j = 0; j < 3; j++) L.add(x + ((j + k) % 2), top - 2 - k - j * 2, 0.5 - j * 0.12);
     }
   }
+  if (v.mood === "dead" && !reduced) {
+    // Two pale petals travel quietly past the stone, carried by the wind.
+    for (let i = 0; i < 2; i++) {
+      const q = mod(t / 12 + i * 5.5, 12) / 12;
+      const x = Math.round(cx - 14 + q * (22 + Math.min(v.windKmh, 40) / 3));
+      const y = Math.round(ANCHOR - 6 + q * 8 + Math.sin(q * 8 + i) * 1.4);
+      L.add(x, y, 0.7);
+      L.add(x + 1, y, 0.35);
+    }
+  }
   // Birds at dawn and dusk under a clear sky.
   if (!reduced && e.sunH > 0 && e.sunH < 0.35 && e.cond.cloud < 0.6 && !e.cond.rain) {
     const cycle = 380;
@@ -621,88 +675,199 @@ export interface Frame {
   env: Env;
 }
 
-const BUF: Record<LayerName, Layer> = Object.fromEntries(LAYERS.map((n) => [n, new Layer()])) as Record<LayerName, Layer>;
-const MASK = new Uint8Array(COLS * ROWS);
+export interface SceneOptions {
+  /** Smooth animation clock. The legacy t argument remains in 12 Hz ticks. */
+  sec?: number;
+  rise?: number;
+  moment?: { kind: MomentKind; value: number; progress: number };
+}
 
-/** Compose every layer. Exported for tests and screenshots. */
-export function composeAll(v: View, t: number, cloudPhase: number, hour: number, now: Date, reduced: boolean): Frame {
-  const e = envFor(v, hour, now);
-  for (const n of LAYERS) BUF[n].clear();
-  MASK.fill(0);
-  const face: Face = v.mood === "dead" || v.mood === "burrowed" ? v.mood : v.yawn ? "yawn" : v.mood;
-  const pet = drawPet({ ink: BUF.pet, cap: BUF.cap, skin: BUF.skin, white: BUF.white, mask: MASK }, { stage: v.stage, face, light: e.light, t, reduced, ground: ANCHOR, centre: COLS / 2, ageDays: v.ageDays });
+export interface RasterFrame {
+  layers: Record<LayerName, Layer>;
+  mask: Uint8Array;
+  pet: PetInfo;
+  env: Env;
+}
 
-  skyLayer(BUF.sky, e, t);
-  starsLayer(BUF.stars, e, t);
-  sunLayer(BUF.sun, e);
-  cloudsLayer(BUF.cloudsFar, e, t, cloudPhase, false);
-  cloudsLayer(BUF.cloudsNear, e, t, cloudPhase, true);
-  groundLayer(BUF.ground, v, e, t, pet);
-  weatherLayer(BUF.weather, v, e, t);
-  fxLayer(BUF.fx, v, e, t, pet, reduced);
+/** Independent caches per world. No live canvas shares mutable global layers. */
+export class Scene {
+  readonly layers = Object.fromEntries(LAYERS.map((n) => [n, new Layer()])) as Record<LayerName, Layer>;
+  readonly mask = new Uint8Array(COLS * ROWS);
+  private ground = new Layer();
+  private environment: Env | null = null;
+  private environmentKey = "";
+  private cloudsKey = "";
+  /** Useful for deterministic cache and performance checks. */
+  readonly builds = { static: 0, clouds: 0 };
 
+  compose(v: View, t: number, cloudPhase: number, hour: number, now: Date, reduced: boolean, options: SceneOptions = {}): RasterFrame {
+    // Astronomy and the continuous palette advance every 15 seconds. Breathing,
+    // weather and wind continue independently at the display cadence.
+    const sampledHour = Math.floor(hour * 240) / 240;
+    const key = [sampledHour, now.toISOString().slice(0, 10), v.country, v.weatherCode,
+      v.rain, v.apparentC, v.mood, v.moonOverride, v.gravestones.length].join("|");
+    const L = this.layers;
+    if (key !== this.environmentKey || !this.environment) {
+      this.environmentKey = key;
+      this.environment = envFor(v, sampledHour, now);
+      L.sky.clear();
+      L.sun.clear();
+      this.ground.clear();
+      skyLayer(L.sky, this.environment, 0);
+      sunLayer(L.sun, this.environment);
+      groundLayer(this.ground, v, this.environment, 0);
+      this.builds.static++;
+    }
+    const e = this.environment;
+    const clock = reduced ? 0 : t;
+    const sec = reduced ? 0 : options.sec ?? clock / 12;
+    const phase = reduced ? 0 : Math.floor(cloudPhase * 10) / 10;
+    // Cloud evolution is subtle at this scale. Keep its field at 12 Hz while
+    // the creature, rain and celebrations render at 30 Hz.
+    const cloudKey = `${key}|${Math.floor(clock)}|${Math.floor(phase * 10)}`;
+    if (cloudKey !== this.cloudsKey) {
+      this.cloudsKey = cloudKey;
+      L.cloudsFar.clear();
+      L.cloudsNear.clear();
+      cloudsLayer(L.cloudsFar, e, Math.floor(clock), phase, false);
+      cloudsLayer(L.cloudsNear, e, Math.floor(clock), phase, true);
+      this.builds.clouds++;
+    }
+    for (const name of ["stars", "weather", "pet", "cap", "skin", "white", "fx"] as const) L[name].clear();
+    this.mask.fill(0);
+    const face: Face = v.mood === "dead" || v.mood === "burrowed" ? v.mood : v.yawn ? "yawn" : v.mood;
+    const pet = drawPet({ ink: L.pet, cap: L.cap, skin: L.skin, white: L.white, mask: this.mask }, {
+      stage: v.stage, face, light: e.light, t: clock, sec, reduced,
+      ground: ANCHOR, centre: COLS / 2, ageDays: v.ageDays, rise: reduced ? undefined : options.rise
+    });
+    L.ground.copy(this.ground);
+    windLayer(L.ground, v, e, sec);
+    shadowLayer(L.ground, e, pet);
+    starsLayer(L.stars, e, Math.floor(clock));
+    weatherLayer(L.weather, v, e, reduced ? 0 : sec * 12);
+    fxLayer(L.fx, v, e, Math.floor(clock), pet, reduced);
+    if (options.moment) {
+      const m = options.moment;
+      celebration(L.fx, L.weather, m.kind, m.value, m.progress, {
+        cx: COLS / 2, y0: pet.y0, y1: pet.y1, ground: ANCHOR
+      });
+    }
+    return { layers: L, mask: this.mask, pet, env: e };
+  }
+}
+
+/** All output surfaces share exactly the same layer order, dither and masking. */
+export function paintsFor(frame: RasterFrame): Paint[] {
+  const p = frame.env.pal;
+  const paperSky = (luma(p.skyTop) + luma(p.skyHorizon)) * 0.5;
+  const paperGround = (luma(p.groundTop) + luma(p.groundBottom)) * 0.5;
+  return LAYERS.map((name, ink) => ({
+    layer: frame.layers[name], ink, ramp: name === "sky" ? SOFT : RAMP,
+    inkLight: name === "pet" ? false : name === "ground" ? luma(p.ground) > paperGround
+      : name === "cloudsFar" ? luma(p.cloudFar) > paperSky
+      : name === "cloudsNear" ? luma(p.cloudNear) > paperSky : true,
+    mask: ink <= 5 ? frame.mask : undefined
+  }));
+}
+
+export function inksFor(e: Env, mood: Mood): Ink[] {
   const p = e.pal;
-  const paperSky = luma(p.skyTop) * 0.5 + luma(p.skyHorizon) * 0.5;
-  const paperGround = luma(p.groundTop) * 0.5 + luma(p.groundBottom) * 0.5;
-  const inkOn = (ink: string, paper: number) => luma(ink) > paper;
-  const layers: Record<LayerName, string> = {
-    sky: BUF.sky.text(true, SOFT, MASK),
-    stars: BUF.stars.text(true, undefined, MASK),
-    sun: BUF.sun.text(true, undefined, MASK),
-    cloudsFar: BUF.cloudsFar.text(inkOn(p.cloudFar, paperSky), undefined, MASK),
-    cloudsNear: BUF.cloudsNear.text(inkOn(p.cloudNear, paperSky), undefined, MASK),
-    ground: BUF.ground.text(inkOn(p.ground, paperGround), undefined, MASK),
-    weather: BUF.weather.text(true, undefined, undefined),
-    pet: BUF.pet.text(false),
-    cap: BUF.cap.text(true),
-    skin: BUF.skin.text(true),
-    white: BUF.white.text(true),
-    fx: BUF.fx.text(true)
-  };
-  return { layers, env: e };
+  const dark = luma(p.pet) > 0.5 ? mix(p.skyTop, "#000000", 0.55) : p.pet;
+  const colours = [p.glow, p.stars, p.sun, p.cloudFar, p.cloudNear, p.ground, p.weather, dark, p.cap, p.skin, p.white, p.fx];
+  return colours.map((colour, i) => {
+    const isPet = i >= 7 && i <= 10;
+    // Match the former CSS grayscale filter while keeping the palette itself.
+    if (isPet && mood === "wilting") {
+      const value = Math.round(luma(colour) * 255).toString(16).padStart(2, "0");
+      colour = mix(colour, `#${value}${value}${value}`, 0.7);
+    }
+    return { colour, alpha: isPet && mood === "wilting" ? 0.85 : isPet && mood === "tired" ? 0.92 : i === 0 || i === 6 ? 0.8 : i === 3 ? 0.85 : 1 };
+  });
+}
+
+const TEXT_SCENE = new Scene();
+
+/** Immutable text snapshot for tests, tooling and ASCII exports. Not the live paint path. */
+export function composeAll(v: View, t: number, cloudPhase: number, hour: number, now: Date, reduced: boolean, options: SceneOptions = {}): Frame {
+  const raster = TEXT_SCENE.compose(v, t, cloudPhase, hour, now, reduced, options);
+  const paints = paintsFor(raster);
+  const layers = Object.fromEntries(LAYERS.map((name, i) => {
+    const p = paints[i];
+    return [name, p.layer.text(p.inkLight, p.ramp, p.mask)];
+  })) as Record<LayerName, string>;
+  return { layers, env: raster.env };
 }
 
 export class World {
   view: View = { ...EMPTY_VIEW };
   private reduced = false;
-  private t = 0;
+  private seconds = 0;
   private cloudPhase = 0;
-  private last: Partial<Record<LayerName, string>> = {};
-  private els: Record<LayerName, HTMLElement>;
+  private scene = new Scene();
+  private surface: Surface;
   private next: number | null = null;
   private prev: number | null = null;
+  private animation: number | null = null;
   private paletteKey = "";
+  private dirty = true;
+  private lastMinute = "";
+  private rebornAt: number | null = null;
+  private moment: { kind: MomentKind; value: number; start: number } | null = null;
+  private momentTimer: ReturnType<typeof setTimeout> | null = null;
   frames = 0;
-  /** ?fps=1 hook: compose ms and paint ms (DOM write plus a forced layout) per frame. Null when off. */
+  /** CPU compose and canvas submission time. GPU work is not included. */
   timing: ((composeMs: number, paintMs: number) => void) | null = null;
 
   constructor(private root: HTMLElement) {
     root.textContent = "";
-    this.els = {} as Record<LayerName, HTMLElement>;
-    for (const name of LAYERS) {
-      const pre = document.createElement("pre");
-      pre.className = "layer";
-      pre.dataset.layer = name;
-      pre.setAttribute("aria-hidden", "true");
-      root.appendChild(pre);
-      this.els[name] = pre;
-    }
-    document.addEventListener("visibilitychange", () => {
-      this.next = null;
-      this.prev = null;
-    });
+    this.surface = new Surface(root);
+    document.addEventListener("visibilitychange", this.visibilityChanged);
   }
 
+  private visibilityChanged = (): void => {
+    this.next = null;
+    this.prev = null;
+    this.dirty = true;
+  };
+
   set(v: Partial<View>): void {
+    if (this.view.mood === "dead" && v.mood && v.mood !== "dead") this.rebornAt = this.seconds;
     this.view = { ...this.view, ...v };
+    this.dirty = true;
   }
 
   setReduced(on: boolean): void {
+    if (this.reduced === on) return;
     this.reduced = on;
+    this.prev = null;
+    this.dirty = true;
+    // A preference change must not leave a growing or endless celebration.
+    if (this.moment) this.celebrate(this.moment.kind, this.moment.value);
   }
 
   hour(): number {
     return this.view.hourOverride ?? localHour(this.view.tz);
+  }
+
+  /** A share card reads the rendered canvas without re-composing the world. */
+  frame(): HTMLCanvasElement {
+    return this.surface.canvas;
+  }
+
+  celebrate(kind: MomentKind, value: number): void {
+    if (!MOMENT_KINDS.includes(kind)) return;
+    if (this.momentTimer !== null) clearTimeout(this.momentTimer);
+    this.moment = { kind, value, start: this.seconds };
+    this.dirty = true;
+    // Reduced motion shows one fixed effect for exactly two seconds. The timer
+    // expires independently of the frozen animation clock, even in a hidden tab.
+    this.momentTimer = setTimeout(() => {
+      this.moment = null;
+      this.momentTimer = null;
+      this.dirty = true;
+      if (!document.hidden) this.draw();
+    }, (this.reduced ? 2 : DURATION[kind]) * 1000);
+    this.draw();
   }
 
   private applyPalette(e: Env): void {
@@ -712,67 +877,63 @@ export class World {
     this.paletteKey = key;
     const split = ((HORIZON / ROWS) * 100).toFixed(3) + "%";
     this.root.style.background = `linear-gradient(to bottom, ${p.skyTop} 0%, ${p.skyHorizon} ${split}, ${p.groundTop} ${split}, ${p.groundBottom} 100%)`;
-    const colour: Record<LayerName, string> = {
-      sky: p.glow,
-      stars: p.stars,
-      sun: p.sun,
-      cloudsFar: p.cloudFar,
-      cloudsNear: p.cloudNear,
-      ground: p.ground,
-      weather: p.weather,
-      pet: luma(p.pet) > 0.5 ? mix(p.skyTop, "#000000", 0.55) : p.pet,
-      cap: p.cap,
-      skin: p.skin,
-      white: p.white,
-      fx: p.fx
-    };
-    for (const name of LAYERS) this.els[name].style.color = colour[name];
-    const m = this.view.mood;
-    const petFilter = m === "wilting" ? "grayscale(0.7) opacity(0.85)" : m === "tired" ? "opacity(0.92)" : "none";
-    for (const name of ["pet", "cap", "skin", "white"] as const) this.els[name].style.filter = petFilter;
-    this.root.style.filter = m === "dead" ? "saturate(0.55)" : "none";
+    this.root.style.filter = this.view.mood === "dead" ? "saturate(0.55)" : "none";
   }
 
-  /** Render one frame now (used once at boot and by the loop). */
+  /** Render one frame now (used at boot, on resize, and for state changes). */
   draw(): void {
     const t0 = this.timing ? performance.now() : 0;
-    const hour = this.hour();
-    const { layers, env } = composeAll(this.view, this.t, this.cloudPhase, hour, new Date(), this.reduced);
+    const m = this.moment;
+    const progress = m ? this.reduced ? 0.45 : clamp((this.seconds - m.start) / DURATION[m.kind], 0, 1) : 0;
+    const rise = this.rebornAt === null ? undefined : clamp(this.seconds - this.rebornAt, 0, 1);
+    if (rise === 1) this.rebornAt = null;
+    const frame = this.scene.compose(this.view, Math.floor(this.seconds * 12), this.cloudPhase, this.hour(), new Date(), this.reduced, {
+      sec: this.seconds, rise,
+      moment: m && progress < 1 ? { kind: m.kind, value: m.value, progress } : undefined
+    });
+    const paints = paintsFor(frame);
     const t1 = this.timing ? performance.now() : 0;
-    this.applyPalette(env);
-    let wrote = false;
-    for (const name of LAYERS) {
-      const s = layers[name];
-      if (s !== this.last[name]) {
-        this.last[name] = s;
-        this.els[name].textContent = s;
-        wrote = true;
-      }
-    }
-    if (wrote) this.frames++;
-    if (this.timing) {
-      void this.root.offsetHeight; // force style and layout so they count in paint
-      this.timing(t1 - t0, performance.now() - t1);
-    }
+    this.applyPalette(frame.env);
+    this.surface.fit();
+    this.surface.inks(inksFor(frame.env, this.view.mood));
+    this.surface.paint(paints);
+    this.frames++;
+    this.dirty = false;
+    if (this.timing) this.timing(t1 - t0, performance.now() - t1);
   }
 
   start(): void {
+    if (this.animation !== null) return;
+    document.addEventListener("visibilitychange", this.visibilityChanged);
     const loop = (now: number) => {
-      requestAnimationFrame(loop);
+      this.animation = requestAnimationFrame(loop);
       if (document.hidden) return;
       if (this.next === null) this.next = now;
-      if (now + 0.25 < this.next) return;
+      if (now + 0.5 < this.next) return;
       this.next += PERIOD;
       if (this.next < now) this.next += Math.ceil((now - this.next) / PERIOD) * PERIOD;
-      const elapsed = this.prev === null ? 0 : now - this.prev;
+      const elapsed = this.prev === null ? 0 : Math.min(now - this.prev, 250) / 1000;
       this.prev = now;
       if (!this.reduced) {
-        this.t++;
-        this.cloudPhase = mod(this.cloudPhase + (Math.min(elapsed, 250) / 1000) * (this.view.windKmh / 20 + 0.15), 100000);
+        this.seconds += elapsed;
+        this.cloudPhase = mod(this.cloudPhase + elapsed * (Math.max(0, this.view.windKmh) / 20 + 0.15), 100000);
       }
-      this.draw();
+      const minute = Math.floor(Date.now() / 15000).toString();
+      if (!this.reduced || this.dirty || minute !== this.lastMinute) this.draw();
+      this.lastMinute = minute;
     };
     this.draw();
-    requestAnimationFrame(loop);
+    this.animation = requestAnimationFrame(loop);
+  }
+
+  /** Release animation callbacks if a host replaces its world. */
+  stop(): void {
+    if (this.animation !== null) cancelAnimationFrame(this.animation);
+    if (this.momentTimer !== null) clearTimeout(this.momentTimer);
+    this.animation = null;
+    this.momentTimer = null;
+    this.moment = null;
+    this.next = this.prev = null;
+    document.removeEventListener("visibilitychange", this.visibilityChanged);
   }
 }

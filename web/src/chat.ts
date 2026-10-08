@@ -28,6 +28,8 @@ export interface ChatDeps {
   demo: boolean;
   /** 401: the phrase was not recognised. */
   openSettings: () => void;
+  blocked?: () => boolean;
+  onBusy?: (busy: boolean) => void;
 }
 
 function graphemes(text: string, lang: Lang): string[] {
@@ -97,6 +99,8 @@ class Typer {
   stop(): void {
     clearTimeout(this.timer);
     this.timer = 0;
+    this.resolve?.();
+    this.resolve = null;
   }
 
   text(): string {
@@ -105,6 +109,8 @@ class Typer {
 }
 
 export class Chat {
+  private generation = 0;
+  private request: AbortController | null = null;
   private busy = false;
   private typer: Typer | null = null;
   private sendBtn: HTMLButtonElement | null;
@@ -143,7 +149,7 @@ export class Chat {
     const c = COPY[lang];
     this.input.placeholder = s?.state.dead ? c.placeholderDead : s?.tier === "asleep" ? c.placeholderAsleep : c.placeholder;
     this.input.lang = lang;
-    this.input.disabled = this.busy || !s || s.state.dead || this.cooldown.active();
+    this.input.disabled = this.busy || this.d.blocked?.() === true || !s || s.state.dead || this.cooldown.active();
     if (this.sendBtn) this.sendBtn.disabled = this.input.disabled;
   }
 
@@ -152,10 +158,33 @@ export class Chat {
     if (this.typer && this.d.reduced()) this.typer.push("");
   }
 
+  /** A new pet or demo reset invalidates every callback from the old conversation. */
+  clear(): void {
+    this.generation++;
+    this.request?.abort();
+    this.request = null;
+    this.typer?.stop();
+    this.typer = null;
+    this.busy = false;
+    this.cooldown.stop();
+    this.d.onBusy?.(false);
+    this.reply.textContent = "";
+    this.replySr.textContent = "";
+    this.reply.classList.remove("asleep", "error");
+    this.status.textContent = "";
+    this.d.onYawn(false);
+    this.d.onHalfAwake(false);
+    this.refresh();
+  }
+
   async send(message: string): Promise<void> {
     const creds = this.d.creds();
     const pre = this.d.summary();
     if (!creds || !pre) return;
+    const generation = ++this.generation;
+    const request = new AbortController();
+    this.request = request;
+    const current = () => generation === this.generation;
     const lang = this.d.lang();
     const c = COPY[lang];
     const requested = this.d.requested();
@@ -164,6 +193,7 @@ export class Chat {
     const slow = pre.mood === "tired" || pre.mood === "wilting" ? 1.5 : 1;
 
     this.busy = true;
+    this.d.onBusy?.(true);
     this.refresh();
     this.input.value = "";
     this.reply.classList.remove("asleep", "error");
@@ -181,19 +211,20 @@ export class Chat {
     let yawnUntil = 0;
     let gotToken = false;
     const yawnTimer = window.setTimeout(() => {
-      if (!gotToken) {
+      if (current() && !gotToken) {
         this.d.onYawn(true);
         this.status.textContent = c.yawning;
       }
     }, YAWN_AFTER_MS);
     const stopYawn = () => {
       const left = yawnUntil - Date.now();
-      if (left > 0) window.setTimeout(() => this.d.onYawn(false), left);
+      if (left > 0) window.setTimeout(() => { if (current()) this.d.onYawn(false); }, left);
       else this.d.onYawn(false);
     };
 
     try {
-      for await (const ev of this.d.backend().chat(creds, message, lang, requested)) {
+      for await (const ev of this.d.backend().chat(creds, message, lang, requested, request.signal)) {
+        if (!current()) return;
         if (ev.type === "brain") {
           this.d.onHalfAwake(ev.half_awake);
           if (ev.half_awake) {
@@ -216,6 +247,7 @@ export class Chat {
         } else if (ev.type === "done") {
           finished = true;
           await typer.end();
+          if (!current()) return;
           if (ev.tier === "asleep") {
             this.reply.classList.add("asleep");
             this.input.blur();
@@ -234,6 +266,7 @@ export class Chat {
           this.replySr.textContent = c.chatError;
         }
       }
+      if (!current()) return;
       if (!finished) {
         // The stream closed without done or error: say so instead of hanging.
         typer.stop();
@@ -242,6 +275,7 @@ export class Chat {
         this.replySr.textContent = c.chatError;
       }
     } catch (e) {
+      if (!current()) return;
       typer.stop();
       // The Worker's calm text, in the UI language. The demo reply cap is Truffle talking, not an error box.
       failure = describeError(e, lang, "chat", this.d.demo);
@@ -255,9 +289,13 @@ export class Chat {
       this.replySr.textContent = failure.text;
     } finally {
       clearTimeout(yawnTimer);
+      request.abort();
+      if (!current()) return;
+      this.request = null;
       this.d.onYawn(false);
       this.status.textContent = "";
       this.busy = false;
+      this.d.onBusy?.(false);
       this.typer = null;
       if (failure?.retryS) this.cooldown.start(failure.retryS); // status shows the countdown
       if (failure?.openSettings) this.d.openSettings();

@@ -4,6 +4,7 @@
 import type { Backend, ChatEvent, Creds, Lang, PairResult, StateSummary, Tier } from "./types";
 import { MockBackend } from "./mock";
 import { ApiError, apiErrorFrom } from "./errors";
+import { normalizeApiOrigin } from "./credentials";
 
 const KEY_API = "truffle.api";
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -16,32 +17,55 @@ export const DEFAULT_API: string =
 
 export function apiBase(): string {
   try {
-    return localStorage.getItem(KEY_API) || DEFAULT_API;
+    return normalizeApiOrigin(localStorage.getItem(KEY_API) || "", import.meta.env.DEV) || DEFAULT_API;
   } catch {
     return DEFAULT_API;
   }
 }
 
-export function setApiBase(url: string): void {
+export function setApiBase(url: string): boolean {
+  const origin = url.trim() ? normalizeApiOrigin(url, import.meta.env.DEV) : DEFAULT_API;
+  if (!origin) return false;
   try {
-    if (url.trim()) localStorage.setItem(KEY_API, url.trim().replace(/\/+$/, ""));
+    if (url.trim()) localStorage.setItem(KEY_API, origin);
     else localStorage.removeItem(KEY_API);
   } catch {
     /* storage blocked: the default stays */
   }
+  return true;
 }
 
 export { ApiError };
 
-async function withTimeout(url: string, init: RequestInit, ms = REQUEST_TIMEOUT_MS): Promise<Response> {
+async function withTimeout<T>(
+  url: string,
+  init: RequestInit,
+  consume: (res: Response) => Promise<T>,
+  ms = REQUEST_TIMEOUT_MS
+): Promise<T> {
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), ms);
+  let timer: ReturnType<typeof setTimeout>;
+  const stop = () => ctl.abort(init.signal?.reason);
+  init.signal?.throwIfAborted();
+  init.signal?.addEventListener("abort", stop, { once: true });
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new ApiError(0, "timeout");
+      ctl.abort(error);
+      reject(error);
+    }, ms);
+  });
   try {
-    return await fetch(url, { ...init, signal: ctl.signal });
+    // Keep the deadline alive through JSON/error-body consumption. Receiving
+    // headers alone does not prove a health check or state request completed.
+    return await Promise.race([fetch(url, { ...init, signal: ctl.signal }).then(consume), deadline]);
   } catch (e) {
-    throw new ApiError(0, e instanceof Error && e.name === "AbortError" ? "timeout" : "network");
+    init.signal?.throwIfAborted();
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(0, ctl.signal.aborted ? "timeout" : "network");
   } finally {
-    clearTimeout(timer);
+    clearTimeout(timer!);
+    init.signal?.removeEventListener("abort", stop);
   }
 }
 
@@ -59,21 +83,31 @@ async function errorOf(res: Response): Promise<ApiError> {
 /** Parse an SSE byte stream into {event, data} pairs. Handles \r\n and split chunks. */
 export async function* parseSSE(
   body: ReadableStream<Uint8Array>,
-  idleMs = STREAM_IDLE_MS
+  idleMs = STREAM_IDLE_MS,
+  signal?: AbortSignal
 ): AsyncGenerator<{ event: string; data: string }> {
   const reader = body.getReader();
   const dec = new TextDecoder();
   let buf = "";
+  // Cancel the reader directly: generator.return() cannot interrupt a next()
+  // that is already waiting on a silent network read.
+  const stop = () => { void reader.cancel(signal?.reason).catch(() => {}); };
+  signal?.addEventListener("abort", stop, { once: true });
   try {
+    signal?.throwIfAborted();
     for (;;) {
-      let timer = 0;
+      let timer: ReturnType<typeof setTimeout>;
       const idle = new Promise<never>((_, rej) => {
-        timer = window.setTimeout(() => rej(new ApiError(0, "timeout")), idleMs);
+        timer = setTimeout(() => rej(new ApiError(0, "timeout")), idleMs);
       });
-      const { value, done } = await Promise.race([reader.read(), idle]).finally(() => clearTimeout(timer));
+      const { value, done } = await Promise.race([reader.read(), idle]).finally(() => clearTimeout(timer!));
+      signal?.throwIfAborted();
       if (value) buf += dec.decode(value, { stream: true });
-      if (done) buf += dec.decode() + "\n\n";
-      buf = buf.replace(/\r\n?/g, "\n");
+      if (done) buf += dec.decode();
+      // A trailing CR may be the first half of CRLF in the next byte chunk.
+      const trailingCR = !done && buf.endsWith("\r");
+      if (trailingCR) buf = buf.slice(0, -1);
+      buf = buf.replace(/\r\n?/g, "\n") + (trailingCR ? "\r" : "");
       let cut: number;
       while ((cut = buf.indexOf("\n\n")) >= 0) {
         const block = buf.slice(0, cut);
@@ -93,7 +127,9 @@ export async function* parseSSE(
       if (done) return;
     }
   } finally {
-    reader.cancel().catch(() => {});
+    signal?.removeEventListener("abort", stop);
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
@@ -105,6 +141,7 @@ export function toChatEvent(event: string, data: string): ChatEvent | null {
   } catch {
     return event === "token" ? { type: "token", text: data } : null;
   }
+  if (!j || typeof j !== "object" || Array.isArray(j)) return null;
   switch (event) {
     case "brain":
       return { type: "brain", brain: String(j.brain ?? ""), half_awake: j.half_awake === true };
@@ -137,13 +174,14 @@ export class RealBackend implements Backend {
     const headers: Record<string, string> = {};
     if (creds) headers["x-truffle-secret"] = creds.secret;
     if (body !== undefined) headers["content-type"] = "application/json";
-    const res = await withTimeout(this.base + path, {
+    return withTimeout(this.base + path, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body)
+    }, async (res) => {
+      if (!res.ok) throw await errorOf(res);
+      return (await res.json()) as T;
     });
-    if (!res.ok) throw await errorOf(res);
-    return (await res.json()) as T;
   }
 
   private tz(): string | undefined {
@@ -179,21 +217,28 @@ export class RealBackend implements Backend {
     return this.call<StateSummary>("POST", "/demo/reset", c, { phrase: c.phrase });
   }
 
-  async *chat(c: Creds, message: string, lang: Lang, requested?: Tier): AsyncGenerator<ChatEvent> {
+  async *chat(c: Creds, message: string, lang: Lang, requested?: Tier, signal?: AbortSignal): AsyncGenerator<ChatEvent> {
     const res = await withTimeout(
       this.base + "/chat",
       {
         method: "POST",
+        signal,
         headers: { "content-type": "application/json", "x-truffle-secret": c.secret },
         body: JSON.stringify({ phrase: c.phrase, message, lang, ...(requested ? { requested_tier: requested } : {}) })
       },
+      async (res) => {
+        if (!res.ok) throw await errorOf(res);
+        if (!res.body) throw new ApiError(0, "no stream");
+        return res;
+      },
       STREAM_IDLE_MS
     );
-    if (!res.ok) throw await errorOf(res);
-    if (!res.body) throw new ApiError(0, "no stream");
-    for await (const m of parseSSE(res.body)) {
+    for await (const m of parseSSE(res.body!, STREAM_IDLE_MS, signal)) {
       const ev = toChatEvent(m.event, m.data);
-      if (ev) yield ev;
+      if (ev) {
+        yield ev;
+        if (ev.type === "done" || ev.type === "error") return;
+      }
     }
   }
 }
@@ -201,10 +246,14 @@ export class RealBackend implements Backend {
 /** True when GET /health answers ok within the timeout. */
 export async function reachable(base: string, ms = 3000): Promise<boolean> {
   try {
-    const res = await withTimeout(base + "/health", { method: "GET" }, ms);
-    if (!res.ok) return false;
-    const j = (await res.json()) as { ok?: boolean };
-    return j.ok === true;
+    return await withTimeout(base + "/health", { method: "GET" }, async (res) => {
+      if (!res.ok) {
+        await res.body?.cancel();
+        return false;
+      }
+      const j = (await res.json()) as { ok?: boolean };
+      return j?.ok === true;
+    }, ms);
   } catch {
     return false;
   }
