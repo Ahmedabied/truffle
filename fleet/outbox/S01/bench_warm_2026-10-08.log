@@ -1,0 +1,159 @@
+✓ Initialized. View run at 
+https://modal.com/apps/ahmedabied/main/ap-QGEWIW7GTKAjZJAOGqsvxy
+✓ Created objects.
+├── ✓ Uploaded /home/abied/Desktop/Truffle/brain-modal/modal_app.py
+├── ✓ Created Function download_weights.
+├── ✓ Created Function make_dummy_lora.
+└── ✓ Created Function Brain.*.
+
+First request [warm-after-health]: 7.213s (at most 1 output token, end-to-end, not TTFT)
+Plan=fp8-checkpoint; GPU snapshot=0; instance=4a9e2c32d2974716aeec006ab123fba4
+A fresh deploy is not proof of a cold request. Confirm scale-to-zero and snapshot restore in Modal logs.
+
+| Model | Thinking | max_tokens | n | Warm p50 seconds | p50 completion tokens | length finishes |
+|---|---|---:|---:|---:|---:|---:|
+| truffle | off | 120 | 2 | 7.900 | 120 | 2/2 |
+| truffle | off | 400 | 2 | 23.715 | 400 | 2/2 |
+| truffle | off | 1200 | 2 | 69.504 | 1200 | 2/2 |
+| truffle | on | 120 | 2 | 7.907 | 120 | 2/2 |
+| truffle | on | 400 | 2 | 23.729 | 400 | 2/2 |
+| truffle | on | 1200 | 2 | 69.511 | 1200 | 2/2 |
+| truffle-base | off | 120 | 2 | 7.580 | 120 | 2/2 |
+| truffle-base | off | 400 | 2 | 22.698 | 400 | 2/2 |
+| truffle-base | off | 1200 | 2 | 66.461 | 1200 | 2/2 |
+| truffle-base | on | 120 | 2 | 7.574 | 120 | 2/2 |
+| truffle-base | on | 400 | 2 | 22.676 | 400 | 2/2 |
+| truffle-base | on | 1200 | 2 | 66.362 | 1200 | 2/2 |
+
+Thinking-on response shape (last 1200-token sample; generated text is not printed):
+```json
+{
+  "truffle": {
+    "top_level_keys": [
+      "choices",
+      "created",
+      "ec_transfer_params",
+      "id",
+      "kv_transfer_params",
+      "metrics",
+      "model",
+      "object",
+      "prompt_logprobs",
+      "prompt_text",
+      "prompt_token_ids",
+      "service_tier",
+      "system_fingerprint",
+      "usage"
+    ],
+    "message_fields": {
+      "role": {
+        "type": "str",
+        "length": 9
+      },
+      "content": {
+        "type": "str",
+        "length": 2152
+      },
+      "refusal": {
+        "type": "NoneType",
+        "length": null
+      },
+      "annotations": {
+        "type": "NoneType",
+        "length": null
+      },
+      "audio": {
+        "type": "NoneType",
+        "length": null
+      },
+      "function_call": {
+        "type": "NoneType",
+        "length": null
+      },
+      "reasoning": {
+        "type": "str",
+        "length": 2173
+      }
+    },
+    "reasoning_fields_present": [
+      "choices[0].message.reasoning"
+    ],
+    "finish_reason": "length",
+    "usage": {
+      "prompt_tokens": 68,
+      "total_tokens": 1268,
+      "completion_tokens": 1200,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 637
+      }
+    }
+  },
+  "truffle-base": {
+    "top_level_keys": [
+      "choices",
+      "created",
+      "ec_transfer_params",
+      "id",
+      "kv_transfer_params",
+      "metrics",
+      "model",
+      "object",
+      "prompt_logprobs",
+      "prompt_text",
+      "prompt_token_ids",
+      "service_tier",
+      "system_fingerprint",
+      "usage"
+    ],
+    "message_fields": {
+      "role": {
+        "type": "str",
+        "length": 9
+      },
+      "content": {
+        "type": "str",
+        "length": 1149
+      },
+      "refusal": {
+        "type": "NoneType",
+        "length": null
+      },
+      "annotations": {
+        "type": "NoneType",
+        "length": null
+      },
+      "audio": {
+        "type": "NoneType",
+        "length": null
+      },
+      "function_call": {
+        "type": "NoneType",
+        "length": null
+      },
+      "reasoning": {
+        "type": "str",
+        "length": 3029
+      }
+    },
+    "reasoning_fields_present": [
+      "choices[0].message.reasoning"
+    ],
+    "finish_reason": "length",
+    "usage": {
+      "prompt_tokens": 68,
+      "total_tokens": 1268,
+      "completion_tokens": 1200,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 899
+      }
+    }
+  }
+}
+```
+Latencies include network and complete generation. max_tokens is a ceiling, not an observed token count.
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/ahmedabied/main/ap-QGEWIW7GTKAjZJAOGqsvxy
+exit 0
