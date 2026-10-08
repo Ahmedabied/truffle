@@ -3,6 +3,10 @@
     <string name="app_name">Truffle</string>
     <style name="Theme.Truffle" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
+        <item name="android:colorBackground">#f5f2e9</item>
+        <item name="android:textColorPrimary">#293e35</item>
+        <item name="android:textColorSecondary">#345437</item>
+        <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#46653B</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>

@@ -11,7 +11,7 @@ const val DEFAULT_API_ORIGIN = "https://truffle.ahmed-abied.workers.dev"
 const val DEFAULT_WEB_ORIGIN = "https://truffle-web.ahmed-abied.workers.dev"
 
 /** Appended to the WebView's default user agent so the page knows it runs inside the app. */
-const val USER_AGENT_SUFFIX = " TruffleApp/0.2"
+const val USER_AGENT_SUFFIX = " TruffleApp/0.3"
 
 private val PHRASE = Regex("[a-z]+-[a-z]+-[a-z]+")
 private val SECRET = Regex("[A-Za-z0-9_-]{16,64}")

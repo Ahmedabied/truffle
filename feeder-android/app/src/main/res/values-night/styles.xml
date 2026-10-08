@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Truffle" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#7fae7a</item>
+        <item name="android:colorBackground">#141b18</item>
+        <item name="android:textColorPrimary">#e4e9dc</item>
+        <item name="android:textColorSecondary">#a9baa2</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

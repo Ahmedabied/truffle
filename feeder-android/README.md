@@ -219,8 +219,9 @@ The POST body names the day the total belongs to:
   sums again from midnight in that zone and sends once more. This also covers a
   reply that ignored the day label. A changed phrase drops the stored zone.
 - A total is never sent under a day label that ended during the read.
-- The Worker reads `day` and `device_tz` today. `day_tz` is sent for clarity and
-  for logs. The Worker does not read it yet.
+- The Worker requires valid `day` and `day_tz` fields. Missing fields return 400.
+  A date or aggregation-zone mismatch is ignored before crediting any steps.
+  `device_tz` is optional and never moves the pet's pinned midnight.
 
 ### Rejections
 
@@ -266,6 +267,9 @@ inherit any of the plugin's permissions.
 
 Create a task named **Truffle feed**. Set collision handling to **Abort New Task**
 so hourly and screen-on triggers do not overlap.
+This bridge sums in the device zone. Use it only while that zone matches the
+pet's `active_tz`. If the Worker returns `ignored` with a different zone, use the
+app to read the correct window. Do not relabel an existing total to another zone.
 
 1. **Variables > Variable Set**: `%TrufflePhrase` to your paired three-word phrase.
    **Variables > Variable Set**: `%TruffleServer` to the HTTPS Worker origin,
@@ -280,6 +284,9 @@ so hourly and screen-on triggers do not overlap.
    var hc_start_ms = String(midnight.getTime());
    var device_tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
    if (!device_tz) throw new Error("Could not read the device time zone");
+   var feed_day = midnight.getFullYear() + "-" +
+     String(midnight.getMonth() + 1).padStart(2, "0") + "-" +
+     String(midnight.getDate()).padStart(2, "0");
    ```
 
 3. **Plugin > Health Connect > Read Aggregated Data**. Some releases label the
@@ -302,9 +309,18 @@ so hourly and screen-on triggers do not overlap.
    if (typeof total !== "number" || !isFinite(total) || total < 0 || Math.floor(total) !== total) {
      throw new Error("Invalid step total");
    }
+   var now = new Date();
+   var current_day = now.getFullYear() + "-" +
+     String(now.getMonth() + 1).padStart(2, "0") + "-" +
+     String(now.getDate()).padStart(2, "0");
+   if (current_day !== feed_day || Intl.DateTimeFormat().resolvedOptions().timeZone !== device_tz) {
+     throw new Error("The day or zone changed. Read steps again.");
+   }
    var feed_body = JSON.stringify({
      phrase: global("TrufflePhrase"),
      steps_today_total: total,
+     day: feed_day,
+     day_tz: device_tz,
      device_tz: device_tz
    });
    ```
@@ -320,7 +336,8 @@ so hourly and screen-on triggers do not overlap.
    - Timeout: 30 seconds
    - Trust Any Certificate: OFF
    - Automatic redirects: OFF if that Tasker version exposes the setting
-   - Check `%http_response_code` is 2xx. Inspect `%http_data` privately for state.
+   - Check `%http_response_code` is 2xx and the reply has no `ignored` field.
+     Inspect `%http_data` privately for `expected_day`, `active_tz` and state.
      Do not publish the task's run log with the phrase or response in it.
 7. Add **Profiles > Time**. Select all day, repeating every **1 hour**. Attach
    **Truffle feed**. Add **Profiles > Event > Display > Display On**, attached to
@@ -334,6 +351,12 @@ Do not run both bridge and feeder hourly jobs for normal use. Identical absolute
 counts are safe for the engine, but duplicate calls waste the phrase rate limit.
 
 ## Verification completed
+
+Integration review (Oct 9): workstation build and 61 JVM unit tests pass.
+Lint has 0 errors and 41 warnings. Android 16 emulator checks cover native
+import confirmation, cancellation, forgetting, explicit origin changes and Walk
+with Steps only. See `docs/reviews/android-qa.md` for the evidence and limits.
+This does not replace Samsung verification or a real-step comparison.
 
 B14 (0.2.0, the Truffle app): the workstation build, 54 JVM unit tests and
 Android lint passed. Lint has no errors. The packaged manifest has the four
@@ -383,3 +406,31 @@ Checked 2026-10-07:
 - [Tasker aggregate permission bug](https://github.com/RafhaanShah/TaskerHealthConnect/blob/1.0.4/app/src/main/java/com/rafapps/taskerhealthconnect/aggregated/ReadAggregatedDataActivity.kt)
 - [Tasker step fixture](https://github.com/RafhaanShah/TaskerHealthConnect/blob/1.0.4/app/src/test/resources/aggregated/StepsRecord.COUNT_TOTAL.json)
 - [Tasker JavaScript variables](https://tasker.joaoapps.com/userguide/en/javascript.html)
+
+## 0.3 direct walking (decision 0021)
+
+Walk offers an explicit **Count with this phone** choice using Android's hardware
+`TYPE_STEP_COUNTER`. Samsung Health is not required. Physical activity permission
+and a silent, low-importance foreground-service notice are required by this mode;
+no GPS, microphone or raw accelerometer inference is used. Devices without that
+sensor retain Health Connect. The app does not restart tracking on boot.
+
+Only one source uploads. Switching to phone counting waits for an in-flight feed,
+reads the owner's current credited total and pinned date/zone, then adds only new
+phone increments after that baseline. Health Connect full-day totals are never
+added to native full-day totals. A failed baseline read keeps new counts in the
+local diary until confirmation; pre-confirmation counts are not guessed into
+credits. An ambiguous midnight or counter reset rebaselines conservatively.
+Pausing/resuming the same day preserves safe unsent counts. Android task-manager
+stops, reboot and activity-permission revocation require an explicit resume.
+
+The diary labels phone counts as partial coverage and bins hours by observed
+increments. Switching back to Health Connect may temporarily leave its total
+behind the already credited count; the Worker's maximum prevents double credit.
+
+Quiet companion notes are a separate switch, off by default. They require
+notification permission, recent trustworthy safe weather, a living pet that is
+not well fed or heat-protected, no recent app/walking activity, and local time
+09:00–19:00. There is at most one per local day and a minimum 24-hour gap. Both
+notification channels are silent. No missed nudge is retried or escalated.
+Android may delay hourly sync and reminder checks; neither is an exact schedule.

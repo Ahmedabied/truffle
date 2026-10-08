@@ -1,6 +1,9 @@
 package dev.truffle.feeder
 
 import android.app.AlertDialog
+import android.Manifest
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Typeface
@@ -22,6 +25,7 @@ import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 /** One Activity, three screens behind a bottom bar: World, Walk, Feed. */
 class MainActivity : ComponentActivity() {
@@ -51,6 +55,79 @@ class MainActivity : ComponentActivity() {
         if (current == Tab.WALK) walk.load()
     }
 
+    private val activityPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        if (allowed) requestTrackingNotice() else {
+            NativeWalkStore(this).status("Physical activity was not allowed. Health Connect and your World remain available.")
+            walk.load()
+        }
+    }
+    private val trackingNotificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        // Android still permits tracking with an active-app notice when notifications are denied.
+        startDirectWalking()
+    }
+    private fun requestTrackingNotice() {
+        if (Build.VERSION.SDK_INT >= 33 && !CompanionReminderWorker.notificationsAllowed(this))
+            trackingNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else startDirectWalking()
+    }
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        setQuietNotes(allowed)
+    }
+
+    fun requestDirectWalking() {
+        AlertDialog.Builder(this).setTitle("Take Truffle along?")
+            .setMessage("This phone can count new steps without Samsung Health. A silent Android notice stays visible while counting. If notifications are denied, Android shows it only in its active-app controls. No location is read. Only one source feeds your pet at a time. Counts begin after a safe starting total is confirmed.")
+            .setPositiveButton("Count with this phone") { _, _ ->
+                if (Build.VERSION.SDK_INT >= 29 && !NativeTracking.permitted(this)) activityPermission.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                else requestTrackingNotice()
+            }.setNegativeButton("Not now", null).show()
+    }
+
+    private fun startDirectWalking() {
+        lifecycleScope.launch {
+            NativeWalkStore(this@MainActivity).status("Confirming your Truffle's starting total...")
+            walk.renderSource()
+            try { NativeTracking.start(this@MainActivity) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { NativeWalkStore(this@MainActivity).status(error.message ?: "Could not start counting. Try again from Walk.") }
+            walk.load()
+            feed.refreshAccess()
+        }
+    }
+
+    fun pauseDirectWalking() {
+        lifecycleScope.launch {
+            FeedGate.mutex.withLock {
+                NativeWalkStore(this@MainActivity).pause()
+                stopService(Intent(this@MainActivity, StepCounterService::class.java))
+                NativeWalkStore(this@MainActivity).status("Phone counting is paused. Your saved diary stays here.")
+            }
+            walk.load()
+            feed.refreshAccess()
+        }
+    }
+
+    fun useHealthConnect() {
+        lifecycleScope.launch {
+            NativeTracking.useHealthConnect(this@MainActivity)
+            NativeWalkStore(this@MainActivity).status("Health Connect feeds your Truffle. Its full-day total may take time to catch up; totals are never added together.")
+            walk.load()
+            feed.refreshAccess()
+        }
+    }
+
+    fun requestQuietNotes(enabled: Boolean) {
+        if (enabled && Build.VERSION.SDK_INT >= 33 && !CompanionReminderWorker.notificationsAllowed(this)) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else setQuietNotes(enabled)
+    }
+
+    private fun setQuietNotes(enabled: Boolean) {
+        NativeWalkStore(this).reminders(enabled)
+        CompanionReminderWorker.schedule(this, enabled)
+        walk.renderSource()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // A debug build is debuggable. Keep the page and its stored secret closed to USB inspection.
@@ -73,8 +150,9 @@ class MainActivity : ComponentActivity() {
         val tall = (52 * resources.displayMetrics.density).toInt()
         for (tab in Tab.entries) {
             val item = TextView(this).apply {
-                text = tab.label
-                textSize = 16f
+                text = when (tab) { Tab.WORLD -> "⌂  World"; Tab.WALK -> "⋯  Walk"; Tab.FEED -> "+  Feed" }
+                textSize = 15f
+                typeface = Typeface.create("serif", Typeface.BOLD)
                 gravity = Gravity.CENTER
                 isClickable = true
                 isFocusable = true
@@ -133,6 +211,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        NativeWalkStore(this).active()
+        NativeTracking.reconcileStop(this)
         world.onResume()
         feed.renderStatus()
         lifecycleScope.launch { feed.refreshAccess() }
@@ -204,6 +284,7 @@ class MainActivity : ComponentActivity() {
     /** Store the credentials, point the feeder at them and show the world. */
     fun adopt(creds: TruffleCreds) {
         world.cancelPendingPair()
+        if (settings.creds != creds) NativeTracking.stop(this)
         settings.saveCreds(creds)
         settings.setStatus("Paired with ${creds.phrase}. Tap Feed now.")
         feed.syncFields()
@@ -223,7 +304,7 @@ class MainActivity : ComponentActivity() {
         val webChanged = webOrigin != settings.webOrigin
         val apply = {
             world.cancelPendingPair()
-            if (apiChanged) FeedSchedule.disable(this)
+            if (apiChanged) { FeedSchedule.disable(this); NativeTracking.stop(this) }
             settings.saveOrigins(api, webOrigin)
             feed.syncFields()
             if (apiChanged || webChanged) world.clearData()
@@ -267,6 +348,9 @@ class MainActivity : ComponentActivity() {
             .setTitle("Forget this truffle?")
             .setMessage("${creds.phrase} stays on the server, but this phone loses its key. Without the key you cannot talk to it again.")
             .setPositiveButton("Forget") { _, _ ->
+                NativeTracking.stop(this)
+                NativeWalkStore(this).reminders(false)
+                CompanionReminderWorker.schedule(this, false)
                 settings.forget()
                 FeedSchedule.disable(this)
                 world.clearData()

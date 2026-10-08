@@ -3,6 +3,7 @@ package dev.truffle.feeder
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -18,21 +19,29 @@ class FeedHttpException(val code: Int, message: String, val retryable: Boolean) 
 data class FeedRun(val status: String, val retryAfterSeconds: Long? = null)
 
 class FeedSender(context: Context) {
+    private val context = context.applicationContext
     private val health = HealthSteps(context)
     private val settings = FeedSettings(context)
 
-    suspend fun feed(background: Boolean, isRetryRun: Boolean = false): FeedRun = withContext(Dispatchers.IO) {
+    suspend fun feed(background: Boolean, isRetryRun: Boolean = false): FeedRun = withContext(Dispatchers.IO) { FeedGate.mutex.withLock {
+        NativeTracking.reconcileStop(context)
+        require(!NativeWalkStore(context).paused) { "Phone counting is paused. Resume in Walk or choose Health Connect there." }
+        val direct = NativeWalkStore(context).enabled
         val config = settings.config()
         var envelope = envelopeNow()
-        var total = read(envelope, background)
+        var total = read(envelope, background, direct)
+        require(config == settings.config()) { "The pet changed. Read steps again." }
         var reply = post(config.endpoint, feedPayload(config, total, envelope))
+        require(config == settings.config()) { "The pet changed during the upload. Read steps again." }
         if (reply is FeedReply.Accepted) {
             reply.activeTz?.let(settings::saveActiveTz)
             // The Truffle lives in another zone. Sum again from its midnight, once.
-            if (needsResend(reply, envelope)) {
+            if (!direct && needsResend(reply, envelope)) {
                 envelope = envelopeNow()
-                total = read(envelope, background)
+                total = read(envelope, background, direct)
+                require(config == settings.config()) { "The pet changed. Read steps again." }
                 reply = post(config.endpoint, feedPayload(config, total, envelope))
+                require(config == settings.config()) { "The pet changed during the upload. Read steps again." }
                 if (reply is FeedReply.Accepted) reply.activeTz?.let(settings::saveActiveTz)
             }
         }
@@ -52,15 +61,15 @@ class FeedSender(context: Context) {
                 FeedRun(decision.status, decision.retryAfterSeconds)
             }
         }
-    }
+    } }
 
     private fun envelopeNow(): DayEnvelope {
         val device = ZoneId.systemDefault()
         return dayEnvelope(Instant.now(), activeZone(settings.activeTz, device), device)
     }
 
-    private suspend fun read(envelope: DayEnvelope, background: Boolean): Long {
-        val total = health.readWindow(envelope.window, background)
+    private suspend fun read(envelope: DayEnvelope, background: Boolean, direct: Boolean): Long {
+        val total = if (direct) NativeTracking.total(context, envelope) else health.readWindow(envelope.window, background)
         // Do not send a total under a day label that has just ended.
         if (Instant.now().atZone(envelope.window.zone).toLocalDate().toString() != envelope.day) {
             throw IOException("The local day changed. Read steps again.")

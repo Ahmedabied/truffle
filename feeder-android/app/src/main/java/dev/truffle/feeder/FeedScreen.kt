@@ -12,7 +12,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
@@ -27,8 +26,9 @@ import java.io.IOException
  * credentials and is read-only while the app owns the pet.
  */
 class FeedScreen(private val activity: MainActivity, private val settings: FeedSettings, private val health: HealthSteps) {
+    private val palette = TrufflePalette.of(activity.resources.configuration)
     private val content = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
-    val view: View = ScrollView(activity).apply { addView(content) }
+    val view: View = ScrollView(activity).apply { setBackgroundColor(palette.background); addView(content) }
     private val padding = (20 * activity.resources.displayMetrics.density).toInt()
     private val phrase: EditText
     private val phraseNote: TextView
@@ -44,8 +44,8 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
 
     init {
         content.setPadding(padding, padding, padding, padding)
-        label("Feed", 28f)
-        label("Today's steps feed your Truffle. No raw health records leave this phone.")
+        NotebookStyle.heading(label("Care & feeding", 28f))
+        label("A small offering from your day. Your walking source lives in the Walk tab.")
         val phraseLabel = label("Pairing phrase")
         phrase = EditText(activity).apply {
             id = R.id.pairing_phrase
@@ -58,6 +58,7 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
         phraseNote = label("This phone owns this truffle. The phrase is set by the app.", 14f)
         feed = Button(activity).apply {
             text = "Feed now"
+            NotebookStyle.button(this, true)
             setOnClickListener { feedNow() }
             content.addView(this)
         }
@@ -87,7 +88,14 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
         status.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         availability = label("Checking Health Connect...", 14f)
 
-        label("Settings", 20f)
+        val advanced = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL; isVisible = false }
+        content.addView(Button(activity).apply {
+            text = "Connection & privacy settings"
+            NotebookStyle.button(this)
+            setOnClickListener { advanced.isVisible = !advanced.isVisible }
+        })
+        val advancedStart = content.childCount
+        label("Connection", 20f)
         val serverLabel = label("Server URL (API origin)")
         server = EditText(activity).apply {
             id = R.id.server_url
@@ -108,11 +116,6 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
             text = "Save server settings"
             setOnClickListener { activity.confirmOrigins(server.text.toString(), web.text.toString()) }
         })
-        content.addView(Switch(activity).apply {
-            text = "Share coarse location (TODO)"
-            isChecked = false
-            isEnabled = false
-        })
         label("Location stays off. Truffle can use a city-level estimate from your connection.", 14f)
         content.addView(Button(activity).apply {
             text = "Privacy and permissions"
@@ -123,12 +126,16 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
             setOnClickListener { activity.confirmForget() }
             content.addView(this)
         }
+        val detailViews = (advancedStart until content.childCount).map(content::getChildAt)
+        detailViews.forEach { content.removeView(it); advanced.addView(it) }
+        content.addView(advanced)
         syncFields()
         phrase.doAfterTextChanged { saveInputs() }
     }
 
     private fun label(text: String, size: Float = 16f): TextView = TextView(activity).apply {
         this.text = text
+        setTextColor(palette.ink)
         textSize = size
         setPadding(0, padding / 2, 0, padding / 2)
         content.addView(this)
@@ -149,16 +156,27 @@ class FeedScreen(private val activity: MainActivity, private val settings: FeedS
 
     private fun saveInputs() {
         if (syncing) return
+        if (phrase.text.toString().trim().lowercase() != settings.phrase.trim().lowercase()) NativeTracking.stop(activity)
         settings.saveInputs(phrase.text.toString(), settings.server)
     }
 
     fun renderStatus() {
         status.text = settings.status
-        status.setTextColor(if (settings.needsPermission) Color.rgb(179, 38, 30) else Color.DKGRAY)
+        status.setTextColor(if (settings.needsPermission) Color.rgb(179, 38, 30) else palette.ink)
         if (settings.needsPermission) grant.isVisible = true
     }
 
     suspend fun refreshAccess() {
+        val native = NativeWalkStore(activity)
+        if (native.directSelected) {
+            grant.isVisible = false
+            provider.isVisible = false
+            availability.text = if (native.paused) "Phone counting is paused. Resume in Walk, or choose Health Connect."
+                else "Phone counter selected. New steps sync about hourly; Android may delay uploads. Feed now sends the latest safe total."
+            if (native.enabled && runCatching { settings.config() }.isSuccess) FeedSchedule.enable(activity)
+            else FeedSchedule.disable(activity)
+            return
+        }
         try {
             val access = health.access()
             provider.isVisible = access.sdkStatus == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED

@@ -8,12 +8,18 @@
     <uses-permission android:name="android.permission.health.READ_DISTANCE" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
 
-    <!-- Keep the S02 permission allowlist even when libraries merge their manifests.
+    <!-- Decision 0021: direct hardware walks are explicitly opt-in. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
+
+    <!-- Keep the remaining permission allowlist even when libraries merge their manifests.
          See README: no OS network constraint, boot receiver, or foreground worker. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.WAKE_LOCK" tools:node="remove" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
     <uses-permission android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" tools:node="remove" />
     <permission android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" tools:node="remove" />
 
@@ -64,6 +70,7 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+        <service android:name=".StepCounterService" android:exported="false" android:foregroundServiceType="health" />
         <!-- No pre-API 23 alarm scheduler or foreground execution is used. -->
         <service android:name="androidx.work.impl.background.systemalarm.SystemAlarmService" tools:node="remove" />
         <service android:name="androidx.work.impl.foreground.SystemForegroundService" tools:node="remove" />
