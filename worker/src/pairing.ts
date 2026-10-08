@@ -74,3 +74,22 @@ export function safeEqual(a: string, b: string): boolean {
 export function isPlausibleSecret(s: unknown): s is string {
   return typeof s === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(s);
 }
+
+/**
+ * The one answer for an unknown phrase, a wrong secret and a missing secret
+ * (S10-01). Same status, same body, so a guess learns nothing.
+ */
+export const AUTH_FAILED = "That phrase and secret do not match a Truffle.";
+
+/** Stands in for the stored hash when there is no Truffle, so both paths do the same work. */
+const NO_TRUFFLE_HASH = "0".repeat(64);
+
+/**
+ * Owner check. Always hashes the secret and does one constant-time compare,
+ * whether or not a Truffle exists, so an unknown phrase and a wrong secret
+ * take the same time class.
+ */
+export async function ownerMatches(storedHash: string | undefined, secret: string): Promise<boolean> {
+  const ok = safeEqual(await hashSecret(secret), storedHash ?? NO_TRUFFLE_HASH);
+  return ok && storedHash !== undefined;
+}

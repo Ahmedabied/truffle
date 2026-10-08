@@ -39,3 +39,79 @@ describe("feed plausibility since local midnight (S10-02 replay guard)", () => {
     expect(plausibleTotal(0, 0)).toBe(true);
   });
 });
+
+import {
+  coordRefreshAllowed,
+  DEMO_REPLIES_PER_DAY,
+  feedBaseline,
+  jumpCheck,
+  MAX_JUMP_STEPS_PER_SECOND,
+  peekRate
+} from "../src/ratelimit";
+
+describe("feed jump cap: 20 steps a second since the last accepted feed (S10-07)", () => {
+  it("is 20 steps per second", () => expect(MAX_JUMP_STEPS_PER_SECOND).toBe(20));
+  it("allows exactly 20 per second and rejects one more", () => {
+    expect(jumpCheck(1200, 60_000)).toEqual({ allowed: true, retry_after_s: 0 });
+    const r = jumpCheck(1201, 60_000);
+    expect(r.allowed).toBe(false);
+    expect(r.retry_after_s).toBe(1);
+  });
+  it("15000 one minute after midnight must wait", () => {
+    const r = jumpCheck(15_000, 60_000);
+    expect(r.allowed).toBe(false);
+    expect(r.retry_after_s).toBe(750 - 60);
+  });
+  it("another 35000 on top needs at least 1750 seconds", () => {
+    expect(jumpCheck(35_000, 1_749_000).allowed).toBe(false);
+    expect(jumpCheck(35_000, 1_750_000).allowed).toBe(true);
+  });
+  it("zero or negative deltas always pass (they are no-ops)", () => {
+    expect(jumpCheck(0, 0).allowed).toBe(true);
+    expect(jumpCheck(-50, 0).allowed).toBe(true);
+  });
+  it("a clock that went backwards gives no allowance, not a negative one", () => {
+    expect(jumpCheck(1, -5000).allowed).toBe(false);
+  });
+});
+
+describe("feed baseline", () => {
+  const midnight = 1_000_000;
+  it("first feed of the day counts from local midnight, not pairing time", () => {
+    expect(feedBaseline(undefined, "2026-10-08", midnight)).toBe(midnight);
+    expect(feedBaseline({ day: "2026-10-07", ms: 999_000 }, "2026-10-08", midnight)).toBe(midnight);
+  });
+  it("later feeds count from the last accepted feed of the same day", () => {
+    expect(feedBaseline({ day: "2026-10-08", ms: 1_500_000 }, "2026-10-08", midnight)).toBe(1_500_000);
+  });
+  it("never earlier than local midnight", () => {
+    expect(feedBaseline({ day: "2026-10-08", ms: 5 }, "2026-10-08", midnight)).toBe(midnight);
+  });
+});
+
+describe("demo reply quota (S10-05)", () => {
+  it("is 30 a day", () => expect(DEMO_REPLIES_PER_DAY).toBe(30));
+  it("peek does not count", () => {
+    const w = { start_ms: 0, count: 29 };
+    expect(peekRate(w, 10, 30, DAY_MS_T)).toEqual({ allowed: true, retry_after_s: 0 });
+    expect(w.count).toBe(29);
+  });
+  it("blocks at 30 until the day window ends", () => {
+    const w = { start_ms: 0, count: 30 };
+    const r = peekRate(w, 1000, 30, DAY_MS_T);
+    expect(r.allowed).toBe(false);
+    expect(r.retry_after_s).toBe(Math.ceil((DAY_MS_T - 1000) / 1000));
+    expect(peekRate(w, DAY_MS_T, 30, DAY_MS_T).allowed).toBe(true);
+    expect(peekRate(undefined, 0, 30, DAY_MS_T).allowed).toBe(true);
+  });
+});
+
+describe("coordinate-triggered weather refresh: once an hour", () => {
+  it("first one is allowed, then not for an hour", () => {
+    expect(coordRefreshAllowed(undefined, 5)).toBe(true);
+    expect(coordRefreshAllowed(0, HOUR_MS - 1)).toBe(false);
+    expect(coordRefreshAllowed(0, HOUR_MS)).toBe(true);
+  });
+});
+
+const DAY_MS_T = 86_400_000;

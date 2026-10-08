@@ -52,7 +52,9 @@ npx wrangler deploy
 
 ## Routes
 
-All bodies are JSON. Errors look like `{"error": "..."}` with a 4xx status.
+All bodies are JSON objects of at most 8 KiB. Errors look like `{"error": "...", "hint": "..."}` with a 4xx status. A rejected request changes nothing.
+
+Owner routes give one answer for an unknown phrase, a wrong secret and a missing secret: `401 {"error": "That phrase and secret do not match a Truffle."}`. A guessed phrase stores nothing and fetches no weather.
 
 The phrase names a Truffle. The secret proves you own it. `/pair` returns the secret once. Send it as the header `x-truffle-secret` (or a `secret` field in the body). `/feed` needs only the phrase, so a phone automation can call it. The worst a stranger with your phrase can do is feed your Truffle.
 
@@ -94,10 +96,10 @@ S=<the secret>
 `steps_today_total` is the absolute total since local midnight, not a delta. Optional fields:
 
 - `day`: the local date the total belongs to, `YYYY-MM-DD`. Send it. A total for any other day than the Truffle's current day is ignored, so a late retry of yesterday's total never counts twice.
-- `lat`, `lon`: together, as numbers. Stored rounded to 2 decimals. Every change is logged.
+- `lat`, `lon`: together, as numbers in range. Stored rounded to 2 decimals, current point only. The log records that the point moved, never where. A move can force a weather refresh at most once an hour.
 - `device_tz`: recorded for display only. The Truffle's timezone is fixed at `/pair` and decides its midnight.
 
-Without `day`, a total that is too high for the time since local midnight (more than 4 steps a second on average) is ignored. The reply is a short status for the feeder, not the full state. `expected_day` and `active_tz` tell the feeder which day to count.
+`steps_today_total` must be a whole number from 0 to 50,000. Strings, `null`, fractions, booleans and huge numbers get `400`. So does a jump of more than 20 steps a second since the last accepted feed of the day (or local midnight for the first one). That `400` carries `retry_after_s`. Without `day`, a total that is too high for the time since local midnight (more than 4 steps a second on average) is ignored. The reply is a short status for the feeder, not the full state. `expected_day` and `active_tz` tell the feeder which day to count.
 
 ```sh
 curl -s -X POST $B/feed -H 'content-type: application/json' \
@@ -118,7 +120,7 @@ Returns `state` (the engine state), `mood`, `tier`, `energy_max`, `energy_pct`, 
 
 ### POST /chat (Server-Sent Events)
 
-`message` is required (1 to 1,000 characters). `requested_tier` (`asleep`, `low`, `medium`, `high`) can only lower the effort. The engine caps it by energy. `lang` switches the language and is remembered.
+`message` is required (1 to 2,048 characters). `requested_tier` (`asleep`, `low`, `medium`, `high`) can only lower the effort. The engine caps it by energy. `lang` switches the language and is remembered.
 
 ```sh
 curl -sN -X POST $B/chat -H "x-truffle-secret: $S" -H 'content-type: application/json' \
@@ -148,13 +150,17 @@ Events:
 - `done` carries the tier used, the energy spent and the new state.
 - `error` means the brain failed. Nothing is charged.
 
+If the Workers AI fallback spends every token on reasoning and sends no visible text, the Worker retries once with thinking off and the same `max_tokens`. The retry is logged. The user is charged once. If the retry is empty too, the chat ends with `error` and nothing is charged.
+
+Memory facts are untrusted data. They sit at the end of the prompt, JSON-encoded, between fixed markers, never as instructions. Each reply stores at most 3 facts of up to 160 characters, and one life stores at most 60. Facts that look like instructions or state blocks are dropped. Death wipes every fact and the conversation. Only the favourite memory stays, on the gravestone.
+
 A Truffle answers one message at a time. A second `/chat` while one is streaming returns `429`. So does the 61st chat within an hour. The cost is charged once, when the reply is done. If the brain fails before any text, nothing is charged. If it fails mid-reply, the partial reply is charged and `done` says `"partial": true`.
 
-A dead Truffle returns `409`. Plant a new spore first.
+A dead Truffle returns `409`. Plant a new spore first. A demo Truffle gets at most 30 model replies a day, then `429`.
 
 ### POST /spore
 
-After death: a fresh Spore. Gravestones are kept.
+After death: a fresh Spore. Gravestones are kept. A living Truffle returns `409`.
 
 ```sh
 curl -s -X POST $B/spore -H "x-truffle-secret: $S" -H 'content-type: application/json' -d "{\"phrase\":\"$P\"}"
@@ -162,7 +168,7 @@ curl -s -X POST $B/spore -H "x-truffle-secret: $S" -H 'content-type: application
 
 ### Judge mode
 
-`/demo/spawn` makes a demo Truffle. It needs no pairing and deletes itself after 24 hours. Each IP can spawn 5 per hour and 20 per day (`429` after that). It skips real midnights and the real heat check: the controls drive it. The other demo routes refuse to touch a real Truffle.
+`/demo/spawn` makes a demo Truffle. It needs no pairing and deletes itself after 24 hours. Each IP can spawn 5 per hour and 20 per day (`429` after that). It skips real midnights and the real heat check: the controls drive it. The other demo routes refuse to touch a real Truffle. They check the flag stored at spawn, never a `demo` field in the request.
 
 ```sh
 D=$(curl -s -X POST $B/demo/spawn -H 'content-type: application/json' -d '{"lang":"en"}')

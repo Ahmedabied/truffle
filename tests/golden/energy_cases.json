@@ -212,6 +212,20 @@
       "event": { "type": "state_block", "lang": "ar", "weather_text": "34C clear, Muscat" },
       "expect": { "state_block": "[truffle stage=Sprout energy=63% tier=high mood=affectionate zero_days=0 burrowed=no weather=\"34C clear, Muscat\" lang=ar steps_today=6120 avg7=4800 age_days=3]" },
       "note": "7560/12000 = 0.63 -> 63%, high. The block is built by the engine string-for-string."
+    },
+    {
+      "id": "S10_feed_fraction_is_noop",
+      "state": { "energy": 1000, "lifetime_steps": 1000, "steps_today": 1000 },
+      "event": { "type": "feed", "steps_today_total": 1001.5 },
+      "expect": { "energy": 1000, "lifetime_steps": 1000, "steps_today": 1000 },
+      "note": "From S10-08. A step total must be a nonnegative safe integer. A fraction is a no-op, never floored. The route rejects it with 400 before the engine sees it."
+    },
+    {
+      "id": "S10_feed_unsafe_integer_is_noop",
+      "state": { "energy": 1000, "lifetime_steps": 1000, "steps_today": 1000 },
+      "event": { "type": "feed", "steps_today_total": 9007199254740992 },
+      "expect": { "energy": 1000, "lifetime_steps": 1000, "steps_today": 1000 },
+      "note": "From S10-08. Totals above Number.MAX_SAFE_INTEGER are a no-op. The much smaller 50000 daily cap is a route rule."
     }
   ]
 }

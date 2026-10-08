@@ -47,6 +47,14 @@ export interface Meta {
   chat_lock_until?: number;
   /** Last device_tz the feeder reported. Display and logs only: the alarm uses tz, pinned at /pair. */
   device_tz?: string;
+  /** Last accepted increasing feed: the start of the jump-cap window (S10-07). */
+  feed_accept?: import("./ratelimit").FeedAccept;
+  /** Last time new coordinates forced a weather refresh (S10-09). At most once an hour. */
+  coords_refresh_ms?: number;
+  /** Demo Truffles: model replies in the current 24 h window (S10-05). */
+  demo_replies?: RateWindow;
+  /** Bumped at death, new spore and demo reset. Late fact extraction from an older life is dropped. */
+  generation?: number;
 }
 
 export interface PairInput {
@@ -99,4 +107,6 @@ export interface FeedSummary {
 }
 
 /** RPC results never throw across the stub. */
-export type Result<T> = { ok: true; value: T } | { ok: false; status: 400 | 401 | 404 | 409 | 429; error: string };
+export type Result<T> =
+  | { ok: true; value: T }
+  | { ok: false; status: 400 | 401 | 404 | 409 | 429; error: string; hint?: string; retry_after_s?: number };

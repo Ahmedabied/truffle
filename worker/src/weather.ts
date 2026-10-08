@@ -93,6 +93,45 @@ export function skyWord(code: number): Sky {
   return "cloudy";
 }
 
+/** Fixed condition words per WMO code group. The only words the state block may use. */
+export const SKY_WORDS: Record<"en" | "ar", Record<Sky, string>> = {
+  en: { clear: "clear", cloudy: "cloudy", fog: "fog", drizzle: "drizzle", rain: "rain", snow: "snow", storm: "storm" },
+  ar: { clear: "صافي", cloudy: "غائم", fog: "ضباب", drizzle: "رذاذ", rain: "مطر", snow: "ثلج", storm: "عاصفة" }
+};
+
+/** Every WMO code Open-Meteo documents. Anything else is not a weather code. */
+const WMO_CODES = new Set([0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99]);
+
+/** Plausible apparent temperatures on Earth, in C. */
+const MIN_APPARENT_C = -90;
+const MAX_APPARENT_C = 70;
+
+/**
+ * A city name the state block may carry: letters (any script), marks, spaces,
+ * dots and hyphens, at most 32 characters. Anything else gives "" and the
+ * city is left out. It is never cleaned up and kept.
+ */
+export function safeCity(city: unknown): string {
+  if (typeof city !== "string") return "";
+  const c = city.trim();
+  return /^[\p{L}\p{M}][\p{L}\p{M} .-]{0,31}$/u.test(c) && [...c].length <= 32 ? c : "";
+}
+
+/**
+ * The state block weather field (S10-10). Built only from a validated
+ * temperature, a known WMO code mapped to a fixed word, and a safe city.
+ * Anything else is "unavailable".
+ */
+export function stateWeather(parsed: ParsedForecast | null, city: string, lang: "ar" | "en"): string {
+  const t = parsed?.current_apparent_c;
+  const code = parsed?.weather_code;
+  if (typeof t !== "number" || !Number.isFinite(t) || t < MIN_APPARENT_C || t > MAX_APPARENT_C) return "unavailable";
+  if (typeof code !== "number" || !WMO_CODES.has(code)) return "unavailable";
+  const text = `${Math.round(t)}C ${SKY_WORDS[lang][skyWord(code)]}`;
+  const place = safeCity(city);
+  return place ? `${text}, ${place}` : text;
+}
+
 /** Strip anything that could break the state block, and cap length. */
 export function sanitizeText(s: unknown, max = 40): string {
   if (typeof s !== "string") return "";
@@ -105,7 +144,7 @@ export function sanitizeText(s: unknown, max = 40): string {
     .trim();
 }
 
-/** "34C clear, Muscat". */
+/** "34C clear, Muscat". Display helper only: the state block uses stateWeather. */
 export function weatherText(parsed: ParsedForecast | null, city: string): string {
   const place = sanitizeText(city, 32);
   if (!parsed || parsed.current_apparent_c === null) return place ? `unknown, ${place}` : "unknown";

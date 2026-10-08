@@ -97,8 +97,13 @@ function run(c: GoldenCase, s: TruffleState): Record<string, unknown> {
 }
 
 describe("golden energy cases", () => {
-  it("has 30 cases", () => {
-    expect(golden.cases).toHaveLength(30);
+  it("has the 30 original cases plus the 2 S10 feed cases (B06)", () => {
+    expect(golden.cases).toHaveLength(32);
+    const ids = golden.cases.map((c) => c.id);
+    for (let i = 1; i <= 30; i++) {
+      expect(ids[i - 1].startsWith(String(i).padStart(2, "0") + "_"), ids[i - 1]).toBe(true);
+    }
+    expect(ids.slice(30)).toEqual(["S10_feed_fraction_is_noop", "S10_feed_unsafe_integer_is_noop"]);
   });
 
   for (const c of golden.cases) {

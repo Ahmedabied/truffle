@@ -51,3 +51,23 @@ describe("hashes and secrets", () => {
     expect(isPlausibleSecret("has spaces in it here")).toBe(false);
   });
 });
+
+import { AUTH_FAILED, hashSecret as hs, ownerMatches } from "../src/pairing";
+
+describe("uniform owner check (S10-01)", () => {
+  it("right secret matches", async () => {
+    expect(await ownerMatches(await hs("abcdefghijklmnop"), "abcdefghijklmnop")).toBe(true);
+  });
+  it("wrong secret and unknown phrase both fail the same way", async () => {
+    expect(await ownerMatches(await hs("abcdefghijklmnop"), "ponmlkjihgfedcba")).toBe(false);
+    expect(await ownerMatches(undefined, "abcdefghijklmnop")).toBe(false);
+  });
+  it("a secret that happens to hash to the placeholder still fails with no Truffle", async () => {
+    // The placeholder is not a real SHA-256 output we can hit, but the guard must not rely on that.
+    expect(await ownerMatches(undefined, "0".repeat(16))).toBe(false);
+  });
+  it("one calm message for every case", () => {
+    expect(AUTH_FAILED).toBe("That phrase and secret do not match a Truffle.");
+    expect(AUTH_FAILED).not.toMatch(/[\u2013\u2014]/);
+  });
+});

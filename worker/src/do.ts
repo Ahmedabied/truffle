@@ -3,16 +3,29 @@
 // fetches weather and calls the brain.
 
 import { DurableObject } from "cloudflare:workers";
-import { MAX_MEMORY_FACTS, TIERS, type Tier } from "./config";
+import { TIERS, type Tier } from "./config";
 import * as engine from "./engine";
 import type { TruffleState } from "./engine";
 import { askBrain, extractFacts, type BrainName, type ChatMessage } from "./brain";
+import { isInstructionLike, roomForFacts } from "./facts";
 import { buildSystemPrompt, sleepyLine, type Fact } from "./prompt";
-import { CHAT_LIMIT_PER_HOUR, CHAT_LOCK_MS, checkRate, plausibleTotal } from "./ratelimit";
-import { hashSecret, safeEqual } from "./pairing";
+import {
+  CHAT_LIMIT_PER_HOUR,
+  CHAT_LOCK_MS,
+  checkRate,
+  coordRefreshAllowed,
+  DAY_MS,
+  DEMO_REPLIES_PER_DAY,
+  feedBaseline,
+  jumpCheck,
+  MAX_JUMP_STEPS_PER_SECOND,
+  peekRate,
+  plausibleTotal
+} from "./ratelimit";
+import { AUTH_FAILED, ownerMatches } from "./pairing";
 import { daysBetween, isValidTimeZone, localDayKey, missedMidnights, nextLocalMidnight } from "./time";
 import type { Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
-import { daytimeMax, fetchForecast, forecastDays, parseForecast, weatherText } from "./weather";
+import { daytimeMax, fetchForecast, forecastDays, parseForecast, stateWeather } from "./weather";
 
 export const DEMO_TTL_MS = 24 * 3_600_000;
 const WEATHER_NOW_TTL_MS = 30 * 60_000;
@@ -28,26 +41,46 @@ export interface FeedInput {
   day?: string;
 }
 
-const err = (status: 400 | 401 | 404 | 409 | 429, error: string) => ({ ok: false, status, error }) as const;
+const err = (status: 400 | 401 | 404 | 409 | 429, error: string, retry_after_s?: number) =>
+  ({ ok: false, status, error, ...(retry_after_s !== undefined ? { retry_after_s } : {}) }) as const;
 const ok = <T>(value: T) => ({ ok: true, value }) as const;
 
 export class TruffleDO extends DurableObject<Env> {
   private sql: SqlStorage;
 
+  private hasSchema = false;
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.sql = ctx.storage.sql;
+    // No writes here. A guessed phrase reaches an object with no tables and
+    // leaves it that way: nothing is stored for an unknown phrase (S10-01).
+  }
+
+  // ---------- storage helpers ----------
+
+  /** Tables are created only when a Truffle is paired. */
+  private ensureSchema(): void {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY CHECK (id = 1), engine TEXT NOT NULL, meta TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS facts (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, day_written TEXT NOT NULL, affection INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS turns (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, day TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT NOT NULL);
     `);
+    this.hasSchema = true;
   }
 
-  // ---------- storage helpers ----------
+  /** Read only. True once this object holds a Truffle's tables. */
+  private schemaExists(): boolean {
+    if (!this.hasSchema) {
+      this.hasSchema =
+        this.sql.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'state'").toArray().length > 0;
+    }
+    return this.hasSchema;
+  }
 
   private load(): { s: TruffleState; m: Meta } | null {
+    if (!this.schemaExists()) return null;
     const rows = this.sql.exec<{ engine: string; meta: string }>("SELECT engine, meta FROM state WHERE id = 1").toArray();
     if (!rows.length) return null;
     return { s: JSON.parse(rows[0].engine), m: JSON.parse(rows[0].meta) };
@@ -74,26 +107,45 @@ export class TruffleDO extends DurableObject<Env> {
 
   /** Highest-affection fact, newest wins ties. Goes on the gravestone. */
   private favouriteMemory(): string | null {
-    const r = this.sql.exec<{ text: string }>("SELECT text FROM facts ORDER BY affection DESC, id DESC LIMIT 1").toArray();
-    return r.length ? r[0].text : null;
+    const rows = this.sql
+      .exec<{ text: string }>("SELECT text FROM facts ORDER BY affection DESC, id DESC")
+      .toArray();
+    return rows.find((r) => !isInstructionLike(r.text))?.text ?? null;
   }
 
-  private addFacts(texts: string[], day: string, affection: number): void {
+  /**
+   * Store new facts, at most 60 per life (S10-10). Once a life has 60, new
+   * ones are dropped. Nothing is evicted: death is what clears memory.
+   */
+  private addFacts(texts: string[], day: string, affection: number): number {
+    const stored = this.sql.exec<{ n: number }>("SELECT count(*) AS n FROM facts").one().n;
+    let room = roomForFacts(stored);
+    let added = 0;
     for (const t of texts) {
+      if (room <= 0) break;
       const dup = this.sql.exec("SELECT 1 FROM facts WHERE lower(text) = lower(?)", t).toArray();
-      if (!dup.length) this.sql.exec("INSERT INTO facts (text, day_written, affection) VALUES (?, ?, ?)", t, day, affection);
+      if (dup.length) continue;
+      this.sql.exec("INSERT INTO facts (text, day_written, affection) VALUES (?, ?, ?)", t, day, affection);
+      room--;
+      added++;
     }
-    this.sql.exec(`DELETE FROM facts WHERE id NOT IN (SELECT id FROM facts ORDER BY id DESC LIMIT ${MAX_MEMORY_FACTS})`);
+    return added;
   }
 
-  private wipeMemory(): void {
+  /**
+   * Death, new spore and demo reset: every fact and the whole conversation go.
+   * Only the favourite memory survives, on the gravestone. The generation bump
+   * drops any fact extraction still running for the old life.
+   */
+  private wipeMemory(m: Meta): void {
     this.sql.exec("DELETE FROM facts");
     this.sql.exec("DELETE FROM turns");
+    m.generation = (m.generation ?? 0) + 1;
   }
 
-  private async checkSecret(m: Meta, secret: string | null): Promise<boolean> {
-    if (secret === null) return true; // route does not need it (/feed)
-    return safeEqual(await hashSecret(secret), m.secret_hash);
+  /** Demo Truffles stop existing after 24 h, even before the alarm runs. */
+  private expired(m: Meta, now: number): boolean {
+    return m.demo && now >= m.created_ms + DEMO_TTL_MS;
   }
 
   // ---------- time and weather ----------
@@ -118,7 +170,7 @@ export class TruffleDO extends DurableObject<Env> {
       if (typeof max !== "number") this.log("catchup_weather_missing", { day: key, tz: m.tz });
       const wasDead = s.dead;
       s = engine.midnight(s, burrowTomorrow, this.favouriteMemory());
-      if (!wasDead && s.dead) this.wipeMemory();
+      if (!wasDead && s.dead) this.wipeMemory(m);
       m.last_midnight_key = key;
       ticks++;
       this.log("midnight", { day: key, burrowed: burrowTomorrow, energy: s.energy, zero_days: s.zero_days, dead: s.dead });
@@ -174,6 +226,7 @@ export class TruffleDO extends DurableObject<Env> {
   private summary(s: TruffleState, m: Meta, now: number): StateSummary {
     const { energy_max } = engine.stageConfig(s.stage);
     const w = m.weather_now;
+    const weatherShown = w ? stateWeather(w, m.city, "en") : null; // decision 0012: English in the block
     return {
       state: s,
       mood: engine.moodOf(s),
@@ -189,7 +242,7 @@ export class TruffleDO extends DurableObject<Env> {
       next_midnight_ms: m.demo ? null : nextLocalMidnight(now, m.tz),
       weather: w
         ? {
-            text: weatherText(w, m.city),
+            text: weatherShown!,
             apparent_c: w.current_apparent_c,
             daytime_max_c: m.weather_days[localDayKey(now, m.tz)] ?? w.daytime_max_c,
             precipitation_mm: w.precipitation_mm,
@@ -202,11 +255,20 @@ export class TruffleDO extends DurableObject<Env> {
     };
   }
 
-  /** Load, check the secret, catch up on missed midnights. */
+  /**
+   * Load, check the secret, catch up on missed midnights. With a secret (owner
+   * routes), an unknown phrase, an expired demo and a wrong secret all get the
+   * same 401 after the same hash-and-compare work (S10-01). Nothing is written
+   * for an unknown phrase and no weather is fetched.
+   */
   private async open(secret: string | null, now: number) {
-    const row = this.load();
-    if (!row) return err(404, "no truffle with that phrase");
-    if (!(await this.checkSecret(row.m, secret))) return err(401, "wrong secret");
+    let row = this.load();
+    if (row && this.expired(row.m, now)) row = null;
+    if (secret !== null) {
+      if (!(await ownerMatches(row?.m.secret_hash, secret)) || !row) return err(401, AUTH_FAILED);
+    } else if (!row) {
+      return err(404, "no truffle with that phrase");
+    }
     const { s } = this.catchUp(row.s, row.m, now);
     return ok({ s, m: row.m });
   }
@@ -216,6 +278,7 @@ export class TruffleDO extends DurableObject<Env> {
   async pair(input: PairInput): Promise<Result<StateSummary>> {
     const now = Date.now();
     if (this.load()) return err(409, "phrase taken");
+    this.ensureSchema();
     const m: Meta = {
       ...input,
       created_ms: now,
@@ -269,7 +332,12 @@ export class TruffleDO extends DurableObject<Env> {
     m.feed_window = rate.window;
     if (!rate.allowed) {
       this.save(s, m);
-      return err(429, `rate limit: 60 feeds per hour, retry in ${rate.retry_after_s}s`);
+      return err(429, `rate limit: 60 feeds per hour, retry in ${rate.retry_after_s}s`, rate.retry_after_s);
+    }
+    // Defense in depth: the route already refused these with 400.
+    if (!Number.isSafeInteger(input.total) || input.total < 0) {
+      this.save(s, m);
+      return err(400, "steps_today_total must be a whole number of steps, 0 or more.");
     }
     // The timezone is pinned at /pair (S10-03). device_tz is recorded for
     // display and logs only. It never moves the midnight alarm.
@@ -278,27 +346,6 @@ export class TruffleDO extends DurableObject<Env> {
     } else if (input.device_tz && input.device_tz !== m.device_tz) {
       this.log("device_tz", { from: m.device_tz ?? null, to: input.device_tz, active_tz: m.tz });
       m.device_tz = input.device_tz;
-    }
-    if (input.lat !== undefined || input.lon !== undefined) {
-      const valid =
-        typeof input.lat === "number" && typeof input.lon === "number" &&
-        Number.isFinite(input.lat) && Number.isFinite(input.lon) &&
-        input.lat >= -90 && input.lat <= 90 && input.lon >= -180 && input.lon <= 180;
-      if (!valid) {
-        this.log("coords_invalid", { lat: String(input.lat).slice(0, 20), lon: String(input.lon).slice(0, 20) });
-      } else {
-        // Store one coarse point only (2 decimals, about 1 km). No trail.
-        const lat = Math.round(input.lat! * 100) / 100;
-        const lon = Math.round(input.lon! * 100) / 100;
-        if (lat !== m.lat || lon !== m.lon) {
-          // Logged so burrow spoofing via /feed (phrase only) is visible.
-          this.log("coords", { from: [m.lat, m.lon], to: [lat, lon] });
-          m.lat = lat;
-          m.lon = lon;
-          m.city = ""; // request.cf city no longer matches the point
-          m.weather_now = null;
-        }
-      }
     }
     // S10-02: a total only counts for the Truffle's current local day.
     const today = localDayKey(now, m.tz);
@@ -311,16 +358,66 @@ export class TruffleDO extends DurableObject<Env> {
     if (input.day !== undefined && input.day !== today) {
       return ignore(input.day < today ? `day ${input.day} is already closed` : `day ${input.day} has not started here yet`);
     }
+    const midnight = this.lastLocalMidnight(now, m.tz);
     // Without a day label, a replay of yesterday's total right after midnight
     // is caught by a walking-speed cap since local midnight.
-    if (input.day === undefined && !m.demo && !plausibleTotal(input.total, now - this.lastLocalMidnight(now, m.tz))) {
+    if (input.day === undefined && !m.demo && !plausibleTotal(input.total, now - midnight)) {
       return ignore("total is too high for the time since local midnight; send the day field");
     }
+    // S10-07: an increase may imply at most 20 steps a second since the last
+    // accepted feed today (or local midnight). A rejection changes nothing:
+    // not the day, not the baseline, no weather call.
+    const delta = input.total - s.steps_today;
+    if (delta > 0 && !s.dead && !m.demo) {
+      const jump = jumpCheck(delta, now - feedBaseline(m.feed_accept, today, midnight));
+      if (!jump.allowed) {
+        this.save(s, m);
+        this.log("feed_rejected", { why: "jump", delta, total: input.total });
+        return err(
+          400,
+          `That is ${delta} new steps since the last sync, more than ${MAX_JUMP_STEPS_PER_SECOND} a second. ` +
+            `Nothing changed. Sync again in ${jump.retry_after_s} s.`,
+          jump.retry_after_s
+        );
+      }
+    }
+    if (input.lat !== undefined || input.lon !== undefined) this.moveTo(m, input, now);
     const before = s.steps_today;
     s = engine.feed(s, input.total);
+    if (s.steps_today > before) m.feed_accept = { day: today, ms: now };
     this.save(s, m);
     this.log("feed", { total: input.total, delta: Math.max(0, s.steps_today - before), energy: s.energy });
     return ok({ ...this.feedSummary(s), ...envelope });
+  }
+
+  /**
+   * S10-09: keep one coarse current point (two decimals, about 1 km), never a
+   * trail, not even in the log. A move may force a weather refresh at most once
+   * an hour; otherwise the cached forecast stays until its normal refresh.
+   * Today's burrow decision is not changed here.
+   */
+  private moveTo(m: Meta, input: FeedInput, now: number): void {
+    const valid =
+      typeof input.lat === "number" && typeof input.lon === "number" &&
+      Number.isFinite(input.lat) && Number.isFinite(input.lon) &&
+      input.lat >= -90 && input.lat <= 90 && input.lon >= -180 && input.lon <= 180;
+    if (!valid) {
+      this.log("coords_invalid", {});
+      return;
+    }
+    const lat = Math.round(input.lat! * 100) / 100;
+    const lon = Math.round(input.lon! * 100) / 100;
+    if (lat === m.lat && lon === m.lon) return;
+    m.lat = lat;
+    m.lon = lon;
+    m.city = ""; // request.cf city no longer matches the point
+    const refresh = coordRefreshAllowed(m.coords_refresh_ms, now);
+    if (refresh) {
+      m.coords_refresh_ms = now;
+      // Mark the cache stale. The next owner /state fetches once, through the daily cache.
+      if (m.weather_now) m.weather_now = { ...m.weather_now, fetched_ms: 0 };
+    }
+    this.log("coords", { moved: true, refresh });
   }
 
   async spore(secret: string): Promise<Result<StateSummary>> {
@@ -328,10 +425,11 @@ export class TruffleDO extends DurableObject<Env> {
     const o = await this.open(secret, now);
     if (!o.ok) return o;
     const { s, m } = o.value;
-    if (!s.dead) return err(409, "truffle is alive");
+    // S10-11: a living Truffle cannot be replaced. Only death opens the way.
+    if (!s.dead) return err(409, "This Truffle is still alive. A new spore can only be planted after it dies.");
     let next = engine.newSpore(s);
     if (!m.demo) next = { ...next, burrowed: this.burrowToday(m, now) ?? false };
-    this.wipeMemory();
+    this.wipeMemory(m);
     this.save(next, m);
     this.log("spore", { gravestones: next.gravestones.length });
     return ok(this.summary(next, m, now));
@@ -360,18 +458,35 @@ export class TruffleDO extends DurableObject<Env> {
     if ((m.chat_lock_until ?? 0) > now) {
       return err(429, "Truffle is still answering your last message. One at a time, please.");
     }
+    const decision = engine.decideTier(s, requested);
+    // S10-05: a demo Truffle gets at most 30 model replies a day. Checked
+    // here, counted only when a reply is charged.
+    if (m.demo && decision.model_call) {
+      const quota = peekRate(m.demo_replies, now, DEMO_REPLIES_PER_DAY, DAY_MS);
+      if (!quota.allowed) {
+        return err(
+          429,
+          `This demo Truffle has used its ${DEMO_REPLIES_PER_DAY} replies for today. Try again in ${Math.ceil(quota.retry_after_s / 3600)} h.`,
+          quota.retry_after_s
+        );
+      }
+    }
     const rate = checkRate(m.chat_window, now, CHAT_LIMIT_PER_HOUR);
     m.chat_window = rate.window;
     if (!rate.allowed) {
       this.save(s, m);
-      return err(429, `Truffle needs a break: ${CHAT_LIMIT_PER_HOUR} messages per hour. Try again in ${Math.ceil(rate.retry_after_s / 60)} min.`);
+      return err(
+        429,
+        `Truffle needs a break: ${CHAT_LIMIT_PER_HOUR} messages per hour. Try again in ${Math.ceil(rate.retry_after_s / 60)} min.`,
+        rate.retry_after_s
+      );
     }
     m.chat_lock_until = now + CHAT_LOCK_MS;
     if (langIn && langIn !== m.lang) m.lang = langIn;
     this.save(s, m);
 
     const lang = m.lang;
-    const decision = engine.decideTier(s, requested);
+    const generation = m.generation ?? 0;
     const today = localDayKey(now, m.tz);
     const enc = new TextEncoder();
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -383,17 +498,27 @@ export class TruffleDO extends DurableObject<Env> {
 
     // The only place a chat is charged. Runs at most once per chat.
     let charged = false;
-    const finish = async (reply: string, brain: BrainName | "none", half_awake: boolean, partial = false) => {
+    const finish = async (
+      reply: string,
+      brain: BrainName | "none",
+      half_awake: boolean,
+      partial = false,
+      retried = false
+    ) => {
       if (charged) return;
       charged = true;
       // Re-read: a /feed may have landed while the brain was talking.
       const cur = this.load()!;
       const after = engine.chargeChat(cur.s, decision);
+      if (cur.m.demo && brain !== "none") {
+        cur.m.demo_replies = checkRate(cur.m.demo_replies, Date.now(), DEMO_REPLIES_PER_DAY, DAY_MS).window;
+      }
       this.save(after, cur.m);
       this.sql.exec("INSERT INTO turns (ts, day, role, content) VALUES (?, ?, 'user', ?)", now, today, message);
       this.sql.exec("INSERT INTO turns (ts, day, role, content) VALUES (?, ?, 'assistant', ?)", Date.now(), today, reply);
       this.sql.exec(`DELETE FROM turns WHERE id NOT IN (SELECT id FROM turns ORDER BY id DESC LIMIT ${MAX_TURNS})`);
-      this.log("chat", { tier: decision.tier, brain, half_awake, spent: decision.cost, chars: reply.length, partial });
+      // One charge per chat, retry or not. The retry is counted here (S03).
+      this.log("chat", { tier: decision.tier, brain, half_awake, spent: decision.cost, chars: reply.length, partial, retried });
       await send("done", {
         tier: decision.tier,
         brain,
@@ -407,6 +532,7 @@ export class TruffleDO extends DurableObject<Env> {
     let reply = "";
     let brainUsed: BrainName = "workers-ai";
     let halfAwake = true;
+    let retry = { retried: false };
     const run = async () => {
       try {
         if (!decision.model_call) {
@@ -416,7 +542,9 @@ export class TruffleDO extends DurableObject<Env> {
           await finish(line, "none", false);
           return;
         }
-        const weather = m.weather_now ? weatherText(m.weather_now, m.city) : weatherText(null, m.city);
+        // S10-10: weather in the state block comes only from validated numbers
+        // and fixed words. Anything else is "unavailable".
+        const weather = stateWeather(m.weather_now, m.city, "en"); // decision 0012: English for every lang
         const system = buildSystemPrompt({
           stateBlock: engine.stateBlock(s, { lang, weather_text: weather }),
           facts: this.facts(),
@@ -435,6 +563,7 @@ export class TruffleDO extends DurableObject<Env> {
         if (res.fallback_reason) this.log("brain_fallback", { reason: res.fallback_reason });
         brainUsed = res.brain;
         halfAwake = res.half_awake;
+        retry = res.retry;
         await send("brain", { brain: res.brain, half_awake: res.half_awake });
         const reader = res.stream.getReader();
         for (;;) {
@@ -443,15 +572,21 @@ export class TruffleDO extends DurableObject<Env> {
           reply += value;
           await send("token", { t: value });
         }
-        await finish(reply, res.brain, res.half_awake);
+        if (!reply.trim()) {
+          // Empty even after the one retry: nothing to charge for.
+          this.log("chat_empty", { tier: decision.tier, brain: res.brain, retried: retry.retried });
+          await send("error", { error: "Truffle could not answer right now. Nothing was charged." });
+          return;
+        }
+        await finish(reply, res.brain, res.half_awake, false, retry.retried);
         if (decision.tier === "medium" || decision.tier === "high") {
-          this.ctx.waitUntil(this.rememberFrom(message, reply, today));
+          this.ctx.waitUntil(this.rememberFrom(message, reply, today, generation));
         }
       } catch (e) {
         this.log("chat_error", { error: e instanceof Error ? e.message : String(e), chars: reply.length });
         if (reply.length > 0) {
           // Failed mid-reply: the words were produced, so charge once and say it was cut short.
-          await finish(reply, brainUsed, halfAwake, true).catch(() => {});
+          await finish(reply, brainUsed, halfAwake, true, retry.retried).catch(() => {});
         } else {
           await send("error", { error: "Truffle could not answer right now. Nothing was charged." });
         }
@@ -479,20 +614,29 @@ export class TruffleDO extends DurableObject<Env> {
       .map((r) => ({ role: r.role === "assistant" ? "assistant" : "user", content: r.content }));
   }
 
-  private async rememberFrom(message: string, reply: string, today: string): Promise<void> {
+  private async rememberFrom(message: string, reply: string, today: string, generation: number): Promise<void> {
     const facts = await extractFacts(this.env, `human: ${message}\ntruffle: ${reply}`);
     if (!facts.length) return;
     const row = this.load();
-    if (!row || row.s.dead) return;
-    this.addFacts(facts, today, row.s.affection);
-    this.log("facts", { added: facts.length });
+    // Generation fence (S10-11): a Truffle that died, was replanted or reset
+    // while this ran must not get the old life's facts back.
+    if (!row || row.s.dead || (row.m.generation ?? 0) !== generation) {
+      this.log("facts_dropped", { reason: "new life" });
+      return;
+    }
+    const added = this.addFacts(facts, today, row.s.affection);
+    this.log("facts", { added, offered: facts.length });
   }
 
   // ---------- demo controls (demo Truffles only) ----------
 
+  /**
+   * Every demo control checks the flag stored at /demo/spawn (S10-05). No
+   * request field can make a real Truffle a demo one.
+   */
   private async openDemo(secret: string, now: number) {
     const o = await this.open(secret, now);
-    if (o.ok && !o.value.m.demo) return err(409, "not a demo truffle");
+    if (o.ok && o.value.m.demo !== true) return err(409, "not a demo truffle");
     return o;
   }
 
@@ -514,7 +658,7 @@ export class TruffleDO extends DurableObject<Env> {
     if (!o.ok) return o;
     const wasDead = o.value.s.dead;
     const s = engine.midnight(o.value.s, false, this.favouriteMemory());
-    if (!wasDead && s.dead) this.wipeMemory();
+    if (!wasDead && s.dead) this.wipeMemory(o.value.m);
     this.save(s, o.value.m);
     this.log("demo_midnight", { energy: s.energy, zero_days: s.zero_days, dead: s.dead });
     return ok(this.summary(s, o.value.m, now));
@@ -536,7 +680,7 @@ export class TruffleDO extends DurableObject<Env> {
     const o = await this.openDemo(secret, now);
     if (!o.ok) return o;
     const s = structuredClone(engine.DEFAULT_STATE);
-    this.wipeMemory();
+    this.wipeMemory(o.value.m);
     this.save(s, o.value.m);
     this.log("demo_reset", {});
     return ok(this.summary(s, o.value.m, now));
