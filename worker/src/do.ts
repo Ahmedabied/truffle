@@ -8,6 +8,7 @@ import * as engine from "./engine";
 import type { TruffleState } from "./engine";
 import { askBrain, extractFacts, hasVisibleText, type BrainName, type ChatMessage } from "./brain";
 import { isInstructionLike, roomForFacts } from "./facts";
+import { BlockGuard, heatLine, heatTemp, voiceHits } from "./guards";
 import { buildSystemPrompt, sleepyLine, type Fact } from "./prompt";
 import {
   CHAT_LIMIT_PER_HOUR,
@@ -625,6 +626,51 @@ export class TruffleDO extends DurableObject<Env> {
       return true;
     };
 
+    // B10: when burrowed, the heat notice comes from code, not from the model.
+    // Validated numbers and fixed words only. It is shown, never stored as a turn.
+    const heat = s.burrowed ? heatLine(m.weather_now?.current_apparent_c, m.weather_days?.[today], lang) : null;
+    let heatShown = false;
+    const showHeat = async () => {
+      if (!heat || heatShown) return;
+      heatShown = true;
+      const h = heatTemp(m.weather_now?.current_apparent_c, m.weather_days?.[today]);
+      this.log("heat_line", { lang, temp: h ? h.t : null });
+      await send("token", { t: `${heat}\n` });
+    };
+
+    // B10: the visible stream goes through the status block guard. `reply` is
+    // what the client saw (minus the heat line), and that is what is charged for
+    // and stored, so a leaked block never re-enters the context either.
+    const guard = new BlockGuard(lang);
+    let lead = ""; // whitespace held until the heat line is out
+    const show = async (text: string) => {
+      if (!text) return;
+      reply += text;
+      if (heat && !heatShown) {
+        if (!hasVisibleText(text)) {
+          lead += text;
+          return;
+        }
+        await showHeat();
+        text = lead + text;
+        lead = "";
+      }
+      await send("token", { t: text });
+    };
+    /** End of the model stream: release held text, then count leaks and voice slips. */
+    let audited = false;
+    const endStream = async (brain: BrainName) => {
+      if (audited) return;
+      audited = true;
+      await show(guard.flush());
+      if (lead) await send("token", { t: lead });
+      lead = "";
+      if (guard.leaks > 0) this.log("block_leak", { count: guard.leaks, tier: decision.tier, brain });
+      // Counted, never altered: honest before and after numbers for the eval.
+      const terms = voiceHits(reply);
+      if (terms.length) this.log("voice_flag", { terms, tier: decision.tier, brain });
+    };
+
     let reply = "";
     let brainUsed: BrainName = "workers-ai";
     let halfAwake = true;
@@ -634,6 +680,7 @@ export class TruffleDO extends DurableObject<Env> {
         if (!decision.model_call) {
           const line = sleepyLine(message, lang);
           await send("brain", { brain: "none", half_awake: false });
+          await showHeat();
           await send("token", { t: line });
           await finish(line, "none", false);
           return;
@@ -671,13 +718,13 @@ export class TruffleDO extends DurableObject<Env> {
           for (;;) {
             const { value, done } = await reader.read();
             if (done) break;
-            reply += value;
-            await send("token", { t: value });
+            await show(guard.push(value));
           }
         } finally {
           ctrl.signal.removeEventListener("abort", stop);
         }
         ctrl.signal.throwIfAborted();
+        await endStream(res.brain);
         if (!hasVisibleText(reply)) {
           // Empty even after the one retry: nothing to charge for (S11-06).
           giveBackSlot();
@@ -690,6 +737,7 @@ export class TruffleDO extends DurableObject<Env> {
           this.ctx.waitUntil(this.rememberFrom(message, reply, today, ticket.generation));
         }
       } catch (e) {
+        await endStream(brainUsed);
         this.log("chat_error", { error: e instanceof Error ? e.message : String(e), chars: reply.length });
         if (hasVisibleText(reply)) {
           // Failed mid-reply: the words were produced, so charge once and say it was cut short.
@@ -729,7 +777,9 @@ export class TruffleDO extends DurableObject<Env> {
   }
 
   private async rememberFrom(message: string, reply: string, today: string, generation: number): Promise<void> {
-    const facts = await extractFacts(this.env, `human: ${message}\ntruffle: ${reply}`);
+    const facts = await extractFacts(this.env, `human: ${message}\ntruffle: ${reply}`, (error) =>
+      this.log("facts_failed", { error })
+    );
     if (!facts.length) return;
     const row = this.load();
     // Generation fence (S10-11, S11-02): a Truffle that died, was replanted or
