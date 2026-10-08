@@ -14,7 +14,8 @@ metrics (a judge model returns JSON), and writes RESULTS.md + results.json.
     python3 -I finetune/eval/run_eval.py --dry-run     # canned endpoints, no network
 
 Inputs: --holdout (filter.py's eval_holdout.jsonl) and/or --prompts (S09 shape:
-{"id","state_block","user","tier","lang","mood","intent"}).
+{"id","state_block","user","tier","lang","mood","intent"}, plus an optional
+"memory" list of fact strings that becomes the decision 0012 memory section).
 """
 
 from __future__ import annotations
@@ -103,6 +104,10 @@ def load_items(holdout, prompts):
                 continue
             p = json.loads(line)
             system = F.PERSONA_HEADER + p["state_block"] + "\n" + F.LANGUAGE_LINE
+            if p.get("memory"):
+                # Decision 0012: facts go after the trio, same bytes as the Worker.
+                system += ("\n\n" + F.MEMORY_OPEN + "\n" + F.MEMORY_NOTE + "\n"
+                           + json.dumps(list(p["memory"]), ensure_ascii=False) + "\n" + F.MEMORY_CLOSE)
             msgs = [{"role": "system", "content": system}, {"role": "user", "content": p["user"]}]
             items.append(_item(p["id"], msgs, p))
     if not items:
