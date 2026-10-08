@@ -15,6 +15,8 @@ export type Vec3 = [number, number, number];
 
 export const RAMP = " .:+*#%@";
 export const SOFT = " .:+*";
+/** The density ramp comes first; authored marks share the same real glyph atlas. */
+export const GLYPHS = [...new Set(RAMP + Array.from({ length: 95 }, (_, i) => String.fromCharCode(i + 32)).join(""))].join("");
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
@@ -80,12 +82,17 @@ export function glyphIndex(lum: number, x: number, y: number, inkLight: boolean,
 /** One layer: a luminance per cell, negative for empty. Tracks the rows it touched so clear and paint skip the rest. */
 export class Layer {
   lum = new Float32Array(W * H).fill(-1);
+  /** Zero means shaded density; other indices are deliberate ASCII strokes. */
+  symbols = new Uint8Array(W * H);
   /** First and last row written since the last clear (y0 > y1 when empty). */
   y0 = H;
   y1 = -1;
 
   clear(): void {
-    if (this.y1 >= this.y0) this.lum.fill(-1, this.y0 * W, (this.y1 + 1) * W);
+    if (this.y1 >= this.y0) {
+      this.lum.fill(-1, this.y0 * W, (this.y1 + 1) * W);
+      this.symbols.fill(0, this.y0 * W, (this.y1 + 1) * W);
+    }
     this.y0 = H;
     this.y1 = -1;
   }
@@ -93,6 +100,7 @@ export class Layer {
   /** Copy another layer's cells (used to restore a cached base each frame). */
   copy(from: Layer): void {
     this.lum.set(from.lum);
+    this.symbols.set(from.symbols);
     this.y0 = from.y0;
     this.y1 = from.y1;
   }
@@ -107,12 +115,26 @@ export class Layer {
     y |= 0;
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     this.lum[y * W + x] = l;
+    this.symbols[y * W + x] = 0;
     if (l >= 0) this.touch(y);
   }
 
   get(x: number, y: number): number {
     if (x < 0 || x >= W || y < 0 || y >= H) return -1;
     return this.lum[y * W + x];
+  }
+
+  /** One hand-placed glyph, still clipped, masked and painted like the raster. */
+  symbol(x: number, y: number, char: string): void {
+    x |= 0;
+    y |= 0;
+    if (x < 0 || x >= W || y < 0 || y >= H) return;
+    const code = GLYPHS.indexOf(char);
+    if (code <= 0) return;
+    const i = y * W + x;
+    this.lum[i] = 1;
+    this.symbols[i] = code;
+    this.touch(y);
   }
 
   /** Keep the brighter of the two values (for glows and sparkles). */
@@ -123,6 +145,7 @@ export class Layer {
     const i = y * W + x;
     if (l > this.lum[i]) {
       this.lum[i] = l;
+      this.symbols[i] = 0;
       this.touch(y);
     }
   }
@@ -144,7 +167,8 @@ export class Layer {
       const base = y * W;
       for (let x = 0; x < W; x++) {
         const l = this.lum[base + x];
-        s += l < 0 || (mask && mask[base + x]) ? " " : ramp[glyphIndex(l, x, y, inkLight, ramp.length - 1, floor)];
+        s += l < 0 || (mask && mask[base + x]) ? " " : this.symbols[base + x]
+          ? GLYPHS[this.symbols[base + x]] : ramp[glyphIndex(l, x, y, inkLight, ramp.length - 1, floor)];
       }
       rows[y] = s;
     }

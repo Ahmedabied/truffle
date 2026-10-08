@@ -26,6 +26,10 @@ export interface Palette {
   skin: string;
   /** Eye whites, spots and petals. */
   white: string;
+  /** Atmospheric ridge, vegetation and near engraving inks. */
+  distance: string;
+  nature: string;
+  foreground: string;
 }
 
 type Rgb = [number, number, number];
@@ -143,8 +147,8 @@ export function paletteAt(canonical: number, c: Conditions): Palette {
   }
   // The creature's own inks: rust cap and cream skin by day, both sinking toward moonlight at night.
   const dark = night ? 1 : canonical < 7 ? 1 - (canonical - 5.4) / 1.6 : canonical > 17.5 ? (canonical - 17.5) / 1.7 : 0;
-  const cap = mix("#c4552c", "#8c6a62", Math.max(0, Math.min(1, dark)));
-  const skin = mix("#b07a4c", "#b9b4a6", Math.max(0, Math.min(1, dark)) * 0.85);
+  const cap = mix("#99492f", "#c6987c", Math.max(0, Math.min(1, dark)));
+  const skin = mix("#a17a49", "#d0c5a9", Math.max(0, Math.min(1, dark)) * 0.85);
   const white = mix("#fff6e6", "#d9dcd6", Math.max(0, Math.min(1, dark)) * 0.6);
   const glow = mix(sun, skyHorizon, 0.35);
   return {
@@ -164,6 +168,9 @@ export function paletteAt(canonical: number, c: Conditions): Palette {
     glow,
     cap: c.mood === "dead" ? mix(cap, "#777777", 0.6) : cap,
     skin: c.mood === "dead" ? mix(skin, "#8a8a86", 0.7) : skin,
-    white
+    white,
+    distance: mix(c.sand ? L("groundSand") : L("groundGrass"), skyHorizon, night ? 0.42 : 0.52),
+    nature: night ? "#748477" : c.sand ? "#626547" : "#405c45",
+    foreground: night ? "#92917a" : c.sand ? "#756245" : "#3f6346"
   };
 }

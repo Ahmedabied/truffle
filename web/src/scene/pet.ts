@@ -3,7 +3,7 @@
 // geometry (lids, droop, lean, squash), not a hand-drawn picture, so the
 // creature keeps its shading from any light direction at any hour.
 
-import type { Stage } from "../../../worker/src/config";
+import type { Stage, Tier } from "../../../worker/src/config";
 import type { Mood } from "../../../worker/src/engine";
 import { ASPECT, clamp, disc, hash, hitEllipsoids, Layer, noise, shade, W, H, type Ellipsoid, type Hit, type Vec3 } from "./raster";
 
@@ -52,7 +52,12 @@ export interface PetInfo {
 
 export interface PetOpts {
   stage: Stage;
+  tier?: Tier;
   face: Face;
+  /** Previous expression eases into the new one; simulation state stays exact. */
+  fromFace?: Face;
+  transition?: number;
+  night?: boolean;
   light: Vec3;
   /** Frame clock in 12 Hz ticks; frozen under reduced motion. */
   t: number;
@@ -76,13 +81,14 @@ interface Model {
   dim: number;
   capRx: number;
   eyeY: number;
+  features?: { cx: number; ey: number; dx: number; er: number; brx: number; closure: number; happy: number; asleep: number; tired: number; wilting: number; yawn: number; gaze: number };
 }
 
 const SIZES: Record<Stage, { body: [number, number]; cap: [number, number]; eye: number; feet: number }> = {
-  Spore: { body: [3.9, 3.6], cap: [0, 0], eye: 0.6, feet: 0 },
-  Sprout: { body: [3.2, 3.9], cap: [5.6, 2.5], eye: 0.9, feet: 1.3 },
-  Truffle: { body: [5.6, 6.6], cap: [10.2, 5.1], eye: 1.2, feet: 2.0 },
-  Elder: { body: [6.6, 7.2], cap: [14.6, 6.4], eye: 1.25, feet: 2.3 }
+  Spore: { body: [4.4, 5.3], cap: [8.0, 3.8], eye: 1.1, feet: 1.6 },
+  Sprout: { body: [4.9, 5.8], cap: [9.0, 4.3], eye: 1.2, feet: 1.8 },
+  Truffle: { body: [5.6, 6.6], cap: [10.2, 5.1], eye: 1.35, feet: 2.0 },
+  Elder: { body: [6.3, 7.0], cap: [12.4, 5.8], eye: 1.4, feet: 2.2 }
 };
 
 /** Blinks every few seconds, sometimes twice in a row. Pure in the clock. */
@@ -92,6 +98,15 @@ export function blinking(sec: number): boolean {
   const d = sec - k * period - (0.4 + hash(k * 13 + 5) * 2.2);
   if (d >= 0 && d < 0.13) return true;
   return hash(k * 7 + 1) > 0.62 && d >= 0.28 && d < 0.41;
+}
+
+/** Lids close and reopen over 220ms, instead of changing in one frame. */
+export function blinkAmount(sec: number): number {
+  const period = 3.3;
+  const k = Math.floor(sec / period);
+  const d = sec - k * period - (0.4 + hash(k * 13 + 5) * 2.2);
+  const pulse = (x: number) => x <= 0 || x >= 0.22 ? 0 : Math.sin(Math.PI * x / 0.22) ** 2;
+  return Math.max(pulse(d), hash(k * 7 + 1) > 0.62 ? pulse(d - 0.3) : 0);
 }
 
 /** Breathing in [-1, 1]: slow, slower and deeper when asleep. */
@@ -104,11 +119,17 @@ function build(o: PetOpts): Model {
   const t = o.reduced ? 0 : o.t;
   const sec = o.reduced ? 0 : o.sec ?? t / 12;
   const face = o.face;
-  const amp = face === "asleep" ? 0.05 : face === "wilting" ? 0.022 : 0.035;
+  const transition = o.reduced ? 1 : clamp(o.transition ?? 1, 0, 1);
+  const eased = transition * transition * (3 - 2 * transition);
+  const weight = (m: Face) => (face === m ? eased : 0) + ((o.fromFace ?? face) === m ? 1 - eased : 0);
+  const asleep = weight("asleep"), tired = weight("tired"), wilting = weight("wilting"), happy = weight("affectionate"), yawn = weight("yawn");
+  const tier = ({ asleep: 0, low: 1, medium: 2, high: 3 } as const)[o.tier ?? "asleep"];
+  const growth = 1 + tier * 0.025;
+  const amp = 0.022 - asleep * 0.012 - wilting * 0.006;
   const breath = o.reduced ? 0 : breathOf(sec, face) * amp;
   // Poses: a slow sway when content, small hops when affectionate.
-  const sway = o.reduced ? 0 : face === "content" ? Math.sin(sec * 0.9) * 0.4 : face === "affectionate" ? Math.sin(sec * 1.6) * 0.6 : 0;
-  const hop = o.reduced || face !== "affectionate" ? 0 : Math.pow(Math.max(0, Math.sin(sec * Math.PI * 1.25)), 2) * 1.1;
+  const sway = o.reduced ? 0 : Math.sin(sec * 0.9) * 0.2 * weight("content") + Math.sin(sec * 1.6) * 0.3 * happy;
+  const hop = o.reduced ? 0 : Math.pow(Math.max(0, Math.sin(sec * Math.PI * 1.25)), 2) * 0.5 * happy;
   const cx = o.centre * ASPECT + sway;
   const g = o.ground + 0.6 - hop + sinkOf(o);
   const shapes: Ellipsoid[] = [];
@@ -117,18 +138,8 @@ function build(o: PetOpts): Model {
 
   // Body.
   let [brx, bry] = S.body;
-  if (face === "asleep") {
-    brx *= 1.08;
-    bry *= 0.9;
-  } else if (face === "tired") {
-    brx *= 1.04;
-    bry *= 0.93;
-  } else if (face === "wilting") {
-    brx *= 1.06;
-    bry *= 0.88;
-  } else if (face === "yawn") {
-    bry *= 1.05;
-  }
+  brx *= growth * (1 + asleep * 0.06 + tired * 0.04 + wilting * 0.06);
+  bry *= growth * (1 - asleep * 0.055 - tired * 0.07 - wilting * 0.12 + yawn * 0.05);
   bry *= 1 + breath;
   brx *= 1 - breath * 0.6;
   const bcy = g - bry;
@@ -141,25 +152,27 @@ function build(o: PetOpts): Model {
   // Feet.
   if (S.feet) {
     const fy = g - 0.45;
-    shapes.push({ cx: cx - brx * 0.62, cy: fy, rx: S.feet, ry: S.feet * 0.5, rz: 0.9, z: 0.6, m: M.FOOT });
-    shapes.push({ cx: cx + brx * 0.62, cy: fy, rx: S.feet, ry: S.feet * 0.5, rz: 0.9, z: 0.6, m: M.FOOT });
+    shapes.push({ cx: cx - brx * 0.62, cy: fy, rx: S.feet * growth, ry: S.feet * growth * 0.5, rz: 0.9, z: 0.6, m: M.FOOT });
+    shapes.push({ cx: cx + brx * 0.62, cy: fy, rx: S.feet * growth, ry: S.feet * growth * 0.5, rz: 0.9, z: 0.6, m: M.FOOT });
+    // Little hands give the larger creature an affectionate, toy-like posture.
+    if (o.stage !== "Sprout") {
+      for (const side of [-1, 1]) shapes.push({
+        cx: cx + side * brx * 0.94, cy: g - bry * (0.72 + happy * 0.38),
+        rx: 0.95, ry: 1.2 + happy * 0.4, rz: 0.55, z: 0.7, m: M.BODY
+      });
+    }
   }
 
   // Cap.
-  let capRx = S.cap[0];
+  let capRx = S.cap[0] * growth;
   if (capRx) {
-    let capRy = S.cap[1];
+    let capRy = S.cap[1] * growth;
     let capCx = cx;
     let capCy = g - bry * 2 - capRy * 0.35 + 0.8;
-    if (face === "wilting") {
-      capCx -= 2.2;
-      capRy *= 0.74;
-      capCy += 1.3;
-      dim = 0.85;
-    } else if (face === "tired" || face === "asleep") {
-      capCy += 0.5;
-      capCx -= face === "asleep" ? 0.6 : 0;
-    }
+    capCx -= 2.2 * wilting + 0.35 * asleep;
+    capRy *= 1 - 0.26 * wilting;
+    capCy += 1.3 * wilting + 0.45 * (tired + asleep);
+    dim = 1 - 0.15 * wilting;
     capCy -= breath * bry * 2;
     shapes.push({ cx: capCx, cy: capCy, rx: capRx, ry: capRy, rz: 0.75, z: 1.2, m: M.CAP });
     if (o.stage === "Elder" || face === "wilting") {
@@ -169,7 +182,8 @@ function build(o: PetOpts): Model {
       shapes.push({ cx: capCx + capRx * 0.62, cy: capCy + capRy * 0.35 + droop * 0.5, rx: capRx * 0.42, ry: capRy * 0.62, rz: 0.7, z: 1.1, m: M.CAP });
     }
     // Spots on the cap, lit like the cap but drawn in the skin ink.
-    const spots = o.stage === "Sprout" ? [[-0.35, -0.15, 0.22]] : o.stage === "Elder" ? [[-0.6, -0.05, 0.17], [-0.2, -0.55, 0.13], [0.12, -0.15, 0.15], [0.5, 0.15, 0.18], [-0.3, 0.38, 0.11], [0.72, -0.38, 0.1], [0.38, -0.55, 0.09], [-0.78, 0.35, 0.08]] : [[-0.5, -0.05, 0.22], [0.15, -0.45, 0.18], [0.52, 0.2, 0.2]];
+    // Intelligence adds quiet freckles; even the newest sleepy pet is a mushroom.
+    const spots = [[-0.36, -0.2, 0.16], [0.36, 0.1, 0.16], [0.02, -0.5, 0.13], [-0.7, 0.1, 0.12], [0.65, -0.18, 0.12], [-0.12, 0.34, 0.1], [0.4, -0.5, 0.1], [-0.5, -0.5, 0.1]].slice(0, 2 + tier * 2);
     for (const [sx, sy, sr] of spots) {
       shapes.push({ cx: capCx + sx * capRx, cy: capCy + sy * capRy, rx: sr * capRx, ry: sr * capRx * 0.75, rz: 0.1, z: capRy * 0.75 + 1.3, m: M.SPOT });
     }
@@ -180,61 +194,47 @@ function build(o: PetOpts): Model {
   }
 
   // Face.
-  const ey = o.stage === "Spore" ? bcy - 0.2 : bcy - bry * 0.18;
-  const eyeDx = o.stage === "Spore" ? 0 : brx * 0.42;
+  const ey = bcy - bry * 0.18;
+  const eyeDx = brx * 0.42;
   const er = S.eye;
-  const closed = face === "asleep" || face === "yawn" || (!o.reduced && face !== "affectionate" && blinking(sec));
-  const eyes = o.stage === "Spore" ? [cx] : [cx - eyeDx, cx + eyeDx];
+  // Face features sit in front of the belly at every stage. A fixed z=3
+  // disappeared behind the Truffle/Elder's 5–6 row-unit body depth.
+  const faceZ = Math.min(brx, bry) * 0.95 + 1;
+  // Smooth lids and gaze are geometry, sampled on the same elapsed clock as breath.
+  const blink = o.reduced ? 0 : blinkAmount(sec) * (1 - asleep - yawn) * (1 - happy);
+  const closure = clamp(asleep + yawn + blink, 0, 1);
+  const gaze = o.reduced ? 0 : Math.sin(sec * 0.31) * Math.sin(sec * 0.13) * er * 0.38 * (1 - closure);
+  const eyes = [cx - eyeDx, cx + eyeDx];
   for (const ex of eyes) {
-    if (o.stage === "Spore") {
-      // One dot that breathes.
-      const r = er * (!o.reduced && blinking(sec) ? 0.55 : 1 + breath * 2);
-      shapes.push({ cx: ex, cy: ey, rx: r, ry: r, z: 3, m: M.PUPIL, flat: 0 });
+    if (closure > 0.94) {
+      shapes.push({ cx: ex, cy: ey + er * 0.2, rx: er * 1.05, ry: 0.35, z: faceZ, m: M.PUPIL, flat: 0.05 });
       continue;
     }
-    if (closed) {
-      shapes.push({ cx: ex, cy: ey + er * 0.2, rx: er * 1.05, ry: 0.22, z: 3, m: M.PUPIL, flat: 0.05 });
-      continue;
-    }
-    if (face === "affectionate") {
-      // Happy arcs: a dark arc over a skin-coloured fill.
-      shapes.push({ cx: ex, cy: ey + er * 0.35, rx: er * 1.05, ry: er * 0.75, z: 3, m: M.PUPIL, flat: 0.05 });
-      shapes.push({ cx: ex, cy: ey + er * 0.75, rx: er * 0.85, ry: er * 0.65, z: 3.5, m: M.BODY });
+    if (happy > 0.85) {
+      shapes.push({ cx: ex, cy: ey + er * 0.35, rx: er * 1.05, ry: er * 0.75, z: faceZ, m: M.PUPIL, flat: 0.05 });
+      shapes.push({ cx: ex, cy: ey + er * 0.85, rx: er * 0.85, ry: er * 0.55, z: faceZ + 1, m: M.BODY });
       marks.push({ X: ex - (ex < cx ? er * 1.9 : -er * 1.9), Y: ey + er * 1.3, r: er * 0.55, lum: 0.9, layer: "cap" });
       continue;
     }
-    const small = face === "wilting" ? 0.8 : 1;
-    shapes.push({ cx: ex, cy: ey, rx: er * small, ry: er * 1.15 * small, z: 3, m: M.EYE, flat: 0.96 });
-    const look = face === "wilting" ? 0.25 : face === "tired" ? 0.1 : 0;
-    const px = ex + (o.light[0] > 0 ? 0.12 : -0.12) * er;
-    shapes.push({ cx: px, cy: ey + look * er + er * 0.1, rx: er * 0.5 * small, ry: er * 0.64 * small, z: 3.5, m: M.PUPIL, flat: 0 });
-    shapes.push({ cx: px - er * 0.22, cy: ey - er * 0.18, rx: er * 0.2, ry: er * 0.22, z: 4, m: M.GLINT, flat: 1 });
-    if (face === "tired") shapes.push({ cx: ex, cy: ey - er * 0.95, rx: er * 1.15, ry: er * 0.85, z: 4.5, m: M.LID });
-    else if (o.stage === "Elder") shapes.push({ cx: ex, cy: ey - er * 1.25, rx: er * 1.15, ry: er * 0.75, z: 4.5, m: M.LID });
+    const small = 1 - wilting * 0.2;
+    shapes.push({ cx: ex, cy: ey, rx: er * small, ry: er * 1.15 * small * (1 - closure * 0.92 - happy * 0.4), z: faceZ, m: M.EYE, flat: 0.96 });
+    const look = wilting * 0.25 + tired * 0.1;
+    const px = ex + gaze + (o.light[0] > 0 ? 0.12 : -0.12) * er;
+    shapes.push({ cx: px, cy: ey + look * er + er * 0.1, rx: er * 0.52 * small, ry: er * 0.7 * small * (1 - closure * 0.92 - happy * 0.4), z: faceZ + 1.4, m: M.PUPIL, flat: 0 });
+    shapes.push({ cx: px - er * 0.22, cy: ey - er * 0.18, rx: er * 0.2, ry: er * 0.22, z: faceZ + 2.5, m: M.GLINT, flat: 1 });
+    if (tired > 0.05) shapes.push({ cx: ex, cy: ey - er * 0.95, rx: er * 1.15, ry: er * 0.85 * tired, z: faceZ + 3, m: M.LID });
+    else if (o.stage === "Elder") shapes.push({ cx: ex, cy: ey - er * 1.4, rx: er * 1.15, ry: er * 0.6, z: faceZ + 3, m: M.LID });
   }
 
-  // Mouth.
-  if (o.stage !== "Spore") {
-    const my = ey + er * 1.9;
-    if (face === "yawn") {
-      shapes.push({ cx, cy: my + 0.3, rx: er * 0.9, ry: er * 1.15, z: 3, m: M.MOUTH, flat: 0.05 });
-      shapes.push({ cx, cy: my + 0.45, rx: er * 0.5, ry: er * 0.7, z: 3.5, m: M.MOUTH, flat: 0.3 });
-    } else if (face === "asleep") {
-      marks.push({ X: cx, Y: my, r: 0.3, lum: 0.1, layer: "ink" });
-    } else if (face === "tired") {
-      shapes.push({ cx, cy: my, rx: er * 0.9, ry: 0.2, z: 3, m: M.MOUTH, flat: 0.05 });
-    } else {
-      // A smile (or a frown when wilting): a thin arc of small marks.
-      const frown = face === "wilting";
-      const r = er * (face === "affectionate" ? 1.3 : 1.0);
-      for (let k = -3; k <= 3; k++) {
-        const a = (k / 3) * 0.9;
-        marks.push({ X: cx + Math.sin(a) * r, Y: my + (frown ? -1 : 1) * (Math.cos(a) * r * 0.55 - r * 0.3), r: 0.28, lum: 0.08, layer: "ink" });
-      }
-    }
-  }
+  // A continuous mouth curve flattens into rest, droops when wilted and opens
+  // into a yawn. The interpolation happens in geometry, not cross-faded images.
+  const my = ey + er * 1.9;
+  const r = er * (1 + happy * 0.3 - asleep * 0.55);
+  const curve = 1 - wilting * 2;
+  shapes.push({ cx, cy: my, rx: r, ry: Math.max(0.28, r * (0.68 - tired * 0.4 + yawn * 0.55)), z: faceZ, m: M.MOUTH, flat: 0.04 });
+  if (yawn < 0.95) shapes.push({ cx, cy: my - curve * 0.6, rx: r * 1.1, ry: r * 0.6 * (1 - yawn), z: faceZ + 1.2, m: M.BODY, flat: 0.85 });
 
-  return { shapes, marks, dim, capRx: capRx || brx, eyeY: ey };
+  return { shapes, marks, dim, capRx: capRx || brx, eyeY: ey, features: { cx, ey, dx: eyeDx, er, brx, closure, happy, asleep, tired, wilting, yawn, gaze } };
 }
 
 function mound(o: PetOpts): Model {
@@ -289,7 +289,7 @@ const MAT = new Uint8Array(W * H);
 function sinkOf(o: PetOpts): number {
   if (o.rise === undefined || o.rise >= 1) return 0;
   const k = 1 - Math.max(0, o.rise);
-  return k * k * (SIZES[o.stage].body[1] * 2 + 1.5);
+  return k * k * (SIZES[o.stage].body[1] * 2 + SIZES[o.stage].cap[1] * 1.35 + 2) * 1.08;
 }
 
 /** Draw the creature into the layers and report where it is. */
@@ -326,8 +326,8 @@ export function drawPet(L: PetLayers, o: PetOpts): PetInfo {
       let lum: number;
       if (hit.flat >= 0) lum = hit.flat;
       else {
-        const wart = hit.m === M.CAP ? 0.06 * noise(X * 1.3, Y * 1.3, 5) : hit.m === M.STONE ? 0.08 * noise(X * 2.2, Y * 2.2, 9) : hit.m === M.MOUND ? 0.05 * noise(X * 2, Y * 2, 4) : 0;
-        lum = shade(hit.n, o.light, hit.m === M.CAP ? 0.18 : 0.26, hit.m === M.EYE || hit.m === M.STONE || hit.m === M.MOUND ? 0 : 0.28) + wart;
+        const wart = hit.m === M.CAP ? 0.025 * noise(X * 1.3, Y * 1.3, 5) : hit.m === M.STONE ? 0.08 * noise(X * 2.2, Y * 2.2, 9) : hit.m === M.MOUND ? 0.05 * noise(X * 2, Y * 2, 4) : 0;
+        lum = shade(hit.n, o.light, o.night ? 0.48 : hit.m === M.CAP ? 0.18 : 0.26, hit.m === M.EYE || hit.m === M.STONE || hit.m === M.MOUND ? 0 : 0.28) + wart;
         if (hit.m === M.SPOT) lum = clamp(lum + 0.28, 0, 1);
         if (hit.m === M.LEAF) lum = clamp(lum * 0.9, 0, 1);
         lum *= dim * dark;
@@ -400,11 +400,48 @@ export function drawPet(L: PetLayers, o: PetOpts): PetInfo {
       if (edge || seam) {
         const l = L.ink.get(x, y);
         L.ink.set(x, y, Math.min(l, edge ? 0.15 : 0.3));
+        // A thin ink contour is more legible than a dark band of @ characters.
+        // Colour and material still come from the ellipsoid raster underneath.
+        if (edge && m !== M.CAP && m !== M.SPOT) L.ink.symbol(x, y, !L.mask[i - 1] ? "(" : !L.mask[i + 1] ? ")" : "_");
+        else if (seam) L.ink.symbol(x, y, "_");
         L.cap.set(x, y, -1);
         L.skin.set(x, y, -1);
+        // A moonlit contour keeps the full silhouette readable against dark earth.
+        // Pupils stay dark; this is a separate material rim, not inverted eyes.
+        if (o.night && edge) {
+          const rim = m === M.CAP || m === M.SPOT ? L.cap : L.skin;
+          rim.symbol(x, y, !L.mask[i - 1] ? "(" : !L.mask[i + 1] ? ")" : "_");
+        }
         if (m !== M.EYE && m !== M.GLINT) L.white.set(x, y, -1);
       }
     }
+  }
+  // The face gets a quiet plane: texture describes the body, never obscures
+  // its expression. These marks are real ASCII in the same depth-masked atlas.
+  if (model.features) {
+    const f = model.features;
+    const left = Math.floor((f.cx - f.brx * 0.78) / ASPECT);
+    const right = Math.ceil((f.cx + f.brx * 0.78) / ASPECT);
+    const top = Math.floor(f.ey - 1.15);
+    const bottom = Math.ceil(f.ey + f.er * 2.7);
+    for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) {
+      const i = y * W + x;
+      if (!L.mask[i] || !L.mask[i - 1] || !L.mask[i + 1] || !L.mask[i - W] || !L.mask[i + W] || mat[i] === M.CAP || mat[i] === M.SPOT) continue;
+      for (const layer of [L.ink, L.cap, L.skin, L.white]) layer.set(x, y, -1);
+    }
+    const faceInk = o.night ? L.white : L.ink;
+    const mark = (x: number, y: number, text: string) => {
+      const start = Math.round(x - (text.length - 1) / 2);
+      for (let k = 0; k < text.length; k++) {
+        if (text[k] !== " " && L.mask[y * W + start + k]) faceInk.symbol(start + k, y, text[k]);
+      }
+    };
+    const ey = Math.round(f.ey);
+    const eye = f.closure > 0.82 ? "___" : f.closure > 0.45 ? "(-)" : f.happy > 0.75 ? "^" : "(o)";
+    for (const side of [-1, 1]) mark((f.cx + side * f.dx + f.gaze) / ASPECT, ey, eye);
+    const mouthY = Math.round(f.ey + f.er * 2.05);
+    const mouth = f.yawn > 0.5 ? "O" : f.asleep > 0.8 ? "~" : f.wilting > 0.65 ? "/^\\" : f.tired > 0.65 ? "___" : f.happy > 0.65 ? "\\___/" : "\\_/";
+    mark(f.cx / ASPECT, mouthY, mouth);
   }
   // A faint ground contact under the feet so it stands on the sand.
   const shadow = o.face === "dead" || o.face === "burrowed" ? null : { cx: o.centre * ASPECT - o.light[0] * model.capRx * 0.35, cy: o.ground + 1.1, rx: model.capRx * 0.95, ry: 1.7 + model.capRx * 0.08 };

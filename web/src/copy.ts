@@ -9,6 +9,36 @@ export type Lang = "ar" | "en";
 
 const en = {
   title: "Truffle",
+  pocket: "Pocket",
+  backToWorld: "Back to world",
+  connection: "Connection",
+  energyDetails: "How energy works",
+  replyEnergyUsed: "A little energy spent on our conversation.",
+  demoMode: "demo",
+  demoStart: "Open Pocket to try a walk, then come back for a chat.",
+  replyNoEnergy: "A sleepy hello. No energy spent.",
+  shareSaved: "Saved a picture of your world.",
+  giftOpen: "Open a little keepsake",
+
+  pocketWorld: "a pocket world",
+  worldCaption: "A little life, at your pace",
+  sampleWorld: "sample world",
+  conversation: "A quiet conversation",
+  headingOut: "Heading out?",
+  outingTitle: "A little adventure together",
+  outingBody: "Tell Truffle your plan. No route, distance or destination needed.",
+  outingWalk: "Taking a walk",
+  outingErrand: "Just an errand",
+  outingWalkNote: "Oh, a pocket adventure. I am coming along. Take your time. If you like, bring back one tiny thing you noticed.",
+  outingErrandNote: "Even groceries? Excellent. I will be your very small shopping companion. Tell me about it when you are back.",
+  keepsakes: "Your little keepsakes",
+  keepsakesEmpty: "Truffle likes making small things while you are away. Come back later. Rest days count too.",
+  keepsakesNote: "Little fictional gifts, kept on this device. A new one can wait after ten minutes away, once a day. No steps required.",
+  giftWaiting: "I made a little something for you.",
+  giftFrom: "Made by Truffle",
+  previewGift: "Preview a return gift",
+  energyStore: "Energy for company",
+  energyNote: "Steps fill the energy store. Each reply spends a little.",
   pause: "Take a moment",
   back: "I'm back",
   pauseNotice: "Wherever you are, notice one small thing: a sound, a shadow, a change in the air. No need to keep this screen open.",
@@ -67,7 +97,7 @@ const en = {
   pairing: "Planting your spore...",
   stepsOnlyUp: "Today's total keeps the highest count. A lower number adds no steps.",
   freshSpore: "A fresh spore. Steps will wake it.",
-  heatExplainOn: "Heat day. Truffle burrows. No growth today and it cannot die today.",
+  heatExplainOn: "A day for shade. Truffle rests safely; steps can still refill its energy.",
   heatExplainOff: "Heat mode is off. Truffle can come up again.",
   newSporeDone: "A new spore is in the sand. The old stone stays.",
   pollNote: "Updates every 30 seconds.",
@@ -95,6 +125,36 @@ export type CopyKey = keyof typeof en;
 
 const ar: Record<CopyKey, string> = {
   title: "ترافل",
+  pocket: "الجيب",
+  backToWorld: "ارجع للعالم",
+  connection: "الاتصال",
+  energyDetails: "كيف تشتغل الطاقة",
+  replyEnergyUsed: "صرفنا شوي طاقة على سوالفنا.",
+  demoMode: "تجربة",
+  demoStart: "افتح الجيب وجرّب مشية، ثم ارجع للسوالف.",
+  replyNoEnergy: "سلام نعسان. ما صرفنا طاقة.",
+  shareSaved: "حفظنا صورة من عالمك.",
+  giftOpen: "افتح تذكار صغير",
+
+  pocketWorld: "عالم في جيبك",
+  worldCaption: "حياة صغيرة، وعلى راحتك",
+  sampleWorld: "عالم تجريبي",
+  conversation: "سوالف هادية",
+  headingOut: "طالع؟",
+  outingTitle: "مغامرة صغيرة سوا",
+  outingBody: "قل لترافل وش خطتك. ما نحتاج طريق ولا مسافة ولا وجهة.",
+  outingWalk: "طالع أمشي",
+  outingErrand: "بس مشوار",
+  outingWalkNote: "أوه، مغامرة في الجيب. أنا معك. خذ راحتك. وإذا ودك، ارجع سولف لي عن شي صغير لاحظته.",
+  outingErrandNote: "حتى لو للبقالة؟ حلو. بكون رفيق تسوّق صغير مرّة. سولف لي يوم ترجع.",
+  keepsakes: "تذكاراتك الصغيرة",
+  keepsakesEmpty: "ترافل يحب يسوي لك أشياء صغيرة وأنت غايب. ارجع بعدين. حتى أيام الراحة لها هدايا.",
+  keepsakesNote: "هدايا خيالية صغيرة محفوظة على هالجهاز. ممكن تنتظرك وحدة بعد عشر دقايق غياب، مرة باليوم. ما تحتاج خطوات.",
+  giftWaiting: "سويت لك شي صغير.",
+  giftFrom: "من صنع ترافل",
+  previewGift: "جرّب هدية الرجعة",
+  energyStore: "طاقة للسوالف",
+  energyNote: "الخطوات تعبي مخزون الطاقة. وكل رد ياخذ منه شوي.",
   pause: "خذ لك لحظة",
   back: "رجعت",
   pauseNotice: "وين ما كنت، لاحظ شي صغير: صوت، ظل، أو تغيّر في الهوا. ما تحتاج تخلي الشاشة مفتوحة.",
@@ -153,7 +213,7 @@ const ar: Record<CopyKey, string> = {
   pairing: "نزرع بذرتك...",
   stepsOnlyUp: "نحتفظ بأعلى عدد خطوات اليوم. الرقم الأقل ما يضيف خطوات.",
   freshSpore: "بذرة جديدة. الخطوات تصحّيها.",
-  heatExplainOn: "يوم حر. ترافل يختبئ تحت الرمل. ما يكبر اليوم وما يموت اليوم.",
+  heatExplainOn: "يوم للظل. ترافل يرتاح بأمان، والخطوات تقدر تعبي طاقته.",
   heatExplainOff: "طفّينا وضع الحر. ترافل يقدر يطلع من جديد.",
   newSporeDone: "بذرة جديدة في الرمل. الحجر القديم باقي.",
   pollNote: "يتحدّث كل 30 ثانية.",
@@ -230,11 +290,8 @@ export function explainChat(
 }
 
 export function explainSteps(lang: Lang, steps: number, pct: number, tier: Tier, burrowed: boolean): string {
-  const t = TIER_WORD[lang][tier];
-  if (lang === "ar") {
-    return `${num(lang, steps)} خطوة اليوم. الطاقة ${num(lang, pct)}٪. ${tier === "asleep" ? "ترافل نايم، فالرد الجاي سطر نعسان." : `الرد الجاي بجهد ${t}.`}${burrowed ? " يوم حر، فالخطوات تطعمه بس ما تكبّره." : ""}`;
-  }
-  return `${num(lang, steps)} steps today. Energy ${pct}%. ${tier === "asleep" ? "Truffle is asleep, so the next reply is one sleepy line." : `Next reply: ${t} effort.`}${burrowed ? " Heat day, so steps feed it but do not grow it." : ""}`;
+  if (lang === "ar") return `${num(lang, steps)} خطوة اليوم. ${burrowed ? "ترافل يرتاح في الظل، وطاقته محفوظة للسوالف." : tier === "asleep" ? "ترافل نعسان الحين. خذ راحتك." : "ترافل عنده طاقة للسوالف. خذ راحتك."}`;
+  return `${num(lang, steps)} steps today. ${burrowed ? "Truffle is resting in the shade, with energy for company." : tier === "asleep" ? "Truffle is sleepy for now. Take your time." : "Truffle has energy for company. Take your time."}`;
 }
 
 export function explainMidnight(

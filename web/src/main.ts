@@ -13,6 +13,7 @@ import { MOMENT_SHOW_MS, lastIdKey, momentsOf, pickNew, recent, type Moment, typ
 import { cardHost, deliver, drawCard, fileName, readWorld, toBlob } from "./share";
 import { makeFitter } from "./scene/grid";
 import { World } from "./scene/world";
+import { AWAY_MS, giftText, readShelf, returnToShelf, shelfKey, type Keepsake } from "./keepsakes";
 import type { Backend, Creds, StateSummary, Tier } from "./types";
 
 const POLL_MS = 30_000;
@@ -106,6 +107,7 @@ const chat = new Chat(
     },
     onSummary: (s) => render(s),
     onExplain: (t) => explain(t),
+    onDetails: (text) => { $("chatDetails").textContent = text; },
     afterChat: () => void poll(),
     demo: DEMO,
     openSettings: () => openSettings(),
@@ -126,6 +128,7 @@ function applyLang(): void {
   document.documentElement.lang = lang;
   // UI flows RTL in Arabic. The world keeps dir="ltr" on its own element.
   $("app").dir = lang === "ar" ? "rtl" : "ltr";
+  $("pocketDialog").dir = lang === "ar" ? "rtl" : "ltr";
   document.querySelectorAll<HTMLElement>("[data-c]").forEach((el) => {
     el.textContent = c[el.dataset.c as CopyKey];
   });
@@ -140,6 +143,7 @@ function applyLang(): void {
   if (summary) render(summary);
   chat.refresh();
   if (backend?.mock) $("judgeIntro").textContent = c.offlineIntro;
+  $("demoMode").hidden = !DEMO || !!backend?.mock;
   $("tryDemo").hidden = DEMO || IN_APP;
 }
 
@@ -148,14 +152,24 @@ $("langBtn").addEventListener("click", () => {
   langChosen = true;
   store.set(K.lang, lang);
   applyLang();
-  if (summary) explain(explainSteps(lang, summary.state.steps_today, summary.energy_pct, summary.tier, summary.state.burrowed));
+  if (summary) explain(t("energyNote"));
 });
+
+// Pocket keeps secondary controls out of the living world.
+const pocketDialog = $<HTMLDialogElement>("pocketDialog");
+function openPocket(): void {
+  if (!pocketDialog.open) { $("pocketStatus").textContent = ""; pocketDialog.showModal(); }
+}
+function closePocket(): void { if (pocketDialog.open) pocketDialog.close(); }
+$("pocketBtn").addEventListener("click", openPocket);
+$("pocketClose").addEventListener("click", closePocket);
 
 // ---------- rendering ----------
 
 function explain(text: string): void {
   lastWhy = text;
   $("why").textContent = text;
+  if (pocketDialog.open) $("pocketStatus").textContent = text;
 }
 
 function render(s: StateSummary): void {
@@ -194,7 +208,17 @@ function render(s: StateSummary): void {
     const steps = st.gravestones[st.gravestones.length - 1]?.lifetime_steps ?? st.lifetime_steps;
     hud.push(lang === "ar" ? `عاش ${days.toLocaleString("en-US")} يوم و ${steps.toLocaleString("en-US")} خطوة` : `lived ${days.toLocaleString("en-US")} days and ${steps.toLocaleString("en-US")} steps`);
   }
-  $("hudText").textContent = hud.join(sep);
+  $("hudText").textContent = `${st.steps_today.toLocaleString("en-US")} ${t("stepsToday")}`;
+  $("hud").setAttribute("aria-label", `${$("hudText").textContent}. ${t("momentsShow")}`);
+  $("worldDetails").textContent = hud.join(sep);
+  $("energyValue").textContent = `${s.energy_pct}%`;
+  $("energyTrack").setAttribute("aria-valuenow", String(s.energy_pct));
+  $("energyFill").style.width = `${s.energy_pct}%`;
+  $("worldTime").textContent = backend?.mock ? t("sampleWorld") : new Intl.DateTimeFormat(lang === "ar" ? "ar-OM" : "en-GB", { timeZone: s.tz, hour: "2-digit", minute: "2-digit" }).format(new Date());
+  $("outingBtn").hidden = st.dead;
+  $("outingBtn").classList.toggle("primary", !DEMO);
+  refreshKeepsakes();
+  resumeOuting();
   onMoments(s);
   $("world").setAttribute(
     "aria-label",
@@ -219,8 +243,125 @@ function render(s: StateSummary): void {
     heat.textContent = st.burrowed ? t("heatOn") : t("heatOff");
   }
   chat.refresh();
-  $("chatHint").textContent = st.dead ? t("placeholderDead") : st.burrowed ? t("heatRest") : s.tier === "asleep" ? t("chatHint") : t("chatReady");
+  $("chatHint").textContent = st.dead ? t("placeholderDead") : st.burrowed ? t("heatRest") : s.tier === "asleep" ? t(DEMO ? "demoStart" : "chatHint") : t("chatReady");
 }
+
+// A small local shelf. API and pet boundaries are also collection boundaries.
+const collectionKey = () => creds ? shelfKey(apiBase(), creds.phrase, DEMO || !!backend?.mock) : null;
+const outingKey = () => { const key = collectionKey(); return key ? `${key}/outing` : null; };
+function finishOuting(): void { const key = outingKey(); if (key) store.del(key); }
+function resumeOuting(): void {
+  const key = outingKey();
+  if (!key || document.hidden || $<HTMLDialogElement>("pauseDialog").open) return;
+  const saved = store.get<{ version?: number; kind?: string; at?: number }>(key);
+  if (!saved) return;
+  finishOuting();
+  if (saved.version === 1 && ["outingWalk", "outingErrand"].includes(saved.kind ?? "") && Number.isFinite(saved.at)) explain(t("returnNotice"));
+}
+let selectedGift: Keepsake | null = null;
+let selectedCollection = "";
+let giftListSignature = "";
+let sceneGiftSignature = "uninitialized";
+const giftWorld = world as unknown as { setKeepsakes?: (items: Array<{ id: string; art: string }>) => void; hitGift?: (x: number, y: number) => string | null };
+function markGiftSeen(gift: Keepsake): void {
+  const key = collectionKey();
+  if (key) store.set(`${key}/read`, Math.max(store.get<number>(`${key}/read`) ?? 0, gift.at));
+}
+function showGift(gift: Keepsake): void {
+  selectedGift = gift;
+  markGiftSeen(gift);
+  refreshKeepsakes();
+  const card = $("chatGift");
+  const g = giftText(gift, lang);
+  const art = document.createElement("pre"); art.dir = "ltr"; art.setAttribute("aria-hidden", "true"); art.textContent = g.art;
+  const words = document.createElement("div");
+  const from = document.createElement("span"); from.className = "gift-from"; from.textContent = t("giftFrom");
+  const name = document.createElement("h3"); name.textContent = g.name;
+  const note = document.createElement("p"); note.textContent = g.note;
+  words.append(from, name, note); card.replaceChildren(art, words); card.hidden = false;
+  closePocket(); card.focus({ preventScroll: true }); card.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
+}
+$("scene").addEventListener("click", (event) => {
+  const id = giftWorld.hitGift?.(event.clientX, event.clientY);
+  const key = collectionKey();
+  const gift = key && id ? readShelf(store.get(key)).gifts.find(g => String(g.at) === id) : null;
+  if (gift) showGift(gift);
+});
+$("scene").addEventListener("pointermove", (event) => {
+  $("scene").style.cursor = giftWorld.hitGift?.(event.clientX, event.clientY) ? "pointer" : "default";
+});
+$("chatForm").addEventListener("submit", () => { $("chatGift").hidden = true; });
+
+function refreshKeepsakes(): void {
+  const key = collectionKey();
+  if (!key || !summary) return;
+  if (key !== selectedCollection) { selectedGift = null; selectedCollection = key; giftListSignature = ""; sceneGiftSignature = "uninitialized"; $("chatGift").hidden = true; }
+  const stored = readShelf(store.get(key));
+  const result = document.hidden || $<HTMLDialogElement>("pauseDialog").open
+    ? { shelf: stored, gift: undefined }
+    : returnToShelf(stored, Date.now(), summary.local_day, key, !summary.state.dead);
+  store.set(key, result.shelf);
+  if (result.gift) selectedGift = result.gift;
+  const gifts = result.shelf.gifts;
+  const unread = (gifts.at(-1)?.at ?? 0) > (store.get<number>(`${key}/read`) ?? 0);
+  $("giftWaiting").hidden = !unread;
+  $("keepsakes").classList.toggle("has-new", unread);
+  $("pocketBtn").classList.toggle("has-new", unread);
+  $("pocketBtn").setAttribute("aria-label", unread ? `${t("pocket")}. ${t("giftWaiting")}` : t("pocket"));
+  const sceneSignature = gifts.slice(-3).map(g => `${g.at}:${g.kind}`).join(",");
+  if (sceneSignature !== sceneGiftSignature && giftWorld.setKeepsakes) {
+    giftWorld.setKeepsakes(gifts.slice(-3).map(g => ({ id: String(g.at), art: giftText(g, lang).art })));
+    sceneGiftSignature = sceneSignature;
+  }
+  if (!selectedGift || !gifts.some(g => g.at === selectedGift!.at)) selectedGift = gifts.at(-1) ?? null;
+  $("giftCount").textContent = String(gifts.length);
+  $("giftsEmpty").hidden = gifts.length > 0;
+  $("giftCard").hidden = !selectedGift;
+  $("previewGift").hidden = !DEMO;
+  $<HTMLButtonElement>("previewGift").disabled = summary.state.dead || gifts.some(g => g.day >= summary!.local_day);
+  if (selectedGift) {
+    const g = giftText(selectedGift, lang);
+    $("giftArt").textContent = g.art;
+    $("giftName").textContent = g.name;
+    $("giftNote").textContent = g.note;
+    $("giftDate").textContent = selectedGift.day;
+    $("giftDate").setAttribute("datetime", selectedGift.day);
+  }
+  const signature = `${lang}:${gifts.map(g => g.at + ":" + g.kind).join(",")}`;
+  if (signature !== giftListSignature) {
+    $("giftList").replaceChildren(...gifts.slice().reverse().map(g => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "gift-choice small"; b.dataset.gift = String(g.at);
+      b.textContent = giftText(g, lang).name;
+      b.addEventListener("click", () => showGift(g));
+      return b;
+    }));
+    giftListSignature = signature;
+  }
+  $("giftList").querySelectorAll<HTMLButtonElement>("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.gift === String(selectedGift?.at))));
+}
+
+function markVisit(): void {
+  const key = collectionKey();
+  if (!key || $<HTMLDialogElement>("pauseDialog").open) return;
+  const shelf = readShelf(store.get(key));
+  shelf.seen = Math.max(shelf.seen, Date.now());
+  store.set(key, shelf);
+}
+
+$("keepsakes").addEventListener("toggle", () => {
+  if ($<HTMLDetailsElement>("keepsakes").open && selectedGift) { markGiftSeen(selectedGift); refreshKeepsakes(); }
+});
+$("previewGift").addEventListener("click", () => {
+  const key = collectionKey();
+  if (!DEMO || !key || !summary) return;
+  const shelf = readShelf(store.get(key));
+  shelf.seen = Date.now() - AWAY_MS;
+  store.set(key, shelf);
+  refreshKeepsakes();
+});
+addEventListener("pagehide", markVisit);
+setInterval(() => { if (!document.hidden) markVisit(); }, 60_000);
 
 // ---------- proud moments (decision 0017) ----------
 
@@ -281,8 +422,9 @@ function renderMomentList(): void {
 }
 
 function toggleMoments(): void {
+  openPocket();
   const box = $("momentBox");
-  box.hidden = !box.hidden;
+  box.hidden = false;
   $("hud").setAttribute("aria-expanded", String(!box.hidden));
 }
 $("hud").addEventListener("click", toggleMoments);
@@ -320,7 +462,8 @@ $("shareBtn").addEventListener("click", async () => {
   btn.textContent = t("shareMaking");
   try {
     const blob = await toBlob(makeCard());
-    await deliver(blob, fileName(new Date()), t("title"));
+    const result = await deliver(blob, fileName(new Date()), t("title"));
+    if (result === "downloaded") explain(t("shareSaved"));
   } catch {
     explain(t("shareFailed"));
   } finally {
@@ -349,8 +492,11 @@ function isAuthLoss(e: unknown): boolean {
 }
 
 function openSettings(): void {
+  openPocket();
+  $("pocketStatus").textContent = lastWhy;
   const d = $<HTMLDetailsElement>("settings");
   d.open = true;
+  d.querySelector<HTMLDetailsElement>(".connection")!.open = true;
   d.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
 }
 
@@ -431,6 +577,7 @@ async function ensurePaired(): Promise<void> {
         const s = await verifyImportedPet(importedCreds, c => backend.state(c));
         creds = importedCreds;
         store.set(key, creds);
+        document.documentElement.classList.add("returning");
         if (!langChosen) lang = s.lang;
         render(s);
         return;
@@ -445,6 +592,7 @@ async function ensurePaired(): Promise<void> {
       const s = await backend.state(creds);
       if (s.demo !== DEMO) throw new ApiError(404, "wrong pet mode");
       if (!langChosen) lang = s.lang;
+      if (!DEMO) document.documentElement.classList.add("returning");
       render(s);
       return;
     } catch (e) {
@@ -490,6 +638,12 @@ async function act(
       showing = null;
       $("moment").hidden = true;
       store.del(lastIdKey(creds.phrase));
+      const key = collectionKey();
+      if (key) { store.del(key); store.del(`${key}/read`); store.del(`${key}/outing`); }
+      $("chatGift").hidden = true;
+      selectedGift = null;
+      $("giftWaiting").hidden = true;
+      $("keepsakes").classList.remove("has-new");
     }
     render(after);
     let text = why(before, after);
@@ -564,14 +718,38 @@ media.addEventListener?.("change", syncMotion);
 // A brief invitation to leave the screen. No target, timer, location or note is recorded.
 const pauseDialog = $<HTMLDialogElement>("pauseDialog");
 $("pauseBtn").addEventListener("click", () => {
+  closePocket();
+  markVisit();
+  $("pauseTitle").textContent = t("pause");
   $("pauseText").textContent = summary?.state.burrowed ? t("pauseHeat") : t("pauseNotice");
   pauseDialog.dir = lang === "ar" ? "rtl" : "ltr";
   pauseDialog.showModal();
   syncMotion();
 });
+$("outingBtn").addEventListener("click", () => {
+  const open = $("outing").hidden;
+  $("outing").hidden = !open;
+  $("outingBtn").setAttribute("aria-expanded", String(open));
+});
+for (const kind of ["outingWalk", "outingErrand"] as const) {
+  $(kind).addEventListener("click", () => {
+    closePocket();
+    markVisit();
+    const key = outingKey();
+    if (key) store.set(key, { version: 1, kind, at: Date.now() });
+    $("pauseTitle").textContent = t("outingTitle");
+    $("pauseText").textContent = summary?.state.burrowed ? t("pauseHeat") : t(kind === "outingWalk" ? "outingWalkNote" : "outingErrandNote");
+    pauseDialog.dir = lang === "ar" ? "rtl" : "ltr";
+    $("outing").hidden = true;
+    $("outingBtn").setAttribute("aria-expanded", "false");
+    pauseDialog.showModal();
+    syncMotion();
+  });
+}
 $("backBtn").addEventListener("click", () => pauseDialog.close());
 pauseDialog.addEventListener("close", () => {
   syncMotion();
+  finishOuting();
   explain(t("returnNotice"));
   void poll();
   if (!$<HTMLInputElement>("msg").disabled) $("msg").focus();
@@ -588,6 +766,8 @@ $("apiSave").addEventListener("click", () => {
 });
 $("forgetBtn").addEventListener("click", () => {
   if (!confirm(t("forgetConfirm"))) return;
+  const key = collectionKey();
+  if (key) { store.del(key); store.del(`${key}/read`); store.del(`${key}/outing`); }
   store.del(petKey());
   location.reload();
 });
@@ -714,12 +894,13 @@ async function boot(): Promise<void> {
   $("phrase").textContent = creds?.phrase ?? "";
   setupHandoff();
   applyLang();
-  if (!lastWhy && summary) explain(explainSteps(lang, summary.state.steps_today, summary.energy_pct, summary.tier, summary.state.burrowed));
+  if (!lastWhy && summary) explain(t("energyNote"));
   $("half").hidden = !halfAwake;
 
   setInterval(() => void poll(), POLL_MS);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) void poll();
+    else markVisit();
   });
 }
 

@@ -1,5 +1,5 @@
 // A dense, lit ASCII world at 100 x 68 cells. Static geometry is cached;
-// moving geometry is rasterised at 30 Hz and only changed glyph cells paint.
+// moving geometry is rasterised at 60 Hz and only changed glyph cells paint.
 // The legacy effects retain a 12 Hz clock. Breathing uses elapsed seconds.
 
 import type { Stage, Tier } from "../../../worker/src/config";
@@ -12,15 +12,17 @@ import { ASPECT, clamp, disc, hash, Layer, line, luma, noise, normalize, shade, 
 import { localHour } from "./sky";
 import { celebration, DURATION, MOMENT_KINDS, type MomentKind } from "./fx";
 import { Surface, type Ink, type Paint } from "./surface";
+import { drawKeepsakes, hitKeepsake, type GiftArea, type WorldKeepsake } from "./keepsakes";
+import { distantRange, distantTop, foreground, groundDetails, grove } from "./landscape";
 
-const PERIOD = 1000 / 30;
+const PERIOD = 1000 / 60;
 export const HORIZON = 40; // first ground row
 const ANCHOR = 58; // ground contact row of the Truffle
 const SKY_TOP = 2;
 
 export const GULF = new Set(["OM", "AE", "SA", "QA", "KW", "BH", "YE", "IQ", "JO", "EG", "LY"]);
 
-export const LAYERS = ["sky", "stars", "sun", "cloudsFar", "cloudsNear", "ground", "weather", "pet", "cap", "skin", "white", "fx"] as const;
+export const LAYERS = ["sky", "stars", "sun", "cloudsFar", "cloudsNear", "distance", "ground", "nature", "weather", "pet", "cap", "skin", "white", "foreground", "gifts", "fx"] as const;
 export type LayerName = (typeof LAYERS)[number];
 
 export interface View {
@@ -163,11 +165,9 @@ export function envFor(v: View, hour: number, now: Date): Env {
 /** Ridge height above the horizon in rows for a column. Sand dunes are long and soft, hills are rounder. */
 const duneH = (x: number) => 3.2 + 2.6 * Math.sin(x / 16 + 0.4) + 1.3 * Math.sin(x / 7.5 + 1.9) + 0.4 * Math.sin(x / 3.1);
 const hillH = (x: number) => 3.4 + 2.8 * Math.sin(x / 18 + 1.1) + 1.1 * Math.sin(x / 8.3) + 0.5 * Math.sin(x / 4.1 + 2);
-/** A second, farther ridge behind the first. */
-const farH = (x: number) => 6.5 + 3.2 * Math.sin(x / 23 + 2.6) + 1.2 * Math.sin(x / 9.7 + 0.7);
 /** First row occupied by the near ridge at a column; sky things are clipped above it. */
 export const ridgeTop = (x: number, sand: boolean) => HORIZON - 1 - Math.floor(sand ? duneH(x) : hillH(x));
-const farTop = (x: number) => HORIZON - 1 - Math.floor(farH(x));
+const skyline = (x: number, sand: boolean) => Math.min(ridgeTop(x, sand), distantTop(x, sand));
 
 // ---------- layers ----------
 
@@ -196,7 +196,7 @@ function skyLayer(L: Layer, e: Env, t: number): void {
       if (l > 0.03) L.set(x, y, l);
     }
   }
-  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < HORIZON; y++) L.set(x, y, -1);
+  for (let x = 0; x < COLS; x++) for (let y = skyline(x, e.sand); y < HORIZON; y++) L.set(x, y, -1);
 }
 
 function starsLayer(L: Layer, e: Env, t: number): void {
@@ -244,7 +244,7 @@ function starsLayer(L: Layer, e: Env, t: number): void {
       }
     }
   }
-  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
+  for (let x = 0; x < COLS; x++) for (let y = skyline(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
 }
 
 function sunLayer(L: Layer, e: Env): void {
@@ -256,11 +256,11 @@ function sunLayer(L: Layer, e: Env): void {
   if (low > 0) {
     // A big low sun rests on the ridge instead of sinking behind it.
     let top = ROWS;
-    for (let x = e.sun.x - 6; x <= e.sun.x + 6; x++) top = Math.min(top, ridgeTop(clamp(x, 0, COLS - 1), e.sand));
+    for (let x = e.sun.x - 6; x <= e.sun.x + 6; x++) top = Math.min(top, skyline(clamp(x, 0, COLS - 1), e.sand));
     cy = Math.min(cy + low * 2, top - r * 0.35);
   }
   disc(L, cx, cy, r, 1, 0.5);
-  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
+  for (let x = 0; x < COLS; x++) for (let y = skyline(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
 }
 
 interface CloudSpec {
@@ -385,7 +385,7 @@ function cloudsLayer(L: Layer, e: Env, t: number, phase: number, near: boolean):
     }
   }
   if (c >= 0.95 && near && e.cond.storm) cloud(L, mod(20 + phase * 0.8, span) - 15, STORM.row, STORM, e, t, 0.75);
-  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
+  for (let x = 0; x < COLS; x++) for (let y = skyline(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
 }
 
 function groundLayer(L: Layer, v: View, e: Env, t: number): void {
@@ -395,18 +395,8 @@ function groundLayer(L: Layer, v: View, e: Env, t: number): void {
   const light: Vec3 = normalize([side, -0.35, 0.45]);
   const wind = v.windKmh;
   const drift = t * 0.01 * (wind / 10);
-
-  // Far ridge: a hazy band with little contrast, lighter toward the horizon.
-  for (let x = 0; x < COLS; x++) {
-    const top = farTop(x);
-    const slope = (farH(x + 2) - farH(x - 2)) / (4 * ASPECT);
-    const n = normalize([-slope, -0.9, 0.9]);
-    const l = 0.55 + 0.4 * shade(n, light, 0.4, 0);
-    for (let y = top; y < HORIZON; y++) {
-      const k = smooth(top, top + 6, y);
-      L.set(x, y, clamp(l * (1 - k) + 0.86 * k + 0.04 * noise(x * 0.2, y * 0.5, 6), 0, 1));
-    }
-  }
+  // At night the ground is a quiet etching, not a luminous wall of @ glyphs.
+  const terrain = (x: number, y: number, l: number) => L.set(x, y, e.night ? 0.025 + (1 - l) * 0.32 : l);
   // Near ridge, the dune face: one side lit almost to paper, the other in shadow.
   for (let x = 0; x < COLS; x++) {
     const top = ridgeTop(x, sand);
@@ -418,7 +408,7 @@ function groundLayer(L: Layer, v: View, e: Env, t: number): void {
       let l = faceL * (1 - k * 0.45) + 0.8 * k * 0.45;
       l += (sand ? 0.04 : 0.08) * noise(x * 0.35, y * 0.9, 7);
       if (y === top) l = Math.min(l, 0.45 + 0.3 * faceL);
-      L.set(x, y, clamp(l, 0, 1));
+      terrain(x, y, clamp(l, 0, 1));
     }
   }
   // Ground plane: broad dune bodies in perspective, mostly paper, with ripples that get coarser toward the viewer.
@@ -432,49 +422,21 @@ function groundLayer(L: Layer, v: View, e: Env, t: number): void {
         const px = X / (6 + depth * 9);
         const hgt = Math.sin(px + y * 0.09 + 0.6) + 0.5 * Math.sin(px * 2.3 - y * 0.05 + 1.2);
         const slope = Math.cos(px + y * 0.09 + 0.6) + 1.15 * Math.cos(px * 2.3 - y * 0.05 + 1.2);
-        l = 0.86 + 0.3 * clamp(slope * side * 0.8, -1, 1) - 0.04 * hgt;
+        l = 0.972 + 0.075 * clamp(slope * side * 0.8, -1, 1) - 0.012 * hgt;
         const ripple = Math.sin((X + drift) * (1.3 + depth * 0.9) + Math.sin(y * 0.7) * 1.5 + y * 0.4);
-        l += 0.03 * ripple * depth + 0.02 * noise(X * 0.8, y * 0.45, 8);
+        l += 0.012 * ripple * depth + 0.008 * noise(X * 0.8, y * 0.45, 8);
       } else {
         const blades = noise(X * 1.3 + Math.sin(t * 0.12 * (wind / 12) + y) * 0.25, y * 1.1, 9);
         const hgt = Math.sin(X / 7 + y * 0.08) * 0.5 + 0.5 * Math.sin(X / 3.1 - y * 0.06);
-        l = 0.74 + 0.12 * hgt * side + 0.1 * blades * (0.4 + depth) + 0.04 * noise(X * 0.3, y * 0.3, 10);
-        if (hash(x * 97 + y * 29) > 0.985 - depth * 0.02) l -= 0.3;
+        l = 0.9 + 0.07 * hgt * side + 0.035 * blades * (0.4 + depth) + 0.018 * noise(X * 0.3, y * 0.3, 10);
+        if (hash(x * 97 + y * 29) > 0.991 - depth * 0.009) l -= 0.2;
       }
       // Toward the bottom edge the ground darkens a little, like it falls away.
-      l -= depth * depth * 0.14;
-      L.set(x, y, clamp(l, 0, 1));
+      l -= depth * depth * 0.025;
+      terrain(x, y, clamp(l, 0, 1));
     }
   }
-  // Grass tufts and bushes.
-  if (!sand) {
-    const bushes: [number, number][] = [[12, 3], [88, 2.5], [40, 2]];
-    for (const [bx, br] of bushes) {
-      const by = ridgeTop(bx, false) - br * 0.6;
-      for (let y = Math.floor(by - br); y <= Math.ceil(by + br); y++) {
-        for (let x = Math.floor((bx * ASPECT - br) / ASPECT); x <= Math.ceil((bx * ASPECT + br) / ASPECT); x++) {
-          const u = ((x + 0.5) * ASPECT - bx * ASPECT) / br;
-          const w = (y + 0.5 - by) / (br * 0.8);
-          const d = u * u + w * w;
-          if (d > 1) continue;
-          const n = normalize([u, w, Math.sqrt(1 - d)]);
-          L.set(x, y, clamp(shade(n, light, 0.25, 0) * 0.8 + 0.1 * noise(x * 0.8, y * 0.8, 13), 0, 1));
-        }
-      }
-    }
-    // Pines on the ridge.
-    for (const px of [22, 76]) {
-      const base = ridgeTop(px, false);
-      for (let k = 0; k < 9; k++) {
-        const w = Math.floor(k * 0.55) + 1;
-        for (let x = px - w; x <= px + w; x++) {
-          const sideL = (x - px) * side < 0 ? 0.25 : 0.55;
-          L.set(x, base - 9 + k, sideL + 0.05 * noise(x, k, 14));
-        }
-      }
-      L.set(px, base, 0.2);
-    }
-  }
+  groundDetails(L, e);
   // Small stones for the Truffles that came before.
   const past = v.mood === "dead" ? v.gravestones.slice(0, -1) : v.gravestones;
   past.slice(-6).forEach((_, i) => {
@@ -524,13 +486,15 @@ function shadowLayer(L: Layer, e: Env, pet: PetInfo): void {
 function weatherLayer(L: Layer, v: View, e: Env, t: number): void {
   const windy = v.windKmh > 18;
   if (e.cond.rain) {
-    const n = v.precipMm >= 4 ? 110 : v.precipMm >= 1 ? 70 : 40;
+    const n = v.precipMm >= 4 ? 90 : v.precipMm >= 1 ? 60 : 35;
     const slant = v.windKmh > 30 ? 2 : windy ? 1 : 0;
     for (let i = 0; i < n; i++) {
-      const len = 3 + Math.floor(hash(i + 77) * 3);
+      const len = 2 + Math.floor(hash(i + 77) * 3);
       const y = Math.floor(mod(i * 7 + t * 2.2 + hash(i) * 60, ROWS - 4));
       const x = mod(i * 11 + Math.floor(t * slant * 0.5) + Math.floor(hash(i + 500) * 100), COLS);
-      line(L, x, y, x - slant * len, y - len, 0.75);
+      // A narrow authored stroke reads as rain instead of a fuzzy density band.
+      // Fewer covered cells also leave room for 60Hz motion on slower devices.
+      for (let j = 0; j < len; j++) L.symbol(x - slant * j, y - j, slant ? "\\" : "|");
     }
     for (let i = 0; i < 14; i++) {
       const k = Math.floor((t + i * 7) / 6);
@@ -679,6 +643,8 @@ export interface SceneOptions {
   /** Smooth animation clock. The legacy t argument remains in 12 Hz ticks. */
   sec?: number;
   rise?: number;
+  fromFace?: Face;
+  transition?: number;
   moment?: { kind: MomentKind; value: number; progress: number };
 }
 
@@ -694,6 +660,11 @@ export class Scene {
   readonly layers = Object.fromEntries(LAYERS.map((n) => [n, new Layer()])) as Record<LayerName, Layer>;
   readonly mask = new Uint8Array(COLS * ROWS);
   private ground = new Layer();
+  giftAreas: GiftArea[] = [];
+
+  setKeepsakes(items: readonly WorldKeepsake[]): void {
+    this.giftAreas = drawKeepsakes(this.layers.gifts, items);
+  }
   private environment: Env | null = null;
   private environmentKey = "";
   private cloudsKey = "";
@@ -712,32 +683,40 @@ export class Scene {
       this.environment = envFor(v, sampledHour, now);
       L.sky.clear();
       L.sun.clear();
+      L.distance.clear();
+      L.nature.clear();
+      L.foreground.clear();
       this.ground.clear();
       skyLayer(L.sky, this.environment, 0);
       sunLayer(L.sun, this.environment);
       groundLayer(this.ground, v, this.environment, 0);
+      distantRange(L.distance, this.environment, x => ridgeTop(x, this.environment!.sand));
+      grove(L.nature, this.environment);
+      foreground(L.foreground, this.environment);
       this.builds.static++;
     }
     const e = this.environment;
     const clock = reduced ? 0 : t;
     const sec = reduced ? 0 : options.sec ?? clock / 12;
-    const phase = reduced ? 0 : Math.floor(cloudPhase * 10) / 10;
-    // Cloud evolution is subtle at this scale. Keep its field at 12 Hz while
-    // the creature, rain and celebrations render at 30 Hz.
-    const cloudKey = `${key}|${Math.floor(clock)}|${Math.floor(phase * 10)}`;
+    const phase = reduced ? 0 : Math.floor(cloudPhase * 2) / 2;
+    // Cloud evolution is subtle at this scale: its slow field samples at 8Hz,
+    // with coarse wind buckets. The creature and rain still render at 60Hz.
+    const cloudTick = Math.floor(clock * 2 / 3) * 1.5;
+    const cloudKey = `${key}|${cloudTick}|${phase}`;
     if (cloudKey !== this.cloudsKey) {
       this.cloudsKey = cloudKey;
       L.cloudsFar.clear();
       L.cloudsNear.clear();
-      cloudsLayer(L.cloudsFar, e, Math.floor(clock), phase, false);
-      cloudsLayer(L.cloudsNear, e, Math.floor(clock), phase, true);
+      cloudsLayer(L.cloudsFar, e, cloudTick, phase, false);
+      cloudsLayer(L.cloudsNear, e, cloudTick, phase, true);
       this.builds.clouds++;
     }
     for (const name of ["stars", "weather", "pet", "cap", "skin", "white", "fx"] as const) L[name].clear();
     this.mask.fill(0);
     const face: Face = v.mood === "dead" || v.mood === "burrowed" ? v.mood : v.yawn ? "yawn" : v.mood;
     const pet = drawPet({ ink: L.pet, cap: L.cap, skin: L.skin, white: L.white, mask: this.mask }, {
-      stage: v.stage, face, light: e.light, t: clock, sec, reduced,
+      stage: v.stage, tier: v.tier, face, light: e.light, t: clock, sec, reduced, night: e.night,
+      fromFace: options.fromFace, transition: options.transition,
       ground: ANCHOR, centre: COLS / 2, ageDays: v.ageDays, rise: reduced ? undefined : options.rise
     });
     L.ground.copy(this.ground);
@@ -766,22 +745,27 @@ export function paintsFor(frame: RasterFrame): Paint[] {
     inkLight: name === "pet" ? false : name === "ground" ? luma(p.ground) > paperGround
       : name === "cloudsFar" ? luma(p.cloudFar) > paperSky
       : name === "cloudsNear" ? luma(p.cloudNear) > paperSky : true,
-    mask: ink <= 5 ? frame.mask : undefined
+    mask: ["sky", "stars", "sun", "cloudsFar", "cloudsNear", "distance", "ground", "nature", "weather"].includes(name) ? frame.mask : undefined
   }));
 }
 
 export function inksFor(e: Env, mood: Mood): Ink[] {
   const p = e.pal;
-  const dark = luma(p.pet) > 0.5 ? mix(p.skyTop, "#000000", 0.55) : p.pet;
-  const colours = [p.glow, p.stars, p.sun, p.cloudFar, p.cloudNear, p.ground, p.weather, dark, p.cap, p.skin, p.white, p.fx];
-  return colours.map((colour, i) => {
-    const isPet = i >= 7 && i <= 10;
+  const dark = luma(p.pet) > 0.5 ? mix(p.skyTop, "#141b1c", 0.55) : p.pet;
+  const colours: Record<LayerName, string> = { sky: p.glow, stars: p.stars, sun: p.sun,
+    cloudsFar: p.cloudFar, cloudsNear: p.cloudNear, distance: p.distance,
+    ground: p.ground, nature: p.nature, weather: p.weather, pet: dark,
+    cap: p.cap, skin: p.skin, white: p.white, foreground: p.foreground, gifts: e.night ? "#e0c99b" : "#775134", fx: p.fx };
+  return LAYERS.map(name => {
+    let colour = colours[name];
+    const isPet = ["pet", "cap", "skin", "white"].includes(name);
     // Match the former CSS grayscale filter while keeping the palette itself.
     if (isPet && mood === "wilting") {
       const value = Math.round(luma(colour) * 255).toString(16).padStart(2, "0");
       colour = mix(colour, `#${value}${value}${value}`, 0.7);
     }
-    return { colour, alpha: isPet && mood === "wilting" ? 0.85 : isPet && mood === "tired" ? 0.92 : i === 0 || i === 6 ? 0.8 : i === 3 ? 0.85 : 1 };
+    return { colour, weight: isPet || name === "gifts" ? 600 : 400, alpha: isPet && mood === "wilting" ? 0.85 : isPet && mood === "tired" ? 0.92
+      : name === "sky" || name === "weather" ? 0.8 : name === "cloudsFar" ? 0.85 : 1 };
   });
 }
 
@@ -811,6 +795,7 @@ export class World {
   private paletteKey = "";
   private dirty = true;
   private lastMinute = "";
+  private expression: { from: Face; at: number } | null = null;
   private rebornAt: number | null = null;
   private moment: { kind: MomentKind; value: number; start: number } | null = null;
   private momentTimer: ReturnType<typeof setTimeout> | null = null;
@@ -832,8 +817,22 @@ export class World {
 
   set(v: Partial<View>): void {
     if (this.view.mood === "dead" && v.mood && v.mood !== "dead") this.rebornAt = this.seconds;
-    this.view = { ...this.view, ...v };
+    const before = this.view.yawn ? "yawn" : this.view.mood;
+    const next = { ...this.view, ...v };
+    const after = next.yawn ? "yawn" : next.mood;
+    if (before !== after && ![before, after].some(m => m === "dead" || m === "burrowed")) this.expression = { from: before, at: this.seconds };
+    this.view = next;
     this.dirty = true;
+  }
+
+  /** Update the latest placed objects without rebuilding terrain or the atlas. */
+  setKeepsakes(items: readonly WorldKeepsake[]): void {
+    this.scene.setKeepsakes(items);
+    this.dirty = true;
+  }
+
+  hitGift(clientX: number, clientY: number): string | null {
+    return hitKeepsake(this.scene.giftAreas, this.surface.canvas.getBoundingClientRect(), clientX, clientY);
   }
 
   setReduced(on: boolean): void {
@@ -875,8 +874,9 @@ export class World {
     const key = Object.values(p).join("|") + this.view.mood;
     if (key === this.paletteKey) return;
     this.paletteKey = key;
-    const split = ((HORIZON / ROWS) * 100).toFixed(3) + "%";
-    this.root.style.background = `linear-gradient(to bottom, ${p.skyTop} 0%, ${p.skyHorizon} ${split}, ${p.groundTop} ${split}, ${p.groundBottom} 100%)`;
+    const haze = (((HORIZON - 15) / ROWS) * 100).toFixed(3) + "%";
+    const ground = (((HORIZON + 2) / ROWS) * 100).toFixed(3) + "%";
+    this.root.style.background = `linear-gradient(to bottom, ${p.skyTop} 0%, ${p.skyHorizon} ${haze}, ${p.groundTop} ${ground}, ${p.groundBottom} 100%)`;
     this.root.style.filter = this.view.mood === "dead" ? "saturate(0.55)" : "none";
   }
 
@@ -887,8 +887,10 @@ export class World {
     const progress = m ? this.reduced ? 0.45 : clamp((this.seconds - m.start) / DURATION[m.kind], 0, 1) : 0;
     const rise = this.rebornAt === null ? undefined : clamp(this.seconds - this.rebornAt, 0, 1);
     if (rise === 1) this.rebornAt = null;
+    const transition = this.expression ? clamp((this.seconds - this.expression.at) / 0.65, 0, 1) : 1;
+    if (transition === 1 || this.reduced) this.expression = null;
     const frame = this.scene.compose(this.view, Math.floor(this.seconds * 12), this.cloudPhase, this.hour(), new Date(), this.reduced, {
-      sec: this.seconds, rise,
+      sec: this.seconds, rise, fromFace: this.expression?.from, transition,
       moment: m && progress < 1 ? { kind: m.kind, value: m.value, progress } : undefined
     });
     const paints = paintsFor(frame);

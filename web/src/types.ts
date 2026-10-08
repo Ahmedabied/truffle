@@ -10,6 +10,7 @@ export type { Mood, TruffleState, Tier, Lang };
 
 export interface WeatherSummary {
   text: string;
+  fetched_ms?: number;
   apparent_c: number | null;
   daytime_max_c: number | null;
   precipitation_mm: number;

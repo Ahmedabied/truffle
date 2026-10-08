@@ -11,49 +11,29 @@
   <body>
     <div class="app" id="app">
       <header class="top">
-        <span class="name" data-c="title">Truffle</span>
-        <span id="offline" class="pill" data-c="offline" hidden></span>
-        <span id="half" class="pill warn" data-c="halfAwake" hidden></span>
+        <span class="brand"><span class="brand-sprout" aria-hidden="true">{·}</span><h1 class="name" data-c="title">Truffle</h1></span>
+        <span id="offline" class="demo-label" data-c="offline" hidden></span>
+        <span id="demoMode" class="demo-label" data-c="demoMode" hidden></span>
         <span class="spacer"></span>
-        <button id="langBtn" type="button" class="ghost small" data-c="langToggle" lang="ar">عربي</button>
+        <button id="pocketBtn" type="button" class="pocket-button" data-c="pocket" aria-haspopup="dialog"></button>
       </header>
-
-      <div class="intro">
-        <h1 data-c="welcomeTitle"></h1>
-        <p data-c="welcomeBody"></p>
-        <a id="tryDemo" href="/demo" data-c="tryDemo" hidden></a>
-      </div>
-
       <main class="experience">
-      <div class="world-pane">
-
-      <div id="scene" class="scene">
-        <div id="world" class="grid-font" dir="ltr" role="img" aria-label="Truffle's ASCII world"></div>
-      </div>
-      <span id="probe" class="grid-font" aria-hidden="true"></span>
-
-      <p id="hud" class="hud" aria-live="off" role="button" tabindex="0" aria-expanded="false" aria-controls="momentBox"><span id="hudText"></span><span id="fps" class="fps" dir="ltr" hidden></span></p>
-      <div id="recovery" class="row" hidden><span id="syncNote" class="hint" role="status"></span><button id="retryBtn" type="button" class="small" data-c="retry"></button></div>
-      <p id="moment" class="moment" dir="auto" role="status" aria-live="polite" hidden></p>
-      <section id="momentBox" class="moments" aria-labelledby="momentsTitle" hidden>
-        <h2 id="momentsTitle" data-c="moments"></h2>
-        <ol id="momentList" dir="auto"></ol>
-        <p id="momentsEmpty" class="hint" data-c="momentsEmpty"></p>
-      </section>
-      <p id="memory" class="memory" dir="auto" hidden></p>
-      <button id="sporeBtn" type="button" class="primary wide" data-c="sporeButton" hidden></button>
-      <div class="row tools">
-        <button id="walkBtn" type="button" class="primary" data-c="tryWalk" hidden></button>
-        <button id="pauseBtn" type="button" data-c="pause"></button>
-        <button id="shareBtn" type="button" class="small" data-c="share"></button>
-        <button id="appBtn" type="button" class="small primary" data-c="openApp" hidden></button>
-        <a id="getApp" class="small-link" href="https://github.com/ahmedabied/Truffle/releases" target="_blank" rel="noopener" data-c="getApp" hidden></a>
-      </div>
-      </div>
-
-      <div class="interaction-pane">
-      <section class="chat" aria-label="Chat">
+        <section class="world-pane" aria-label="Truffle">
+          <div id="scene" class="scene"><div id="world" class="grid-font" dir="ltr" role="img" aria-label="Truffle's ASCII world"></div></div>
+          <span id="probe" class="grid-font" aria-hidden="true"></span>
+          <div class="world-strip">
+            <p id="hud" class="hud" aria-live="off" role="button" tabindex="0" aria-expanded="false" aria-controls="momentBox"><span id="hudText"></span><span id="fps" class="fps" dir="ltr" hidden></span></p>
+            <span class="energy-reading"><span data-c="energy"></span> <span id="energyValue"></span></span>
+          </div>
+          <div id="energyTrack" class="energy-track" role="progressbar" data-c-aria="energy" aria-valuemin="0" aria-valuemax="100"><span id="energyFill"></span></div>
+        </section>
+        <div class="interaction-pane">
+          <div id="recovery" class="row recovery" hidden><span id="syncNote" class="hint" role="status"></span><button id="retryBtn" type="button" class="small" data-c="retry"></button></div>
+      <section class="chat" aria-labelledby="conversationTitle">
+        <h2 id="conversationTitle" class="section-label" data-c="conversation"></h2>
         <p id="chatHint" class="hint" data-c="chatHint"></p>
+        <span id="half" class="pill warn brain-note" data-c="halfAwake" hidden></span>
+        <article id="chatGift" class="gift-card chat-gift" tabindex="-1" aria-live="polite" hidden></article>
         <p id="reply" class="reply" dir="auto" aria-hidden="true"></p>
         <p id="replySr" class="sr-only" role="status" aria-atomic="true" dir="auto"></p>
         <form id="chatForm" class="chatline" autocomplete="off">
@@ -63,9 +43,52 @@
         <p id="status" class="status" aria-live="polite"></p>
         <p id="why" class="why" dir="auto" aria-live="polite"></p>
       </section>
+        </div>
+      </main>
+    </div>
+    <dialog id="pocketDialog" class="pocket-dialog" aria-labelledby="pocketTitle">
+      <header class="pocket-top"><h1 id="pocketTitle" data-c="pocket"></h1><button id="pocketClose" type="button" data-c="backToWorld"></button></header>
+      <div class="pocket-content">
+        <p id="pocketStatus" class="status" role="status"></p>
+        <div class="pocket-meta"><span id="worldTime" dir="auto"></span><button id="langBtn" type="button" class="ghost small" data-c="langToggle" lang="ar">عربي</button></div>
+        <p class="pocket-note" data-c="footerNote"></p>
+        <a id="tryDemo" class="small-link" href="/demo" data-c="tryDemo" hidden></a>
+        <div class="row tools">
+          <button id="outingBtn" type="button" data-c="headingOut" aria-expanded="false" aria-controls="outing"></button>
+          <button id="pauseBtn" type="button" class="ghost" data-c="pause"></button>
+          <button id="shareBtn" type="button" data-c="share"></button>
+          <button id="appBtn" type="button" class="primary" data-c="openApp" hidden></button>
+          <a id="getApp" class="small-link" href="https://github.com/ahmedabied/Truffle/releases" target="_blank" rel="noopener" data-c="getApp" hidden></a>
+        </div>
+      <section id="outing" class="outing" aria-labelledby="outingTitle" hidden>
+        <h2 id="outingTitle" data-c="outingTitle"></h2><p class="hint" data-c="outingBody"></p>
+        <div class="row"><button id="outingWalk" type="button" data-c="outingWalk"></button><button id="outingErrand" type="button" data-c="outingErrand"></button></div>
+      </section>
+        <p id="moment" class="moment" dir="auto" role="status" aria-live="polite" hidden></p>
+      <section id="momentBox" class="moments" aria-labelledby="momentsTitle" hidden>
+        <h2 id="momentsTitle" data-c="moments"></h2>
+        <p id="worldDetails" class="hint"></p>
+        <ol id="momentList" dir="auto"></ol>
+        <p id="momentsEmpty" class="hint" data-c="momentsEmpty"></p>
+      </section>
+        <p id="memory" class="memory" dir="auto" hidden></p>
+        <button id="sporeBtn" type="button" class="primary wide" data-c="sporeButton" hidden></button>
+      <details id="keepsakes" class="keepsakes">
+        <summary><span data-c="keepsakes"></span><span id="giftCount" class="count" aria-hidden="true">0</span></summary>
+        <p id="giftWaiting" class="gift-waiting" data-c="giftWaiting" role="status" hidden></p>
+        <p id="giftsEmpty" class="hint" data-c="keepsakesEmpty"></p>
+        <article id="giftCard" class="gift-card" hidden>
+          <pre id="giftArt" dir="ltr" aria-hidden="true"></pre>
+          <div><span class="gift-from" data-c="giftFrom"></span><h3 id="giftName"></h3><p id="giftNote"></p><time id="giftDate"></time></div>
+        </article>
+        <div id="giftList" class="gift-list"></div>
+        <p class="hint keepsakes-note" data-c="keepsakesNote"></p>
+        <button id="previewGift" type="button" class="small" data-c="previewGift" hidden></button>
+      </details>
 
       <section id="judge" class="judge" aria-labelledby="judgeTitle" hidden>
         <h2 id="judgeTitle" data-c="judgeTitle"></h2>
+        <button id="walkBtn" type="button" class="primary" data-c="tryWalk" hidden></button>
         <p id="judgeIntro" class="hint" data-c="judgeIntro"></p>
         <label for="steps" class="range-label"><span data-c="sliderLabel"></span><output id="stepsOut" for="steps">0</output></label>
         <input id="steps" type="range" min="0" max="15000" step="100" value="0" />
@@ -86,11 +109,6 @@
 
       <details id="settings" class="settings">
         <summary data-c="settings"></summary>
-        <p class="label pairing" data-c="phrase"></p>
-        <div class="row pairing">
-          <code id="phrase" dir="ltr"></code>
-          <button id="copyBtn" type="button" class="small" data-c="copy"></button>
-        </div>
         <div class="row">
           <span data-c="fontSize"></span>
           <button id="fontDown" type="button" class="small" data-c-aria="smaller">A-</button>
@@ -98,6 +116,12 @@
         </div>
         <label class="row check"><input id="motion" type="checkbox" /> <span data-c="motion"></span></label>
         <p id="motionNote" class="hint" data-c="motionSystem" hidden></p>
+        <details class="connection"><summary data-c="connection"></summary>
+        <p class="label pairing" data-c="phrase"></p>
+        <div class="row pairing">
+          <code id="phrase" dir="ltr"></code>
+          <button id="copyBtn" type="button" class="small" data-c="copy"></button>
+        </div>
         <label class="label" for="api" data-c="apiBase"></label>
         <div class="row">
           <input id="api" type="url" dir="ltr" inputmode="url" spellcheck="false" />
@@ -107,11 +131,13 @@
           <button id="sporeBtn2" type="button" class="primary" data-c="sporeButton" hidden></button>
           <button id="forgetBtn" type="button" class="ghost small pairing" data-c="forget"></button>
         </div>
+        </details>
       </details>
+
+        <details class="connection"><summary data-c="energyDetails"></summary><p class="hint" data-c="energyNote"></p><p id="chatDetails" class="hint"></p></details>
+        <footer class="footer"><a href="https://github.com/Ahmedabied/truffle" target="_blank" rel="noopener" data-c="sourceCode"></a></footer>
       </div>
-      </main>
-      <footer class="footer"><span data-c="footerNote"></span><a href="https://github.com/Ahmedabied/truffle" target="_blank" rel="noopener" data-c="sourceCode"></a></footer>
-    </div>
+    </dialog>
     <dialog id="pauseDialog" aria-labelledby="pauseTitle" aria-describedby="pauseText">
       <p class="pause-mark" aria-hidden="true">· · ·</p>
       <h2 id="pauseTitle" data-c="pause"></h2>

@@ -7,7 +7,7 @@ The ASCII world, chat and judge mode. Vanilla TypeScript and Vite. No framework.
 ```
 npm run dev          # http://localhost:5173, talks to http://localhost:8787
 npm run typecheck
-npm run build        # dist/, about 97 KB of JS before gzip
+npm run build        # dist/, see build output for the current bundle size
 ```
 
 `VITE_API_BASE` sets the Worker URL at build time. The default in production is `https://truffle.ahmed-abied.workers.dev`. You can also change it at runtime in Settings. It is stored in localStorage.
@@ -33,7 +33,7 @@ Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|
 
 - `src/api.ts`: typed client, SSE parser for `/chat`, timeouts, backend selection.
 - `src/mock.ts`: the offline demo backend.
-- `src/scene/`: grid fitting (`grid.ts`), palette (`palette.ts`), sun and moon (`astro.ts`), the luminance raster and dither (`raster.ts`), the Truffle model (`pet.ts`), the scene and the 30 fps target loop (`world.ts`).
+- `src/scene/`: grid fitting (`grid.ts`), palette (`palette.ts`), sun and moon (`astro.ts`), the luminance raster and dither (`raster.ts`), the Truffle model (`pet.ts`), the scene and the 60 fps target loop (`world.ts`).
 - `src/chat.ts`: input line, tier-speed typing, yawn, explanation line.
 - `src/copy.ts`: UI copy in English and Arabic.
 - `src/moments.ts`: proud moment types and which ones to show.

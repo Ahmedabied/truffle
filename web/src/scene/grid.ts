@@ -1,4 +1,4 @@
-// Fit a 100-column <pre> to its container width. DOM probe, no canvas (S08 approach).
+// Fit the complete ASCII world inside both container dimensions without stretching glyphs.
 
 export const COLS = 100;
 export const ROWS = 68;
@@ -18,7 +18,8 @@ export function makeFitter(container: HTMLElement, pre: HTMLElement, probe: HTML
   };
 
   function fit(): void {
-    const available = container.getBoundingClientRect().width;
+    const bounds = container.getBoundingClientRect();
+    const available = bounds.width;
     if (!available) return;
     probe.style.fontSize = "100px";
     probe.style.letterSpacing = "0px";
@@ -26,22 +27,28 @@ export function makeFitter(container: HTMLElement, pre: HTMLElement, probe: HTML
     if (!base) return;
     const glyphs = [" ", "─", "█", "░", "^", "~"];
     const mono = glyphs.every((g) => Math.abs(measure(g.repeat(COLS)) - base) / COLS < 0.1);
-    const fontSize = (available * 100) / base;
+    const widthFont = (available * 100) / base;
+    // Before the fixed-height scene CSS loads, the width remains a valid fallback.
+    const hasFixedHeight = getComputedStyle(container).height !== "auto" && bounds.height > 100;
+    const fontSize = Math.min(widthFont, hasFixedHeight ? bounds.height / (ROWS * LINE_HEIGHT) : widthFont);
+    const renderedWidth = base * fontSize / 100;
     probe.style.fontSize = fontSize + "px";
     // Tiny spacing correction absorbs fractional font-size rounding.
-    const correction = (available - measure("M".repeat(COLS))) / COLS;
+    const correction = (renderedWidth - measure("M".repeat(COLS))) / COLS;
     pre.style.fontSize = fontSize + "px";
     pre.style.letterSpacing = correction + "px";
     pre.style.lineHeight = String(LINE_HEIGHT);
-    onFit?.({ fontSize, cellWidth: available / COLS, correction, mono });
+    pre.style.setProperty("--world-cell-width", String(renderedWidth / COLS));
+    onFit?.({ fontSize, cellWidth: renderedWidth / COLS, correction, mono });
   }
 
-  let prev = 0;
+  let prev = "";
   if ("ResizeObserver" in window) {
     new ResizeObserver((entries) => {
-      const w = entries[0].contentRect.width;
-      if (Math.abs(w - prev) > 0.01) {
-        prev = w;
+      const { width, height } = entries[0].contentRect;
+      const size = `${width.toFixed(2)}|${height.toFixed(2)}`;
+      if (size !== prev) {
+        prev = size;
         fit();
       }
     }).observe(container);

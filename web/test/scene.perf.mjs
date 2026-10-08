@@ -50,7 +50,7 @@ for (const c of cases) {
     let changes = 0;
     const start = performance.now();
     for (let i = 0; i < 300; i++) {
-      const sec = (i + offset) / 30;
+      const sec = (i + offset) / 60;
       const tick = Math.floor(sec * 12);
       const phase = sec * (c.view.windKmh / 20 + 0.15);
       if (old) before.composeAll(c.view, tick, phase, c.hour, date, false);
@@ -74,4 +74,4 @@ for (const c of cases) {
   }
   results.push({ scene: c.name, baseline_compose_ms: +median(baseline).toFixed(3), current_compose_and_submission_js_ms: +median(current).toFixed(3), mean_glyph_draws: +work.calls.toFixed(1), mean_changed_cells: +work.changes.toFixed(1), static_builds: scene.builds.static });
 }
-console.log(JSON.stringify({ node: process.version, frames_per_batch: 300, batches: 5, baseline: "git HEAD pre renderer", note: "Mock drawImage: CPU and call counts only. Browser/Samsung performance requires browser/device checks.", results }, null, 2));
+console.log(JSON.stringify({ node: process.version, frames_per_batch: 300, batches: 5, baseline: "git HEAD composeAll", note: "Mock drawImage: CPU and call counts only. Browser/Samsung performance requires browser/device checks.", results }, null, 2));

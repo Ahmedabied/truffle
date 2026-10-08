@@ -1,9 +1,9 @@
 // A glyph atlas and cell damage tracking. Unchanged sky and terrain issue no
 // draw calls. Repaint changed cells in layer order, including cleared glyphs.
 import { COLS, ROWS } from "./grid";
-import { glyphIndex, Layer, RAMP, W } from "./raster";
+import { glyphIndex, GLYPHS, Layer, W } from "./raster";
 
-export interface Ink { colour: string; alpha: number }
+export interface Ink { colour: string; alpha: number; weight?: number }
 export interface Paint {
   layer: Layer;
   ink: number;
@@ -20,6 +20,7 @@ export class Surface {
   private previous: Uint8Array[] = [];
   private current: Uint8Array[] = [];
   private damage = new Uint8Array(COLS * ROWS);
+  private damagedCells = new Uint16Array(COLS * ROWS);
   private invalid = true;
   readonly stats = { changedCells: 0, glyphDraws: 0 };
   cw = 0;
@@ -33,7 +34,7 @@ export class Surface {
     this.canvas.dataset.layer = "world";
     this.canvas.setAttribute("aria-hidden", "true");
     this.canvas.style.display = "block";
-    this.canvas.style.width = "100%";
+    this.canvas.style.flex = "0 0 auto";
     root.appendChild(this.canvas);
     const ctx = this.canvas.getContext("2d", { alpha: true });
     this.atlas = document.createElement("canvas");
@@ -49,16 +50,18 @@ export class Surface {
     const font = this.root.style.fontSize;
     const width = this.root.clientWidth;
     const dpr = Math.min(3, window.devicePixelRatio || 1);
-    const key = `${font}|${width}|${dpr}`;
+    const cellWidth = this.root.style.getPropertyValue?.("--world-cell-width");
+    const key = `${font}|${width}|${cellWidth}|${dpr}`;
     if (key === this.sizeKey && this.cw) return false;
     this.sizeKey = key;
-    const cssCell = (width || 600) / COLS;
+    const cssCell = parseFloat(cellWidth) || (width || 600) / COLS;
     const cssRow = parseFloat(font) || cssCell / 0.6;
     this.cw = Math.max(1, Math.round(cssCell * dpr));
     this.ch = Math.max(1, Math.round(cssRow * dpr));
     this.canvas.width = this.cw * COLS;
     this.canvas.height = this.ch * ROWS;
     // Preserve the fitter's geometry when device-pixel rounding changes aspect.
+    this.canvas.style.width = `${cssCell * COLS}px`;
     this.canvas.style.height = `${cssRow * ROWS}px`;
     this.inkKey = "";
     this.invalid = true;
@@ -66,12 +69,12 @@ export class Surface {
   }
 
   inks(inks: Ink[]): void {
-    const key = inks.map((i) => i.colour + i.alpha).join("|") + this.cw + "x" + this.ch;
+    const key = inks.map((i) => i.colour + i.alpha + ":" + (i.weight ?? 400)).join("|") + this.cw + "x" + this.ch;
     if (key === this.inkKey) return;
     this.inkKey = key;
     this.invalid = true;
     const { cw, ch } = this;
-    this.atlas.width = cw * RAMP.length;
+    this.atlas.width = cw * GLYPHS.length;
     this.atlas.height = ch * inks.length;
     const a = this.actx;
     a.font = `${ch}px ${this.fontFamily}`;
@@ -82,14 +85,15 @@ export class Surface {
     const desc = m.fontBoundingBoxDescent || ch * 0.22;
     const base = (ch - (asc + desc)) / 2 + asc;
     for (let r = 0; r < inks.length; r++) {
+      a.font = `${inks[r].weight ?? 400} ${ch}px ${this.fontFamily}`;
       a.fillStyle = inks[r].colour;
       a.globalAlpha = inks[r].alpha;
-      for (let g = 1; g < RAMP.length; g++) {
+      for (let g = 1; g < GLYPHS.length; g++) {
         a.save();
         a.beginPath();
         a.rect(g * cw, r * ch, cw, ch);
         a.clip();
-        a.fillText(RAMP[g], g * cw + cw / 2, r * ch + base);
+        a.fillText(GLYPHS[g], g * cw + cw / 2, r * ch + base);
         a.restore();
       }
     }
@@ -120,7 +124,7 @@ export class Surface {
           const i = row + x;
           const lum = L.lum[i];
           if (lum < 0 || mask?.[i]) continue;
-          cells[i] = glyphIndex(lum, x, y, p.inkLight, rampMax);
+          cells[i] = L.symbols[i] || glyphIndex(lum, x, y, p.inkLight, rampMax);
         }
       }
       for (let i = 0; i < size; i++) if (cells[i] !== old[i]) damage[i] = 1;
@@ -129,13 +133,14 @@ export class Surface {
     const { cw, ch } = this;
     let changed = 0;
     let draws = 0;
+    let damagedCount = 0;
     // Clear each contiguous damaged run, including glyphs which disappeared.
     for (let y = 0; y < ROWS; y++) {
       const row = y * COLS;
       for (let x = 0; x < COLS;) {
         if (!damage[row + x]) { x++; continue; }
         const start = x;
-        while (x < COLS && damage[row + x]) x++;
+        while (x < COLS && damage[row + x]) { this.damagedCells[damagedCount++] = row + x; x++; }
         changed += x - start;
         c.clearRect(start * cw, y * ch, (x - start) * cw, ch);
       }
@@ -144,15 +149,15 @@ export class Surface {
       for (let n = 0; n < layers.length; n++) {
         const cells = this.current[n];
         const sy = layers[n].ink * ch;
-        for (let y = layers[n].layer.y0; y <= layers[n].layer.y1; y++) {
-          const row = y * COLS;
-          for (let x = 0; x < COLS; x++) {
-            const i = row + x;
-            const g = cells[i];
-            if (!damage[i] || g === 0) continue;
-            c.drawImage(this.atlas, g * cw, sy, cw, ch, x * cw, y * ch, cw, ch);
-            draws++;
-          }
+        // Damage is usually a small fraction of the grid. Visit its cells,
+        // instead of rescanning every static layer's full rectangle in storms.
+        for (let k = 0; k < damagedCount; k++) {
+          const i = this.damagedCells[k];
+          const g = cells[i];
+          if (g === 0) continue;
+          const x = i % COLS, y = Math.floor(i / COLS);
+          c.drawImage(this.atlas, g * cw, sy, cw, ch, x * cw, y * ch, cw, ch);
+          draws++;
         }
       }
     }

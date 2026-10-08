@@ -23,6 +23,7 @@ export interface ChatDeps {
   onHalfAwake: (on: boolean) => void;
   onSummary: (s: StateSummary) => void;
   onExplain: (text: string) => void;
+  onDetails?: (text: string) => void;
   afterChat: () => void;
   /** The judge page: the demo reply cap is said in Truffle's voice. */
   demo: boolean;
@@ -253,10 +254,8 @@ export class Chat {
             this.input.blur();
           }
           const thinking = TIERS[ev.tier]?.thinking ?? false;
-          this.d.onExplain(
-            explainChat(lang, { pct: pre.energy_pct, tier: ev.tier, spent: ev.spent, thinking, requested, brain: ev.brain }) +
-              (ev.partial ? " " + c.partial : "")
-          );
+          this.d.onDetails?.(explainChat(lang, { pct: pre.energy_pct, tier: ev.tier, spent: ev.spent, thinking, requested, brain: ev.brain }));
+          this.d.onExplain((ev.spent > 0 ? c.replyEnergyUsed : c.replyNoEnergy) + (ev.partial ? " " + c.partial : ""));
           if (ev.summary) this.d.onSummary(ev.summary);
         } else if (ev.type === "error") {
           finished = true;
