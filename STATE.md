@@ -1,6 +1,6 @@
 # STATE
 
-Updated: 2026-10-08, 18:30 Oman. Session 03 (hardening and fleet prep while waiting on Ahmed's accounts), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
+Updated: 2026-10-08, 23:00 Oman. Session 03 (hardening and fleet prep while waiting on Ahmed's accounts), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
 
 ## Phase
 
@@ -27,6 +27,8 @@ Updated: 2026-10-08, 18:30 Oman. Session 03 (hardening and fleet prep while wait
 - Git history has no co-author trailers (Ahmed's rule). All pushed.
 
 ## Not done (blocking)
+
+- Base vs tuned eval: running at close (`finetune/eval/run_live.sh 2026-10-08-r16`); results in `finetune/eval/RESULTS.md`.
 
 - Ahmed: rotate the Hugging Face token (it was pasted into a chat on Oct 8) and tell the session; the file and the Modal secret get updated from the new file.
 - Ahmed: 30 seed lines (`finetune/seed/TRUFFLE_VOICE_SEED.md`), then the seed-anchored pass D19 to D21 (decision 0014).

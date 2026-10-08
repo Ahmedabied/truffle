@@ -1,29 +1,30 @@
-# HANDOFF -> Session 04 (Thursday Oct 8 evening or Friday Oct 9)
+# HANDOFF -> Session 05 (Friday Oct 9)
 
 Start in `~/Desktop/Truffle`. Read `CLAUDE.md`, `STATE.md`, then this. Rules from Ahmed: no co-author trailers on commits, only his identity; no Fable subagents (builders are Opus 5.5 with `model: "opus"`, research and spikes are GPT); the GPT plugin only runs when his message asks for GPT or astra; never play sound on the laptop; do not use the desktop control while he is away from it.
 
-## Where things stand (18:30 Oman, Oct 8)
+## Where things stand (23:00 Oman, Oct 8)
 
-Everything that could be built without Ahmed is built, tested, deployed and pushed. See `sessions/2026-10-08_session-03_hardening_and_wave_b.md`. The dataset exists: 1,800 rows, 1,720 train and 80 hold-out. The fine-tune, the Modal brain and real steps are the only open lines, and all three wait on Ahmed.
+The core is complete: steps to energy to the fine-tuned Gemma 4 31B brain on Modal, ASCII world, feeder, judge mode, hardened Worker. See `sessions/2026-10-08_session-04_brain_and_finetune.md`. The base vs tuned eval was running at close; if `finetune/eval/RESULTS.md` exists, it is done. If not, rerun `finetune/eval/run_live.sh <run-id>` (brain must be warm: one health call first, about 10 min).
 
-## Ahmed's list (what unblocks what)
+## Ahmed's list
 
-1. Modal: https://modal.com/login (Continue with GitHub), add a card under Settings, then `uv tool install modal && modal setup` on the laptop. Unblocks S01 (serve the brain) and the fine-tune.
-2. Hugging Face read token at `~/.config/truffle/hf_token`, mode 600. Unblocks the weight download.
-3. "Go" for the S01 bench, about USD 1 to 2 on an L40S.
-4. 30 seed lines in `finetune/seed/TRUFFLE_VOICE_SEED.md`. Unblocks the seed-anchored pass D19 to D21 (decision 0014). The main dataset no longer waits on this.
-5. Feeder APK from the draft release `v0.1.0-feeder` on the Samsung, pair, feed. Unblocks real steps and the day-envelope decision.
-6. Two minutes with https://truffle-web.ahmed-abied.workers.dev/?fps=1 on the phone; report the fps numbers and anything ugly.
-7. Four yes or no answers: Arabic stage names; protected day on a missing forecast; keep the 50,000 cap with an honest message; make `day` required. Recommendation on all four: yes. Each yes gets a decision record and a small packet.
+1. Pair the feeder on the Samsung (it is installed): web app Settings, copy the phrase, paste in the feeder, grant Health Connect, Feed now. Report the status line. Unblocks real steps and the `day` envelope decision.
+2. Rotate the Hugging Face token (it was pasted into a chat on Oct 8). Save the new one to `~/.config/truffle/hf_token`; the session updates the Modal secret from the file.
+3. Optional: a Cloudflare API token with Workers AI read at `~/.config/truffle/cf_api_token` so the eval judge is Gemma 26B on Workers AI, not the base model.
+4. 30 seed lines, then the seed-anchored pass D19 to D21 and a second adapter r16b trained with those rows repeated three times.
+5. Two minutes on the phone with `?fps=1` (first numbers: 12 fps, compose 4.8 ms, paint 3.7 ms).
+6. Four yes or no answers (recommend yes to all): Arabic stage names; protected day on a missing forecast; keep the 50,000 cap with an honest message; make `day` required. Plus one new: lower the low tier cap from 120 to 90 tokens (Wave C showed 100-word low-tier replies from the fallback).
+7. Diary day 1 after an evening walk: steps screenshot, weather line, two Truffle replies, how it felt.
 
-## Session 04 order of work
+## Session 05 order of work
 
-1. If Modal is set up: run S01 for real (`brain-modal/README.md`, packet result in `fleet/outbox/S01/RESULT.md`). Download weights to the Volume, dummy LoRA, deploy, bench. Log in `fleet/costs.md`. Decide Plan A or B, write `decisions/0015_serving_plan.md`. Then `cd worker && wrangler secret put MODAL_URL` and `MODAL_TOKEN`, deploy, smoke, confirm `/health` says `modal:true` and a chat says `brain: modal`.
-2. If the HF token exists: the fine-tune. `finetune/train.py` dry-ran on the box with a tiny Gemma; the real run is Unsloth QLoRA on a 48 GB GPU on Modal, data from `finetune/data/generated/train.jsonl`. Add the repeat factor for D19 to D21 before the run if the seed-anchored shards exist. Estimate before running; expect under USD 5.
-3. Eval: `finetune/eval/run_eval.py --prompts finetune/eval/prompts.jsonl --holdout finetune/data/generated/eval_holdout.jsonl` base vs tuned. The harness builds the trio from the filter's constants, so it matches the Worker's trio; the Worker adds guidance lines for the un-tuned brain only. For the tuned brain, drop the EXTRAS in `worker/src/prompt.ts` when `brain: modal` (small packet, not done yet).
-4. If the seed lines landed: render D19 to D21 from `fleet/packets/D_template.md` (mode with seed lines, 60 rows each, every row grows from one seed line, en, ar, mixed). GPT if the plan is alive, else Opus.
-5. Decisions from Ahmed's answers: write the records, cut one Opus packet for the code (protected day latch in the DO, capped-feed message in the Worker and web, `day` required in the route).
-6. README still says pre-build. Update after the Modal brain is live. Draft the DEV post from `docs/06_writeup_plan.md`; the before and after numbers come from step 3.
+1. Read `finetune/eval/RESULTS.md`. If the judge was the base model, rerun with the Cloudflare token when it exists. Put the table in the README brain status row.
+2. Warm the brain before any demo: `curl -L -m 900 -H "Authorization: Bearer $(cat ~/.config/truffle/brain_token)" https://ahmedabied--truffle-brain-nosnap-brain-serve.modal.run/health`. For the judging window consider `min_containers=1` for a few hours (about USD 2 an hour).
+3. Drop the EXTRAS guidance lines in `worker/src/prompt.ts` when the brain is Modal (the tuned model was trained on the trio only). Small Opus packet with a test.
+4. Decisions from Ahmed's answers: records plus one Opus packet (protected day latch, capped-feed message, `day` required, low tier cap).
+5. Real walk: verify the feeder's count against Samsung Health within 2 percent, then publish the APK release.
+6. Writeup: `docs/06_writeup_plan.md` with the judge reads (C06 to C08) folded in: the walk as the opening scene, a dated brain status table, a care and safety box, a simulated judge walkthrough labelled as such. Draft the post Friday night, publish Saturday night.
+7. DEV agent session: slice and sanitise locally first (`fleet/outbox/S07/RESULT.md`). The HF token appears in this session's transcript; redact before any upload.
 
 ## Things that will bite
 
@@ -36,4 +37,4 @@ Everything that could be built without Ahmed is built, tested, deployed and push
 
 ## Deliverable for end of Friday
 
-Modal brain answers a chat (`brain: modal`). LoRA trained on the 1,800 rows (plus the seed-anchored shards if they exist). Eval table base vs tuned in `finetune/eval/RESULTS.md`. Real steps from Ahmed's Samsung at `/feed`.
+Eval table in the README. Real steps from Ahmed's Samsung at `/feed` verified against Samsung Health. Diary day 1 and 2. Post draft in `docs/post_draft.md`. Seed-anchored adapter if the lines exist.
