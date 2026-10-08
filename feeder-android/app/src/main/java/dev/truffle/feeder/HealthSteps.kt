@@ -7,8 +7,6 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
-import java.time.Instant
-import java.time.ZoneId
 
 class GrantPermissionException(message: String) : Exception(message)
 class HealthUnavailableException(message: String) : Exception(message)
@@ -22,7 +20,6 @@ data class HealthAccess(
     val canSync: Boolean get() = stepsGranted && backgroundSupported && backgroundGranted
 }
 
-data class TodaySteps(val total: Long, val window: DayWindow)
 
 class HealthSteps(private val context: Context) {
     companion object {
@@ -42,7 +39,8 @@ class HealthSteps(private val context: Context) {
         return HealthAccess(sdk, READ_STEPS in granted, supported, READ_BACKGROUND in granted)
     }
 
-    suspend fun readToday(background: Boolean): TodaySteps {
+    /** Steps from the window's local midnight (in the Truffle's zone) to its end. */
+    suspend fun readWindow(window: DayWindow, background: Boolean): Long {
         val access = access()
         when (access.sdkStatus) {
             HealthConnectClient.SDK_UNAVAILABLE -> throw HealthUnavailableException("Health Connect is unavailable on this device.")
@@ -56,9 +54,8 @@ class HealthSteps(private val context: Context) {
         if (background && !access.backgroundGranted) {
             throw GrantPermissionException("Grant steps permission and background read access for hourly sync.")
         }
-        val window = todayWindow(Instant.now(), ZoneId.systemDefault())
         // Health Connect rejects an empty interval at exactly local midnight.
-        val total = if (window.start == window.end) 0L else {
+        return if (window.start == window.end) 0L else {
             val result = HealthConnectClient.getOrCreate(context).aggregate(
                 AggregateRequest(
                     metrics = setOf(StepsRecord.COUNT_TOTAL),
@@ -67,6 +64,5 @@ class HealthSteps(private val context: Context) {
             )
             result[StepsRecord.COUNT_TOTAL] ?: 0L
         }
-        return TodaySteps(total, window)
     }
 }

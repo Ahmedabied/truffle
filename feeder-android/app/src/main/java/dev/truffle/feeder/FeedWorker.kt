@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -14,8 +17,13 @@ import java.util.concurrent.TimeUnit
 class FeedWorker(context: Context, parameters: WorkerParameters) : CoroutineWorker(context, parameters) {
     override suspend fun doWork(): Result {
         val settings = FeedSettings(applicationContext)
+        val retryRun = inputData.getBoolean(FeedSchedule.RETRY_RUN, false)
         return try {
-            settings.setStatus(FeedSender(applicationContext).feed(background = true))
+            // A one-time retry may fire while the app is still open, so it may read
+            // in the foreground. The hourly run always uses the background grant.
+            val run = FeedSender(applicationContext).feed(background = !retryRun, isRetryRun = retryRun)
+            settings.setStatus(run.status)
+            run.retryAfterSeconds?.let { FeedSchedule.retryOnce(applicationContext, it) }
             Result.success()
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -23,17 +31,18 @@ class FeedWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
             settings.setStatus(missing.message.orEmpty(), needsPermission = true)
             Result.failure()
         } catch (_: SecurityException) {
-            settings.setStatus("Grant steps permission. Health Connect access was revoked.", needsPermission = true)
+            if (retryRun) settings.setStatus("Open Truffle Feeder and tap Feed now to finish this sync.")
+            else settings.setStatus("Grant steps permission. Health Connect access was revoked.", needsPermission = true)
             Result.failure()
         } catch (unavailable: HealthUnavailableException) {
             settings.setStatus(unavailable.message.orEmpty())
             Result.failure()
         } catch (http: FeedHttpException) {
             settings.setStatus(http.message.orEmpty())
-            if (http.retryable) Result.retry() else Result.failure()
+            if (http.retryable && !retryRun) Result.retry() else Result.failure()
         } catch (_: IOException) {
             settings.setStatus("Upload failed. Check your connection. Hourly sync will retry.")
-            Result.retry()
+            if (retryRun) Result.failure() else Result.retry()
         } catch (invalid: IllegalArgumentException) {
             settings.setStatus(invalid.message ?: "Check the pairing phrase and server URL.")
             Result.failure()
@@ -46,6 +55,17 @@ class FeedWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
 
 object FeedSchedule {
     private const val NAME = "truffle-hourly-feed"
+    private const val RETRY_NAME = "truffle-retry-feed"
+    const val RETRY_RUN = "retry_run"
+
+    /** One retry after the Worker's retry_after_s. A newer request replaces an older one. */
+    fun retryOnce(context: Context, seconds: Long) {
+        val request = OneTimeWorkRequestBuilder<FeedWorker>()
+            .setInitialDelay(seconds.coerceIn(1L, MAX_RETRY_SECONDS), TimeUnit.SECONDS)
+            .setInputData(workDataOf(RETRY_RUN to true))
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(RETRY_NAME, ExistingWorkPolicy.REPLACE, request)
+    }
 
     fun enable(context: Context) {
         // A CONNECTED constraint requires ACCESS_NETWORK_STATE on target 34+.
@@ -60,5 +80,6 @@ object FeedSchedule {
 
     fun disable(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(NAME)
+        WorkManager.getInstance(context).cancelUniqueWork(RETRY_NAME)
     }
 }

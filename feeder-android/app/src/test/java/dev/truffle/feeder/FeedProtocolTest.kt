@@ -53,9 +53,12 @@ class FeedProtocolTest {
         }
     }
 
+    private fun envelope(zone: String) = dayEnvelope(Instant.parse("2026-10-07T19:12:00Z"), ZoneId.of(zone), ZoneId.of(zone))
+
     @Test fun payloadContainsAbsoluteTotalAndTimezoneOnly() {
-        val json = JSONObject(feedPayload(config, 6120L, ZoneId.of("Asia/Muscat")))
-        assertEquals(setOf("phrase", "steps_today_total", "device_tz"), json.keys().asSequence().toSet())
+        // B07: the day label and its zone joined the payload. Still no location or raw records.
+        val json = JSONObject(feedPayload(config, 6120L, envelope("Asia/Muscat")))
+        assertEquals(setOf("phrase", "steps_today_total", "day", "day_tz", "device_tz"), json.keys().asSequence().toSet())
         assertEquals(6120L, json.getLong("steps_today_total"))
         assertEquals("sand-moon-fig", json.getString("phrase"))
         assertEquals("Asia/Muscat", json.getString("device_tz"))
@@ -64,8 +67,8 @@ class FeedProtocolTest {
     }
 
     @Test fun zeroStepsAreValidAndNegativeStepsAreRejected() {
-        assertEquals(0L, JSONObject(feedPayload(config, 0, ZoneId.of("UTC"))).getLong("steps_today_total"))
-        assertThrows(IllegalArgumentException::class.java) { feedPayload(config, -1, ZoneId.of("UTC")) }
+        assertEquals(0L, JSONObject(feedPayload(config, 0, envelope("UTC"))).getLong("steps_today_total"))
+        assertThrows(IllegalArgumentException::class.java) { feedPayload(config, -1, envelope("UTC")) }
     }
 
     @Test fun summaryAcceptsFlatOrWrappedState() {

@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
         val padding = (20 * resources.displayMetrics.density).toInt()
         content.setPadding(padding, padding, padding, padding)
         val scroll = ScrollView(this).apply { addView(content) }
-        // Target 35 is edge-to-edge. Keep the form clear of bars and the keyboard.
+        // Target 35+ is edge-to-edge. Keep the form clear of bars and the keyboard.
         ViewCompat.setOnApplyWindowInsetsListener(scroll) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
@@ -142,7 +142,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        settings.preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
+        feederPreferences(this).registerOnSharedPreferenceChangeListener(preferenceListener)
     }
 
     override fun onResume() {
@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        settings.preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        feederPreferences(this).unregisterOnSharedPreferenceChangeListener(preferenceListener)
         super.onStop()
     }
 
@@ -227,7 +227,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 settings.setStatus("Reading today's steps...")
-                settings.setStatus(FeedSender(this@MainActivity).feed(background = false))
+                val run = FeedSender(this@MainActivity).feed(background = false)
+                settings.setStatus(run.status)
+                run.retryAfterSeconds?.let { FeedSchedule.retryOnce(this@MainActivity, it) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (missing: GrantPermissionException) {

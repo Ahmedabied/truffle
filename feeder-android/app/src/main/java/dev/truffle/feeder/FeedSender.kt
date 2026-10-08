@@ -4,33 +4,71 @@ import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class FeedHttpException(val code: Int) : IOException("Server returned HTTP $code. Check the pairing phrase and server URL.") {
-    val retryable: Boolean get() = code == 408 || code == 429 || code >= 500
-}
+/** A server fault worth retrying later. The message is calm text, never a body. */
+class FeedHttpException(val code: Int, message: String, val retryable: Boolean) : IOException(message)
+
+/** The status line to show, and a one-time retry delay when the Worker asked for one. */
+data class FeedRun(val status: String, val retryAfterSeconds: Long? = null)
 
 class FeedSender(context: Context) {
     private val health = HealthSteps(context)
     private val settings = FeedSettings(context)
 
-    suspend fun feed(background: Boolean): String = withContext(Dispatchers.IO) {
+    suspend fun feed(background: Boolean, isRetryRun: Boolean = false): FeedRun = withContext(Dispatchers.IO) {
         val config = settings.config()
-        val steps = health.readToday(background)
-        // Do not send yesterday's snapshot after a midnight or time-zone change.
-        if (java.time.ZoneId.systemDefault() != steps.window.zone ||
-            Instant.now().atZone(steps.window.zone).toLocalDate() != steps.window.end.atZone(steps.window.zone).toLocalDate()) {
-            throw IOException("The local day changed. Read steps again.")
+        var envelope = envelopeNow()
+        var total = read(envelope, background)
+        var reply = post(config.endpoint, feedPayload(config, total, envelope))
+        if (reply is FeedReply.Accepted) {
+            reply.activeTz?.let(settings::saveActiveTz)
+            // The Truffle lives in another zone. Sum again from its midnight, once.
+            if (needsResend(reply, envelope)) {
+                envelope = envelopeNow()
+                total = read(envelope, background)
+                reply = post(config.endpoint, feedPayload(config, total, envelope))
+                if (reply is FeedReply.Accepted) reply.activeTz?.let(settings::saveActiveTz)
+            }
         }
-        val summary = post(config.endpoint, feedPayload(config, steps.total, steps.window.zone))
-        val time = DateTimeFormatter.ofPattern("HH:mm").withZone(steps.window.zone).format(Instant.now())
-        "$time: Sent ${steps.total} steps. $summary"
+        val time = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault()).format(Instant.now())
+        when (val r = reply) {
+            is FeedReply.Accepted ->
+                if (r.ignored != null) {
+                    FeedRun("$time: Truffle's day is ${r.expectedDay ?: "different"} in ${r.activeTz ?: "its zone"}. These steps were not counted.")
+                } else {
+                    FeedRun("$time: Sent $total steps for ${envelope.day}. ${r.summary}")
+                }
+            else -> {
+                val decision = decideRejection(r, isRetryRun)
+                if (decision.serverRetry) {
+                    throw FeedHttpException((r as FeedReply.ServerTrouble).code, decision.status, true)
+                }
+                FeedRun(decision.status, decision.retryAfterSeconds)
+            }
+        }
     }
 
-    private fun post(endpoint: String, json: String): String {
+    private fun envelopeNow(): DayEnvelope {
+        val device = ZoneId.systemDefault()
+        return dayEnvelope(Instant.now(), activeZone(settings.activeTz, device), device)
+    }
+
+    private suspend fun read(envelope: DayEnvelope, background: Boolean): Long {
+        val total = health.readWindow(envelope.window, background)
+        // Do not send a total under a day label that has just ended.
+        if (Instant.now().atZone(envelope.window.zone).toLocalDate().toString() != envelope.day) {
+            throw IOException("The local day changed. Read steps again.")
+        }
+        return total
+    }
+
+    private fun post(endpoint: String, json: String): FeedReply {
         val connection = URL(endpoint).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
@@ -45,21 +83,22 @@ class FeedSender(context: Context) {
             connection.setFixedLengthStreamingMode(payload.size)
             connection.outputStream.use { it.write(payload) }
             val code = connection.responseCode
-            if (code !in 200..299) throw FeedHttpException(code)
-            val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                val result = StringBuilder()
-                val buffer = CharArray(4096)
-                while (true) {
-                    val size = reader.read(buffer)
-                    if (size < 0) break
-                    result.append(buffer, 0, size)
-                    if (result.length > 65_536) throw IOException("Server response was too large.")
-                }
-                result.toString()
-            }
-            return stateSummary(body)
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            return parseFeedReply(code, stream?.let(::readLimited))
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun readLimited(stream: InputStream): String = stream.bufferedReader(Charsets.UTF_8).use { reader ->
+        val result = StringBuilder()
+        val buffer = CharArray(4096)
+        while (true) {
+            val size = reader.read(buffer)
+            if (size < 0) break
+            result.append(buffer, 0, size)
+            if (result.length > 65_536) throw IOException("Server response was too large.")
+        }
+        result.toString()
     }
 }

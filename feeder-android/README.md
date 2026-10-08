@@ -23,7 +23,8 @@ It reads today's aggregated Health Connect steps. It sends the absolute total to
 6. Tap **Grant steps permission**. Allow Steps read access. On devices that expose
    background reads, also allow background health access. If the dialog stops
    appearing after a denial, use **Health Connect settings** to grant it there.
-7. Tap **Feed now**. The status should show the sent total and returned pet state.
+7. Tap **Feed now**. The status should show the sent total, the Truffle's day and
+   the returned pet state.
    Check today's total against Samsung Health after it finishes syncing. Target
    a difference below 2%. No phone comparison has been performed by this packet.
 8. For hourly sync, set **Settings > Apps > Truffle Feeder > Battery >
@@ -87,27 +88,22 @@ This is a debug APK for sideloading. No release signing key is included.
 | Gradle | 8.12 |
 | Android Gradle Plugin | 8.9.2 |
 | Kotlin plugin | 2.1.20 |
-| Health Connect client | 1.1.0-beta01 |
+| Health Connect client | 1.1.0 (stable) |
 | Activity KTX | 1.10.1 |
 | WorkManager KTX | 2.10.1 |
 | Coroutines Android | 1.10.2 |
 | JUnit, test only | 4.13.2 |
 | JSON JVM implementation, test only | 20240303 |
-| minSdk / targetSdk / compileSdk | 28 / 35 / 35 |
-| SDK Build Tools | 35.0.0 |
+| minSdk / targetSdk / compileSdk | 28 / 36 / 36 |
+| SDK Build Tools | 36.0.0 |
 
-**Stable Health Connect 1.1.0 was verified on 2026-10-07.** Its AAR requires
-`minCompileSdk=36`. The first build with that version failed the AAR metadata
-check. All 1.1.0 release candidates and beta02 also require 36. This project pins
-beta01 to preserve the packet's explicit compileSdk 35. It has the background
-feature and permission APIs used here. It is a prerelease dependency, not the
-current stable. No metadata check was bypassed.
-
-Before a wider release, approve compileSdk 36 and upgrade to stable 1.1.0. Keep
-minSdk 28 and targetSdk 35 if desired. Stable rc03 fixed a Health Connect aggregate
-DST-boundary bug that beta01 lacks. Our local-midnight tests verify our interval
-math only. They do not prove that old provider/library aggregate bug is fixed.
-Muscat does not observe DST.
+**SDK 36 and stable Health Connect 1.1.0 since B07 (2026-10-08).** The stable
+AAR requires `minCompileSdk=36`. S02 first pinned 1.1.0-beta01 to keep
+compileSdk 35. B07 moved compileSdk and targetSdk to 36 with build tools 36.0.0.
+AGP 8.9.2 and Gradle 8.12 build it with no code changes for the bump. No
+metadata check is bypassed. Stable 1.1.0 includes the rc03 fix for a Health
+Connect aggregate bug at DST boundaries. Our local-midnight tests verify our
+interval math only. Muscat does not observe DST.
 
 ### Strict permission limit and hourly network work
 
@@ -142,10 +138,43 @@ own policy change. Do not silently add either permission.
 - `HealthConnectClient.getSdkStatus` handles unavailable and update-required
   providers before `getOrCreate`.
 - The permission contract is registered through Activity Result APIs.
-- The query aggregates `StepsRecord.COUNT_TOTAL` from the device's local midnight
-  to now. It does not filter by writer. A missing aggregate is zero.
-- The POST body is `{"phrase":"sand-moon-fig","steps_today_total":6120,"device_tz":"Asia/Muscat"}`.
-  The time zone comes from the device, not a hardcoded Muscat value.
+- The query aggregates `StepsRecord.COUNT_TOTAL` from local midnight to now in
+  the Truffle's active zone. It does not filter by writer. A missing aggregate is zero.
+
+### The day envelope
+
+The POST body names the day the total belongs to:
+
+```json
+{"phrase":"sand-moon-fig","steps_today_total":6120,
+ "day":"2026-10-08","day_tz":"Asia/Muscat","device_tz":"Europe/London"}
+```
+
+- `day` is today's date (YYYY-MM-DD) in the active zone. `day_tz` is that zone.
+  `device_tz` is the phone's own zone.
+- The Worker pins the Truffle's zone at pairing. Every `/feed` reply echoes it as
+  `active_tz`, with `expected_day`. The app stores `active_tz` and uses it for the
+  next read. Before the first reply it uses the device zone.
+- If a reply names a different zone than the one the steps were summed in, the app
+  sums again from midnight in that zone and sends once more. This also covers a
+  reply that ignored the day label. A changed phrase drops the stored zone.
+- A total is never sent under a day label that ended during the read.
+- The Worker reads `day` and `device_tz` today. `day_tz` is sent for clarity and
+  for logs. The Worker does not read it yet.
+
+### Rejections
+
+The status line is always calm text. Raw response bodies are never shown.
+
+| Reply | Status line | Action |
+| --- | --- | --- |
+| 400 or 429 with `retry_after_s` | `Synced too fast, trying again in N s.` | One retry after N seconds (1 to 3600). A retry that is refused again waits for the next hourly sync. |
+| 400 without it | The Worker's `error` text, cleaned and cut to 200 characters | None |
+| 401 or 404 | `Phrase not recognised. Copy it again from the web app.` | None |
+| 408, other 429, 5xx | `The server had trouble (HTTP N). Steps stay on the phone. Sync will try again.` | Hourly worker backs off and retries |
+
+No rejection clears the stored phrase or server. The `/feed` route answers 404 for
+an unknown phrase, so 404 gets the same line as 401.
 - A state summary can be a flat object, `{"state":{...}}`, or `{"summary":{...}}`.
   Only known display fields are shown. Raw HTTP error bodies are not displayed.
 - The editable server must be an HTTPS origin. Redirects are rejected to avoid
@@ -246,17 +275,23 @@ counts are safe for the engine, but duplicate calls waste the phrase rate limit.
 
 ## Verification completed
 
-The workstation build, 10 JVM unit tests, and Android lint passed. Lint has no
-errors and 24 warnings for this English-only scaffold and pinned toolchain.
-The packaged manifest and APK signature were checked.
+B07 (SDK 36): the workstation build, 27 JVM unit tests and Android lint passed.
+Lint has no errors and 20 warnings (English-only strings, two newer library
+versions, no launcher icon). The packaged manifest has exactly the three
+permissions above. `aapt2 dump badging` shows compileSdk 36 and targetSdk 36.
 
-The existing Android 16 emulator passed launch, actual Steps/background grants,
-both rationale entry points, foreground aggregation, background aggregation,
-failed-network retry, stored configuration, and permission-revocation recovery.
-The background test used a virtual clock advance and a forced JobScheduler run.
-It did not wait a real hour. The endpoint was a reserved `.invalid` host, so no
-live feed was sent. The emulator was read-only and was stopped after testing.
-See `fleet/outbox/S02/RESULT.md` from the repository root for commands and output.
+The Android 16 emulator was run against the live Worker with the guest zone set to
+Europe/London. A Truffle paired in Asia/Muscat. Steps and background read were
+granted through the real Health Connect screens. Checked: a bad phrase shows the
+Worker's 400 text, an unknown phrase shows the copy-again line, both keep the
+stored phrase, a real feed returns 200, the app stores `active_tz` Asia/Muscat
+and a second feed succeeds. The emulator has no step data, so totals were 0. The
+`retry_after_s` path is covered by unit tests only. See
+`fleet/outbox/B07/RESULT.md` from the repository root.
+
+S02 earlier checked background aggregation with a forced JobScheduler run,
+failed-network retry and permission-revocation recovery. See
+`fleet/outbox/S02/RESULT.md`.
 
 ## Verification checklist still needed on a phone
 

@@ -18,9 +18,9 @@ class PermissionsRationaleActivity : ComponentActivity() {
                 text = """
                     Truffle Feeder privacy
 
-                    Steps feed your Truffle. This app reads only today's aggregated step count from Health Connect, starting at local midnight.
+                    Steps feed your Truffle. This app reads only today's aggregated step count from Health Connect, starting at midnight in your Truffle's time zone.
 
-                    Feed now sends that total, your pairing phrase, and your device time zone to the HTTPS server you choose. Background read access allows the same operation about once an hour. Android may delay it.
+                    Feed now sends that total, your pairing phrase, today's date in your Truffle's time zone, that zone, and your device time zone to the HTTPS server you choose. Steps count from midnight in your Truffle's zone. Background read access allows the same operation about once an hour. Android may delay it.
 
                     Only use a server you trust. The server receives your IP address. The Truffle server can use it for a city-level weather estimate. Location sharing in this app is disabled.
 

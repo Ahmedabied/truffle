@@ -5,13 +5,13 @@ plugins {
 
 android {
     namespace = "dev.truffle.feeder"
-    compileSdk = 35
-    buildToolsVersion = "35.0.0"
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "dev.truffle.feeder"
         minSdk = 28
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -27,9 +27,8 @@ android {
 
 dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
-    // Stable 1.1.0 requires compileSdk 36. beta01 is the last release for SDK 35.
-    // Keep the packet's compileSdk 35. See README for the verified tradeoff.
-    implementation("androidx.health.connect:connect-client:1.1.0-beta01")
+    // Stable 1.1.0. Its AAR metadata requires compileSdk 36.
+    implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
