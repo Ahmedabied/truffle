@@ -1,6 +1,6 @@
 # STATE
 
-Updated: 2026-10-08, 13:40 Oman. Session 03 (hardening and fleet prep while waiting on Ahmed's accounts), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
+Updated: 2026-10-08, 15:30 Oman. Session 03 (hardening and fleet prep while waiting on Ahmed's accounts), Fable 5.1 integrating, GPT astra spikes, Opus 5.5 builders.
 
 ## Phase
 
@@ -21,13 +21,14 @@ Updated: 2026-10-08, 13:40 Oman. Session 03 (hardening and fleet prep while wait
 - `brain-modal/modal_app.py`: written by S01, not run (no Modal token).
 - Wave A spikes S01 to S10 all landed in `fleet/outbox/` with RESULT.md each. Highlights: Muscat hit 43.9C apparent on Oct 7 (would burrow); un-tuned Gemma quotes the state block back 18/20 and told a user to go walk at 44C (S09); Workers AI thinking is on by default and `chat_template_kwargs.enable_thinking=false` turns it off (S03); Modal needs a card on file for GPU even with the USD 30 credit (S06); DEV uploads the raw transcript before redaction (S07); S10 found 6 high-severity holes, 4 fixed tonight, rest listed in HANDOFF.
 - Session 03 (Oct 8 midday): B06 hardening live (feed caps, bounded body read, uniform 401, fixed weather vocabulary, facts as untrusted JSON section, coordinate bounds, demo chat cap, empty-reply retry), 238 worker tests. Decision 0012 (memory section at the end of the prompt, English weather in the block) and 0013 (block shows the charged tier). Web reads the error contract, `?fps=1` readout, 54 web tests, deployed. Feeder on SDK 36 with Health Connect 1.1.0 stable and the day envelope, 27 tests, APK refreshed in the draft release (sha256 ed70f2c7...). Filter validates the exact training layout and memory section (59 selftests). S13 Wave B template `fleet/packets/D_template.md` and a 30 row dry shard with 0 drops. S12 eval set `finetune/eval/prompts.jsonl` (90 prompts, never trained on). S11 red-team round 2: 11 findings, 7 fixed by B09 and live (chat id and generation fencing, one visible-text predicate, rolling memory eviction, charged tier in the block, weather single flight with backoff, failed-lookup limit 30 per minute per IP), 288 worker tests, 4 need decisions.
+- Wave B (decision 0014, launched without the seed lines): shards D01 to D12 landed, 1,200 rows, 0 drops, 0 near-duplicates across shards, filter dry run gives 1,120 train and 80 hold-out. D13 to D18 (mixed) generating. Seed-anchored pass D19 to D21 waits on Ahmed's lines.
 - Git history has no co-author trailers (Ahmed's rule). All pushed.
 
 ## Not done (blocking)
 
 - Ahmed: Modal account (Continue with GitHub), card on file, `modal setup` on the laptop. Then S01 runs for real and Plan A/B gets decided.
 - Ahmed: Hugging Face read token (none exists on the box). Gemma licence looks accepted (no gate banner while logged in).
-- Ahmed: 30 seed lines (`finetune/seed/TRUFFLE_VOICE_SEED.md`) by Thursday noon, then Wave B.
+- Ahmed: 30 seed lines (`finetune/seed/TRUFFLE_VOICE_SEED.md`), then the seed-anchored pass D19 to D21 (decision 0014).
 - Ahmed: install the feeder APK on the Samsung, pair, feed. Or the Tasker bridge (see `feeder-android/README.md`; note the TaskerHealthConnect 1.0.4 aggregate bug).
 - Phone verification of the web app (fonts, frame rate with `?fps=1`, Arabic keyboard, TalkBack).
 
