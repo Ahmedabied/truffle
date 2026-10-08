@@ -52,6 +52,8 @@ USD 0.00 paid. Workers AI usage inside the free allowance (about 70 calls). Ledg
 ## Known environment facts
 
 - `wrangler dev` on this laptop needs `--ip 127.0.0.1 --port 8787`.
-- The per-IP spawn limit (5 per hour) bites repeated testing from one IP; the smoke script tolerates it.
+- The per-IP spawn limit (5 per hour) bites repeated testing from one IP; the smoke script tolerates it. When the laptop's hour is used up, run the smoke from the box: `scp worker/scripts/smoke.sh workstation:/tmp/ && ssh workstation bash /tmp/smoke.sh <url>`.
+- Cloudflare returns 403 to Python's default user agent on the API; set a browser-like User-Agent in scripts.
+- First chat after the Modal brain has idled 300 s is answered by Workers AI (half_awake) in about 26 s and wakes the GPU; the brain is warm about 10 min later.
 - Box (`ssh workstation`): RTX 5060 Ti 16 GB, Unsloth venv at `~/truffle-ft/.venv` (Python 3.12), Android build at `~/truffle-build/feeder-android` with JDK 17 at `/home/tamlik/jdks/jdk-17.0.20.1+1`.
 - GPT plugin reads its model from `~/.codex/config.toml` once per session; fast tier is on. Astra agents need Ahmed's message to mention GPT.

@@ -19,5 +19,6 @@ Cap: $50 total ($20 loaded + Modal $30 free credit). Log every paid run.
 | 2026-10-08 | B11 training image build and two `::estimate` runs (tokenizer only, render 1,800 rows) | Modal | none (4 CPU) | about 6 | est. 0.01 (credit) |
 | 2026-10-08 | B11 smoke fine-tune `truffle-smoke`, 5 steps: 19.1 GB base download 115 s, load 28 s, 8.7 s per step, eval 16 s, save | Modal | L40S | about 5.5 | est. 0.18 GPU, 0.24 with CPU/RAM (credit) |
 | 2026-10-08 | B11 promote test into scratch path `truffle-promotetest` (deleted after), bf16 cast | Modal | none (2 CPU) | about 1 | est. 0.00 (credit) |
+| 2026-10-08 | Brain woken by a Worker chat after idle (cold start plus 300 s idle tail) | Modal | L40S | about 15 | est. 0.50 (credit) |
 
 Running total: $0.00
