@@ -226,6 +226,11 @@ class MainActivity : ComponentActivity() {
         if (current == Tab.WALK) walk.load()
     }
 
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        NativeWalkStore(this).active()
+    }
+
     override fun onPause() {
         world.onPause()
         super.onPause()

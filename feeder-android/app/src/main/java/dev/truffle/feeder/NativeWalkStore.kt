@@ -21,7 +21,11 @@ class NativeWalkStore(context: Context) {
     val status: String get() = prefs.getString("status", null) ?: "Count walks with this phone, even without Samsung Health."
     val lastActive: Instant? get() = prefs.getLong("active_ms", 0).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
     val lastNudge: Instant? get() = prefs.getLong("nudge_ms", 0).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
-    fun active() { prefs.edit().putLong("active_ms", System.currentTimeMillis()).apply() }
+    fun active() {
+        val now = System.currentTimeMillis()
+        val previous = prefs.getLong("active_ms", 0)
+        if (now < previous || now - previous >= 30_000) prefs.edit().putLong("active_ms", now).apply()
+    }
     fun reminders(on: Boolean) { prefs.edit().putBoolean("reminders", on).apply() }
     fun nudged(now: Instant) { prefs.edit().putLong("nudge_ms", now.toEpochMilli()).commit() }
     fun status(text: String) { prefs.edit().putString("status", text).apply() }
