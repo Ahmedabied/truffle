@@ -55,7 +55,7 @@ class CompanionReminderWorker(context: Context, parameters: WorkerParameters) : 
                 .setContentIntent(open).setAutoCancel(true).setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PRIVATE).build()
             // Claim before posting. A crash may skip a note but can never duplicate it.
-            store.nudged(now)
+            if (!store.nudged(now)) return@withLock Result.success()
             manager.notify(32, notification)
             Result.success()
         } catch (cancelled: CancellationException) { throw cancelled }

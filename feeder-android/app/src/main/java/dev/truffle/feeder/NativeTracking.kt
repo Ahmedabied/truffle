@@ -100,7 +100,6 @@ object NativeTracking {
         settings.saveActiveTz(snapshot.zone.id)
         // Never attach an old-zone window to a new-zone total. The caller must reread.
         require(snapshot.zone.id == envelope.dayTz && snapshot.day == envelope.day) { "Truffle's day changed. Tap Feed now again." }
-        store.confirm(snapshot, settings)
-        return snapshot.steps
+        return store.confirm(snapshot, settings).creditedTotal
     }
 }

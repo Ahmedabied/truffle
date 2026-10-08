@@ -27,7 +27,7 @@ class NativeWalkStore(context: Context) {
         if (now < previous || now - previous >= 30_000) prefs.edit().putLong("active_ms", now).apply()
     }
     fun reminders(on: Boolean) { prefs.edit().putBoolean("reminders", on).apply() }
-    fun nudged(now: Instant) { prefs.edit().putLong("nudge_ms", now.toEpochMilli()).commit() }
+    fun nudged(now: Instant): Boolean = prefs.edit().putLong("nudge_ms", now.toEpochMilli()).commit()
     fun status(text: String) { prefs.edit().putString("status", text).apply() }
 
     fun state(): SensorAccumulatorState = synchronized(lock) {
@@ -71,15 +71,23 @@ class NativeWalkStore(context: Context) {
     fun boundTo(settings: FeedSettings): Boolean =
         prefs.getString("owner", null) == "${settings.server}|${settings.phrase.trim().lowercase()}"
 
-    fun confirm(snapshot: OwnerSnapshot, settings: FeedSettings) = synchronized(lock) {
+    fun confirm(snapshot: OwnerSnapshot, settings: FeedSettings): SensorFeedBaseline = synchronized(lock) {
         val old = state()
         // A changed pinned zone cannot reuse counts from a different calendar window.
         val state = if (old.zoneId.isNotEmpty() && old.zoneId != snapshot.zone.id) SensorAccumulatorState() else old
-        val local = state.days[snapshot.day]?.total ?: 0
-        val baseline = JSONObject().put("day", snapshot.day).put("zone", snapshot.zone.id)
-            .put("credited", snapshot.steps).put("native", local)
-        prefs.edit().putString("counter", stateJson(state)).putString("feed_baseline", baseline.toString())
-            .putString("owner", "${settings.server}|${settings.phrase.trim().lowercase()}").apply()
+        val confirmed = confirmedSensorBaseline(state, baseline(), snapshot.day, snapshot.zone.id,
+            snapshot.steps, carryNewDay = enabled && boundTo(settings))
+        val baseline = JSONObject().put("day", confirmed.day).put("zone", confirmed.zoneId)
+            .put("credited", confirmed.creditedTotal).put("native", confirmed.nativeTotalAtBaseline)
+        val committed = prefs.edit().putString("counter", stateJson(state)).putString("feed_baseline", baseline.toString())
+            .putString("owner", "${settings.server}|${settings.phrase.trim().lowercase()}").commit()
+        if (!committed) {
+            // SharedPreferences changes memory before a failed disk write. Invalidate
+            // that in-memory baseline so no later feed can mistake it for durable state.
+            prefs.edit().remove("feed_baseline").apply()
+            throw java.io.IOException("Could not safely save the starting total. Free some phone storage and try again.")
+        }
+        confirmed
     }
 
     fun enable() = synchronized(lock) {
