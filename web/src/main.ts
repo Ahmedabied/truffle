@@ -58,10 +58,17 @@ const store = {
 
 // Credentials from the Truffle app arrive once as #creds=<phrase>.<secret>.
 // Strip immediately; adoption happens only after consent and server validation.
-const importedCreds = takeCredsFromHash(location, history, () => {});
+const receivedImport = /^#?creds=/.test(location.hash);
+let importedCreds = takeCredsFromHash(location, history, () => {});
 const petKey = () => credentialKey(apiBase(), DEFAULT_API, DEMO);
+const importMarkerKey = `${petKey()}.pending-import`;
+// Only a boolean survives reload. The one-time secret stays in memory until
+// verification succeeds; an interrupted import must never create another pet.
+let importPending = !DEMO && (receivedImport || store.get<boolean>(importMarkerKey) === true);
+if (importPending) store.set(importMarkerKey, true);
 const IN_APP = inApp(navigator.userAgent);
 if (IN_APP) document.documentElement.classList.add("in-app");
+if (importPending || (IN_APP && !DEMO)) $("scene").hidden = true;
 
 // ---------- app state ----------
 
@@ -76,6 +83,7 @@ let lang: Lang = savedLang === "ar" || savedLang === "en" ? savedLang : (navigat
 let langChosen = savedLang === "ar" || savedLang === "en";
 let halfAwake = false;
 let lastWhy = "";
+let importRecovery: CopyKey | null = null;
 
 const world = new World($("world"));
 const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -148,6 +156,7 @@ function applyLang(): void {
   if (backend?.mock) $("judgeIntro").textContent = c.offlineIntro;
   $("demoMode").hidden = !DEMO || !!backend?.mock;
   $("tryDemo").hidden = DEMO || IN_APP;
+  if (importRecovery) showImportRecovery(importRecovery);
 }
 
 $("langBtn").addEventListener("click", () => {
@@ -535,6 +544,22 @@ function failed(e: unknown, ctx: ErrorCtx) {
 
 let authLost = false;
 
+class PairingPaused extends Error {
+  constructor(readonly reason: CopyKey) { super(reason); }
+}
+
+function showImportRecovery(reason: CopyKey): void {
+  importRecovery = reason;
+  $("scene").hidden = true;
+  $("offline").hidden = true;
+  $("hudText").textContent = t("importPaused");
+  $("syncNote").textContent = t(reason);
+  $("recovery").hidden = false;
+  $("status").textContent = "";
+  explain(t(reason));
+  chat.refresh();
+}
+
 async function poll(): Promise<void> {
   if (!creds || document.hidden || authLost || actionBusy || sliderPending || chatBusy) return;
   const epoch = stateEpoch;
@@ -567,28 +592,35 @@ async function poll(): Promise<void> {
 }
 
 async function ensurePaired(): Promise<void> {
+  const key = petKey();
+  const saved = store.get<Creds & { expires_ms?: number }>(key);
+  if (importPending) {
+    if (!importedCreds) throw new PairingPaused("importReopen");
+    if (backend.mock) throw new PairingPaused("importFailed");
+    const alreadySaved = importedCreds.phrase === saved?.phrase && importedCreds.secret === saved?.secret;
+    if (!alreadySaved && !confirm(`${t("importPet")}\n${importedCreds.phrase}`)) throw new PairingPaused("importDeclined");
+    let s: StateSummary;
+    try {
+      s = await verifyImportedPet(importedCreds, c => backend.state(c));
+    } catch {
+      throw new PairingPaused("importFailed");
+    }
+    creds = importedCreds;
+    store.set(key, creds);
+    store.del(importMarkerKey);
+    importPending = false;
+    importedCreds = null;
+    document.documentElement.classList.add("returning");
+    if (!langChosen) lang = s.lang;
+    render(s);
+    return;
+  }
   if (backend.mock) {
+    if (IN_APP && !DEMO) throw new PairingPaused(saved?.phrase && saved.secret ? "importFailed" : "appPetRequired");
     const r = DEMO ? await backend.spawn(lang) : await backend.pair(lang);
     creds = { phrase: r.phrase, secret: r.secret };
     if (!langChosen) lang = r.lang;
     return;
-  }
-  const key = petKey();
-  const saved = store.get<Creds & { expires_ms?: number }>(key);
-  if (importedCreds && !DEMO && (importedCreds.phrase !== saved?.phrase || importedCreds.secret !== saved?.secret)) {
-    if (confirm(`${t("importPet")}\n${importedCreds.phrase}`)) {
-      try {
-        const s = await verifyImportedPet(importedCreds, c => backend.state(c));
-        creds = importedCreds;
-        store.set(key, creds);
-        document.documentElement.classList.add("returning");
-        if (!langChosen) lang = s.lang;
-        render(s);
-        return;
-      } catch {
-        explain(t("importFailed"));
-      }
-    }
   }
   if (saved?.phrase && saved.secret && !(saved.expires_ms && saved.expires_ms < Date.now())) {
     try {
@@ -609,6 +641,7 @@ async function ensurePaired(): Promise<void> {
       store.del(key);
     }
   }
+  if (IN_APP && !DEMO) throw new PairingPaused("appPetRequired");
   $("status").textContent = t("pairing");
   const r = DEMO ? await backend.spawn(lang) : await backend.pair(langChosen ? lang : undefined);
   creds = { phrase: r.phrase, secret: r.secret };
@@ -772,6 +805,7 @@ $("forgetBtn").addEventListener("click", () => {
   if (!confirm(t("forgetConfirm"))) return;
   const key = collectionKey();
   if (key) { store.del(key); store.del(`${key}/read`); store.del(`${key}/outing`); }
+  store.del(importMarkerKey);
   store.del(petKey());
   location.reload();
 });
@@ -844,7 +878,8 @@ function setupJudge(): void {
 // ---------- boot ----------
 
 $("retryBtn").addEventListener("click", () => {
-  if (!summary || authLost) location.reload();
+  if (importPending || (IN_APP && !DEMO && !summary)) void startSession();
+  else if (!summary || authLost) location.reload();
   else void poll();
 });
 
@@ -870,42 +905,68 @@ async function boot(): Promise<void> {
   $("hudText").textContent = t("loading");
   if (DEMO) setupJudge();
 
-  backend = await connect(params, DEMO);
-  $("offline").hidden = !backend.mock;
-  if (backend.mock) $("judgeIntro").textContent = t("offlineIntro");
-  try {
-    await ensurePaired();
-    if (backend.mock && creds) render(await backend.state(creds));
-  } catch (e) {
-    // A busy public judge pool should still let visitors explore a clearly
-    // labelled sample. Never substitute a simulated pet for a real owner.
-    if (DEMO && e instanceof ApiError && e.status === 429) {
-      backend = new MockBackend(new URLSearchParams(), true);
-      $("offline").hidden = false;
-      await ensurePaired();
-      render(await backend.state(creds!));
-      $("status").textContent = "";
-      explain(t("demoBusy"));
-    } else {
-    const v = failed(e, "pair");
-    $("status").textContent = "";
-    $("hudText").textContent = v.kind === "network" ? t("networkError") : v.text;
-    $("syncNote").textContent = "";
-    $("recovery").hidden = false;
-    return;
-    }
-  }
-  $("phrase").textContent = creds?.phrase ?? "";
-  setupHandoff();
-  applyLang();
-  if (!lastWhy && summary) explain(t("energyNote"));
-  $("half").hidden = !halfAwake;
+  await startSession();
+}
 
-  setInterval(() => void poll(), POLL_MS);
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) { awaitingFreshReturn = true; void poll(); }
-    else markVisit();
-  });
+let sessionBusy = false;
+let pollingStarted = false;
+async function startSession(): Promise<void> {
+  if (sessionBusy) return;
+  sessionBusy = true;
+  $<HTMLButtonElement>("retryBtn").disabled = true;
+  try {
+    backend = await connect(params, DEMO);
+    $("offline").hidden = !backend.mock;
+    if (backend.mock) $("judgeIntro").textContent = t("offlineIntro");
+    try {
+      await ensurePaired();
+      if (backend.mock && creds) render(await backend.state(creds));
+    } catch (e) {
+      if (e instanceof PairingPaused) {
+        showImportRecovery(e.reason);
+        return;
+      }
+      // A busy public judge pool should still let visitors explore a clearly
+      // labelled sample. Never substitute a simulated pet for a real owner.
+      if (DEMO && e instanceof ApiError && e.status === 429) {
+        backend = new MockBackend(new URLSearchParams(), true);
+        $("offline").hidden = false;
+        await ensurePaired();
+        render(await backend.state(creds!));
+        $("status").textContent = "";
+        explain(t("demoBusy"));
+      } else {
+        const v = failed(e, "pair");
+        $("status").textContent = "";
+        $("hudText").textContent = v.kind === "network" ? t("networkError") : v.text;
+        $("syncNote").textContent = "";
+        $("recovery").hidden = false;
+        return;
+      }
+    }
+    if (importRecovery) lastWhy = "";
+    importRecovery = null;
+    authLost = false;
+    $("scene").hidden = false;
+    $("recovery").hidden = true;
+    $("phrase").textContent = creds?.phrase ?? "";
+    setupHandoff();
+    applyLang();
+    if (!lastWhy && summary) explain(t("energyNote"));
+    $("half").hidden = !halfAwake;
+
+    if (!pollingStarted) {
+      pollingStarted = true;
+      setInterval(() => void poll(), POLL_MS);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) { awaitingFreshReturn = true; void poll(); }
+        else markVisit();
+      });
+    }
+  } finally {
+    sessionBusy = false;
+    $<HTMLButtonElement>("retryBtn").disabled = false;
+  }
 }
 
 void boot();

@@ -301,6 +301,152 @@ try {
     assert.equal(await real.evaluate(() => !!JSON.parse(localStorage.getItem("truffle.creds") || "null")?.secret), true);
     assert.equal(await real.locator("#chatForm button").isDisabled(), true);
   });
+  const importHarness = async ({ saved = false, native = true } = {}) => {
+    const ic = await context({ ...(native ? { userAgent: "Android TruffleApp/0.3" } : {}) });
+    const oldPet = { phrase: "synthetic-retained-pet", secret: "fake-retained-secret" };
+    const nextPet = { phrase: "synthetic-import-pet", secret: "fake-import-secret" };
+    if (saved) await ic.addInitScript(old => {
+      if (!sessionStorage.getItem("test-seeded")) {
+        localStorage.setItem("truffle.creds", JSON.stringify(old));
+        sessionStorage.setItem("test-seeded", "1");
+      }
+    }, oldPet);
+    const transport = { status: 200, health: true, paired: 0, oldReads: 0, importedReads: 0 };
+    await ic.route("http://localhost:8787/**", route => {
+      const req = route.request(), url = new URL(req.url());
+      if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+      if (url.pathname === "/health") return route.fulfill({ json: { ok: transport.health }, headers });
+      if (url.pathname === "/pair") {
+        transport.paired++;
+        return route.fulfill({ json: { ...fixture, demo: false, ...oldPet }, headers });
+      }
+      if (url.pathname === "/state") {
+        const importing = url.searchParams.get("phrase") === nextPet.phrase;
+        if (importing) transport.importedReads++; else transport.oldReads++;
+        return route.fulfill({ status: importing ? transport.status : 200, json: importing && transport.status !== 200 ? { error: "synthetic import failure" } : { ...fixture, demo: false, state: { ...fixture.state, steps_today: importing ? 81 : 0 } }, headers });
+      }
+      return route.fulfill({ status: 404, headers });
+    });
+    const page = await ic.newPage();
+    const target = `${base}/#creds=${nextPet.phrase}.${nextPet.secret}`;
+    const settled = () => page.waitForFunction(() => !!window.truffle?.summary() || !document.querySelector("#recovery").hidden);
+    const savedIs = expected => page.evaluate(value => localStorage.getItem("truffle.creds") === JSON.stringify(value), expected);
+    return { page, target, settled, savedIs, oldPet, nextPet, transport };
+  };
+  await check("declined fresh import stays unpaired through reload", async () => {
+    const h = await importHarness({ native: false });
+    h.page.on("dialog", dialog => dialog.dismiss());
+    await h.page.goto(h.target); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+    assert.equal(new URL(h.page.url()).hash, "");
+    await h.page.reload(); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+    assert.equal(await h.page.locator("#chatForm button").isDisabled(), true);
+    assert.match(await h.page.locator("#syncNote").textContent(), /reopen|open.*again/i);
+  });
+  await check("native declined import never displays the other saved pet", async () => {
+    const h = await importHarness({ saved: true });
+    h.page.on("dialog", dialog => dialog.dismiss());
+    await h.page.goto(h.target); await h.settled();
+    assert.equal(await h.savedIs(h.oldPet), true);
+    assert.equal(h.transport.oldReads, 0);
+    assert.equal(await summary(h.page), null);
+    await h.page.reload(); await h.settled();
+    assert.equal(h.transport.oldReads, 0);
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+  });
+  await check("failed import preserves saved identity and Retry retains the stripped candidate", async () => {
+    const h = await importHarness({ saved: true });
+    h.transport.status = 503;
+    h.page.on("dialog", dialog => dialog.accept());
+    await h.page.goto(h.target); await h.settled();
+    assert.equal(await h.savedIs(h.oldPet), true);
+    assert.equal(h.transport.oldReads, 0);
+    assert.equal(await summary(h.page), null);
+    h.transport.status = 200;
+    await homeAction(h.page, "#retryBtn");
+    await h.page.waitForFunction(() => !!window.truffle?.summary());
+    assert.equal((await summary(h.page)).state.steps_today, 81);
+    assert.equal(await h.savedIs(h.nextPet), true);
+    assert.equal(h.transport.paired, 0);
+    assert.equal(h.transport.importedReads, 2);
+    assert.equal(new URL(h.page.url()).hash, "");
+  });
+  await check("accepted verified import survives reload without another pairing", async () => {
+    const h = await importHarness();
+    h.page.on("dialog", dialog => dialog.accept());
+    await h.page.goto(h.target); await h.settled();
+    assert.equal((await summary(h.page)).state.steps_today, 81);
+    assert.equal(await h.savedIs(h.nextPet), true);
+    await h.page.reload(); await h.settled();
+    assert.equal((await summary(h.page)).state.steps_today, 81);
+    assert.equal(h.transport.paired, 0);
+    assert.equal(h.transport.oldReads, 0);
+  });
+  await check("malformed import cannot create a replacement pet", async () => {
+    const h = await importHarness();
+    await h.page.goto(base + "/#creds=invalid"); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+    assert.equal(new URL(h.page.url()).hash, "");
+    await h.page.reload(); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+  });
+  await check("offline import cannot substitute a sample and Retry reconnects", async () => {
+    const h = await importHarness({ saved: true });
+    h.transport.health = false;
+    h.page.on("dialog", dialog => dialog.accept());
+    await h.page.goto(h.target); await h.settled();
+    assert.equal(await summary(h.page), null);
+    assert.equal(await h.savedIs(h.oldPet), true);
+    h.transport.health = true;
+    await homeAction(h.page, "#retryBtn");
+    await h.page.waitForFunction(() => !!window.truffle?.summary());
+    assert.equal((await summary(h.page)).state.steps_today, 81);
+    assert.equal(h.transport.paired, 0);
+  });
+  await check("native World without an owner directs setup to Feed without pairing", async () => {
+    const h = await importHarness();
+    await h.page.goto(base + "/"); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+    assert.match(await h.page.locator("#syncNote").textContent(), /Feed/);
+    await h.page.reload(); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await summary(h.page), null);
+  });
+  await check("native Retry after a later outage keeps the real backend", async () => {
+    const h = await importHarness();
+    h.page.on("dialog", dialog => dialog.accept());
+    await h.page.goto(h.target); await h.settled();
+    h.transport.status = 503; h.transport.health = false;
+    await h.page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await h.page.locator("#recovery").waitFor({ state: "visible" });
+    await homeAction(h.page, "#retryBtn");
+    await h.page.waitForTimeout(150);
+    assert.equal(await h.page.evaluate(() => window.truffle.mock()), false);
+    assert.equal((await summary(h.page)).state.steps_today, 81);
+    h.transport.status = 200;
+    await homeAction(h.page, "#retryBtn");
+    await h.page.locator("#recovery").waitFor({ state: "hidden" });
+    assert.equal(h.transport.paired, 0);
+  });
+  await check("explicit Forget clears an unfinished browser import", async () => {
+    const h = await importHarness({ native: false });
+    let accept = false;
+    h.page.on("dialog", dialog => accept ? dialog.accept() : dialog.dismiss());
+    await h.page.goto(h.target); await h.settled();
+    assert.equal(h.transport.paired, 0);
+    accept = true;
+    await pocketAction(h.page, "#forgetBtn");
+    await h.page.waitForFunction(() => !!window.truffle?.summary());
+    assert.equal(h.transport.paired, 1);
+    assert.equal(await h.page.evaluate(() => Object.keys(localStorage).some(key => key.endsWith(".pending-import"))), false);
+  });
   await check("Arabic world description follows the UI language", async () => {
     await pocketAction(p, "#langBtn", "click");
     assert.equal(await p.locator("html").getAttribute("lang"), "ar");
