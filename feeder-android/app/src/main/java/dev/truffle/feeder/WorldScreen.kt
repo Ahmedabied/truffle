@@ -154,7 +154,9 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     }
 
     fun refresh() {
-        if (!loaded) ensureLoaded() else web.reload()
+        // A cancelled import has already stripped the hash. An explicit native
+        // reload must offer the authoritative app-owned credentials again.
+        reloadFresh()
     }
 
     /** Back stays inside the page while it has history. */
