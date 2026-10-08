@@ -38,6 +38,7 @@ Updated: 2026-10-08, 18:30 Oman. Session 03 (hardening and fleet prep while wait
 - 0011 serving plan A or B (after S01 runs).
 - Missing forecast on a caught-up midnight: spec says burrowed=false, docs/02 says keep yesterday, S10-06 and S11-03 propose a protected day. Code does burrowed=false. Recommendation: protected day.
 - Honest long days (S11-10): the 50,000 feed cap rejects a real long hike. Recommendation: keep the cap, show "capped" honestly.
+- Low tier cap (C02): the hard rule is 120 output tokens, the 60 word budget is a training target only. The un-tuned fallback writes up to about 100 words at low tier with list and repeat tricks. Option: lower low tier to 90 tokens (spec change, decision record). Voice findings from C02 (forged status changes mood, refusals echo "calories") are for the fine-tune, not the engine.
 - Day envelope required (S11-04): the feeder now sends `day` and `day_tz`; the Worker still accepts feeds without `day`. Make it required once Ahmed's phone runs the new APK. The Worker ignores `day_tz` today.
 - Timezone migration after pairing (tz is pinned now; moving needs an owner action and a rule).
 - Web: HUD line inside the grid stays English (Arabic cannot sit in the monospace grid); Arabic HUD is a line under the world. Arabic stage names chosen by B03: بذرة، برعم، فقعة، معمّرة. Ahmed to confirm.
