@@ -27,6 +27,8 @@ export interface BrainRequest {
   thinking: boolean;
   maxTokens: number;
   lang: Lang;
+  /** Aborts the whole reply: the provider call and the stream (S11-01). */
+  signal?: AbortSignal;
 }
 
 export type BrainName = "modal" | "workers-ai";
@@ -42,6 +44,15 @@ export interface BrainResult {
 }
 
 // ---------- stream parsing ----------
+
+/**
+ * The one test for "the reply has visible text" (S11-06). Used by the empty
+ * retry here and by the DO's success and error paths. Whitespace and
+ * invisible format characters (zero-width space, word joiner, BOM) do not count.
+ */
+export function hasVisibleText(text: string): boolean {
+  return /[^\s\p{Cf}]/u.test(text);
+}
 
 /** Split an SSE byte stream into `data:` payloads. */
 export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
@@ -194,6 +205,10 @@ async function askModal(env: Env, req: BrainRequest, fetchFn: typeof fetch): Pro
   const url = env.MODAL_URL!.replace(/\/+$/, "") + "/v1/chat/completions";
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(new Error("modal first-token timeout")), timeoutMs(env));
+  // The caller's deadline aborts the whole stream, not just the first token.
+  const stop = () => ctrl.abort(req.signal?.reason);
+  if (req.signal?.aborted) stop();
+  req.signal?.addEventListener("abort", stop, { once: true });
   try {
     const res = await fetchFn(url, {
       method: "POST",
@@ -222,13 +237,15 @@ async function askModal(env: Env, req: BrainRequest, fetchFn: typeof fetch): Pro
     return { stream: textStream(payloads, first.value), brain: "modal", half_awake: false, retry: { retried: false } };
   } catch (e) {
     clearTimeout(timer);
+    req.signal?.removeEventListener("abort", stop);
     ctrl.abort();
     throw e;
   }
 }
 
 async function askWorkersAI(env: Env, req: BrainRequest, maxTokens = tokenLimit(req)): Promise<ReadableStream<string>> {
-  const out = (await env.AI.run(FALLBACK_MODEL as Parameters<Ai["run"]>[0], {
+  req.signal?.throwIfAborted();
+  const input = {
     messages: allMessages(req),
     max_tokens: maxTokens,
     stream: true,
@@ -236,7 +253,11 @@ async function askWorkersAI(env: Env, req: BrainRequest, maxTokens = tokenLimit(
     top_p: 0.95,
     // Thinking is ON by default for this model; low and medium must turn it off.
     chat_template_kwargs: { enable_thinking: req.thinking }
-  } as never)) as unknown;
+  };
+  const model = FALLBACK_MODEL as Parameters<Ai["run"]>[0];
+  const out = (await (req.signal
+    ? env.AI.run(model, input as never, { signal: req.signal })
+    : env.AI.run(model, input as never))) as unknown;
   if (!(out instanceof ReadableStream)) throw new Error("workers-ai did not stream");
   return textStream(sseData(out as ReadableStream<Uint8Array>));
 }
@@ -286,7 +307,7 @@ export function retryIfEmpty(
         for (;;) {
           const { value, done } = await reader.read();
           if (!done) {
-            if (value.trim()) visible = true;
+            if (hasVisibleText(value)) visible = true;
             controller.enqueue(value);
             return;
           }

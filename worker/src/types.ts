@@ -43,8 +43,8 @@ export interface Meta {
   feed_window: RateWindow;
   /** Chats per hour, same limit for real and demo Truffles. */
   chat_window?: RateWindow;
-  /** One chat in flight per Truffle: no new chat before this instant. */
-  chat_lock_until?: number;
+  /** The one admitted chat in flight (S11-01). Only its id may finish, charge or release it. */
+  chat?: ChatTicket;
   /** Last device_tz the feeder reported. Display and logs only: the alarm uses tz, pinned at /pair. */
   device_tz?: string;
   /** Last accepted increasing feed: the start of the jump-cap window (S10-07). */
@@ -53,8 +53,22 @@ export interface Meta {
   coords_refresh_ms?: number;
   /** Demo Truffles: model replies in the current 24 h window (S10-05). */
   demo_replies?: RateWindow;
-  /** Bumped at death, new spore and demo reset. Late fact extraction from an older life is dropped. */
+  /** Bumped at death, new spore and demo reset. Late completions and fact extraction from an older life are dropped. */
   generation?: number;
+  /** Bumped whenever the stored point moves. A forecast for an older point is discarded (S11-11). */
+  coords_rev?: number;
+  /** Forecast failure backoff (S11-11). Unset after a good fetch. */
+  weather_fail?: { until_ms: number; backoff_ms: number };
+}
+
+export interface ChatTicket {
+  id: string;
+  /** Pet generation at admission. A completion for another generation is discarded. */
+  generation: number;
+  /** Deadline. After it, the next chat request aborts this one and takes the slot. */
+  until: number;
+  /** Demo Truffles: start of the reply window this chat reserved a slot in. */
+  demo_window?: number;
 }
 
 export interface PairInput {

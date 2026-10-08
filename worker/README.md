@@ -54,7 +54,7 @@ npx wrangler deploy
 
 All bodies are JSON objects of at most 8 KiB. Errors look like `{"error": "...", "hint": "..."}` with a 4xx status. A rejected request changes nothing.
 
-Owner routes give one answer for an unknown phrase, a wrong secret and a missing secret: `401 {"error": "That phrase and secret do not match a Truffle."}`. A guessed phrase stores nothing and fetches no weather.
+Owner routes give one answer for an unknown phrase, a wrong secret and a missing secret: `401 {"error": "That phrase and secret do not match a Truffle."}`. The bodies are byte-identical. The response times are not equal, so failed lookups are rate-limited: 30 a minute per IP, then `429` with `retry_after_s` until the minute is up. The limit is checked before any Truffle is touched. A guessed phrase stores nothing and fetches no weather.
 
 The phrase names a Truffle. The secret proves you own it. `/pair` returns the secret once. Send it as the header `x-truffle-secret` (or a `secret` field in the body). `/feed` needs only the phrase, so a phone automation can call it. The worst a stranger with your phrase can do is feed your Truffle.
 
@@ -148,15 +148,17 @@ Events:
 - `brain` comes once, when a brain starts answering. `brain` is `modal`, `workers-ai` or `none` (asleep: a canned line, no model call). `half_awake` is true for the fallback.
 - `token` carries visible text. Reasoning is never sent.
 - `done` carries the tier used, the energy spent and the new state.
-- `error` means the brain failed. Nothing is charged.
+- `error` means the brain failed, or the reply no longer belongs to this Truffle's life. Nothing is charged.
 
-If the Workers AI fallback spends every token on reasoning and sends no visible text, the Worker retries once with thinking off and the same `max_tokens`. The retry is logged. The user is charged once. If the retry is empty too, the chat ends with `error` and nothing is charged.
+The state block in the prompt shows the tier that is charged, not the highest tier energy allows (decision 0013). The token cap, thinking and memory window follow the same tier.
 
-Memory facts are untrusted data. They sit at the end of the prompt, JSON-encoded, between fixed markers, never as instructions. Each reply stores at most 3 facts of up to 160 characters, and one life stores at most 60. Facts that look like instructions or state blocks are dropped. Death wipes every fact and the conversation. Only the favourite memory stays, on the gravestone.
+If the Workers AI fallback spends every token on reasoning and sends no visible text, the Worker retries once with thinking off and the same `max_tokens`. The retry is logged. The user is charged once. If the retry is empty too, the chat ends with `error` and nothing is charged. Whitespace and invisible characters do not count as text. One check decides this for the retry, the reply and the error path.
 
-A Truffle answers one message at a time. A second `/chat` while one is streaming returns `429`. So does the 61st chat within an hour. The cost is charged once, when the reply is done. If the brain fails before any text, nothing is charged. If it fails mid-reply, the partial reply is charged and `done` says `"partial": true`.
+Memory facts are untrusted data. They sit at the end of the prompt, JSON-encoded, between fixed markers, never as instructions. Each reply stores at most 3 facts of up to 160 characters. A Truffle keeps at most 60. A new fact pushes out the oldest one. A repeated fact is skipped and pushes out nothing. Facts that look like instructions or state blocks are dropped. Death wipes every fact and the conversation. Only the favourite memory stays, on the gravestone.
 
-A dead Truffle returns `409`. Plant a new spore first. A demo Truffle gets at most 30 model replies a day, then `429`.
+A Truffle answers one message at a time. Each admitted chat gets an id and a 60 second deadline. A second `/chat` before the deadline returns `429`. A reply still running at the deadline is cut off. After it, the next `/chat` aborts the old model call first, then takes the slot. Only the chat that owns the slot can charge, save the conversation, learn facts or free the slot. If the Truffle died, was replanted or was reset while a reply was running, that reply is dropped: no charge, no conversation, no facts. The 61st chat within an hour also gets `429`. The cost is charged once, when the reply is done. If the brain fails before any visible text, nothing is charged. If it fails mid-reply, the partial reply is charged and `done` says `"partial": true`.
+
+A dead Truffle returns `409`. Plant a new spore first. A demo Truffle gets at most 30 model replies a day, then `429`. The reply slot is reserved when the chat is admitted, so two pending chats cannot both take the last one. A chat that ends with no visible text gives its slot back.
 
 ### POST /spore
 
@@ -188,8 +190,8 @@ Four midnights at zero energy kill it. `/spore` brings a new one.
 
 Each Truffle has one alarm, set to its next local midnight (`src/time.ts`, DST safe). The alarm runs every midnight it missed, oldest first, at most 14 per run, and comes back a second later if more are owed. Each processed day key is stored, so a double fire never burns twice. The timezone is fixed when the Truffle is paired. The feeder's `device_tz` never moves the alarm, so a clock change cannot skip or double a burn. Moving a Truffle to a new timezone is an open decision. Requests also catch up on missed midnights before they read or write state.
 
-Weather comes from Open-Meteo for the stored coarse point (2 decimals). The daytime (06:00 to 22:00 local) max apparent temperature for each forecast day is cached. A day is burrowed when that max is at least 42C. If the forecast is missing, the day is not burrowed.
+Weather comes from Open-Meteo for the stored coarse point (2 decimals). The daytime (06:00 to 22:00 local) max apparent temperature for each forecast day is cached. A day is burrowed when that max is at least 42C. If the forecast is missing, the day is not burrowed. One forecast fetch runs at a time per Truffle, and concurrent reads share it. After a failed fetch, reads keep the old data and wait 5 minutes before trying again, doubling up to 1 hour. If the point moves while a fetch is running, that forecast is thrown away. `/feed` never fetches weather itself.
 
 ## Data kept per Truffle
 
-Engine state, a phrase-derived object id, a hash of the secret, tz, country, language, one coarse point, city, up to 60 memory facts, the last 20 chat turns, and a 200-row event log. No step records, no location trail, no device ids.
+Engine state, a phrase-derived object id, a hash of the secret, tz, country, language, one coarse point, city, up to 60 memory facts (oldest dropped first), the last 20 chat turns, and a 200-row event log. No step records, no location trail, no device ids.

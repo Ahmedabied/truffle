@@ -45,7 +45,7 @@ export function cleanFacts(raw: unknown): string[] {
     .slice(0, MAX_FACTS_PER_REPLY);
 }
 
-/** How many more facts this life may store. 60 per life; death wipes them. */
+/** Free slots before the store is full. At 0, a new fact evicts the oldest (rolling, S11-08). */
 export function roomForFacts(stored: number): number {
   return Math.max(0, MAX_MEMORY_FACTS - stored);
 }

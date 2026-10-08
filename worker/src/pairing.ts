@@ -86,8 +86,9 @@ const NO_TRUFFLE_HASH = "0".repeat(64);
 
 /**
  * Owner check. Always hashes the secret and does one constant-time compare,
- * whether or not a Truffle exists, so an unknown phrase and a wrong secret
- * take the same time class.
+ * whether or not a Truffle exists. This does not make response times equal:
+ * object placement and loading still differ (S11-05). The 401 bodies are
+ * identical, and the route rate-limits failed lookups per IP.
  */
 export async function ownerMatches(storedHash: string | undefined, secret: string): Promise<boolean> {
   const ok = safeEqual(await hashSecret(secret), storedHash ?? NO_TRUFFLE_HASH);

@@ -1,8 +1,15 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
-// Pure-engine tests run in plain Node. DO/route tests may add
-// @cloudflare/vitest-pool-workers later in a second project entry.
+// Tests run in plain Node. Durable Object tests import src/do.ts with
+// "cloudflare:workers" swapped for a small stand-in and SQLite from node:sqlite
+// (see test/helpers/do-harness.ts).
 export default defineConfig({
+  resolve: {
+    alias: {
+      "cloudflare:workers": resolve(__dirname, "test/helpers/cloudflare-workers.ts")
+    }
+  },
   test: {
     include: ["test/**/*.test.ts"],
     environment: "node"

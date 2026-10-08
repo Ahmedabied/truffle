@@ -5,7 +5,7 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import type { Tier } from "./config";
 import { AUTH_FAILED, generatePhrase, generateSecret, hashPhrase, hashSecret, isPlausibleSecret, parsePhrase } from "./pairing";
-import { DAY_MS, DEMO_SPAWNS_PER_DAY, DEMO_SPAWNS_PER_HOUR, HOUR_MS } from "./ratelimit";
+import { AUTH_FAILS_PER_MINUTE, DAY_MS, DEMO_SPAWNS_PER_DAY, DEMO_SPAWNS_PER_HOUR, HOUR_MS, MINUTE_MS } from "./ratelimit";
 import { isValidTimeZone } from "./time";
 import type { Env, Lang, PairInput, Result } from "./types";
 import { BodyTooLarge, MAX_BODY_BYTES, parseBodyText, parseCoords, parseMessage, readBounded, stepTotalError } from "./validate";
@@ -113,6 +113,23 @@ async function stubFor(env: Env, phrase: string) {
   return env.TRUFFLE.get(env.TRUFFLE.idFromName(await hashPhrase(phrase)));
 }
 
+// S11-05: failed owner lookups (unknown phrase, wrong or missing secret) are
+// limited per client IP, 30 a minute. The check runs before any Truffle object
+// is touched. Every failure has the same 401 body, but the response time is
+// not equal across them, so the limit is what bounds guessing.
+const AUTH_FAIL_RULE = { name: "fail", limit: AUTH_FAILS_PER_MINUTE, windowMs: MINUTE_MS };
+
+function authLimiter(c: C) {
+  const ip = c.req.header("cf-connecting-ip") ?? "local";
+  return c.env.LIMITER.get(c.env.LIMITER.idFromName(`auth:${ip}`));
+}
+
+/** Count one failed lookup, then give the uniform 401. */
+async function authFailed(c: C) {
+  await authLimiter(c).hit([AUTH_FAIL_RULE]);
+  return bad(c, AUTH_FAILED, 401);
+}
+
 /**
  * Phrase + secret for routes that need ownership. A missing secret gets the
  * same 401 as a wrong one or an unknown phrase (S10-01).
@@ -120,9 +137,24 @@ async function stubFor(env: Env, phrase: string) {
 async function owned(c: C, b: Record<string, unknown>) {
   const phrase = parsePhrase(b.phrase ?? c.req.query("phrase"));
   if (!phrase) return { error: bad(c, "phrase must be three words from the list, like sand-moon-fig") };
+  const gate = await authLimiter(c).peek([AUTH_FAIL_RULE]);
+  if (!gate.allowed) {
+    return {
+      error: c.json(
+        { error: `Too many failed tries from here. Try again in ${gate.retry_after_s} s.`, retry_after_s: gate.retry_after_s },
+        429
+      )
+    };
+  }
   const secret = secretOf(c, b);
-  if (!secret) return { error: bad(c, AUTH_FAILED, 401) };
+  if (!secret) return { error: await authFailed(c) };
   return { stub: await stubFor(c.env, phrase), secret };
+}
+
+/** reply() for owner routes: a 401 from the Truffle counts as a failed lookup. */
+async function ownerReply<T>(c: C, r: Result<T>) {
+  if (!r.ok && r.status === 401) return authFailed(c);
+  return reply(c, r);
 }
 
 /** Defaults from request.cf, guarded for `wrangler dev` where it can be missing. */
@@ -197,7 +229,7 @@ app.post("/feed", async (c) => {
 app.get("/state", async (c) => {
   const o = await owned(c, {});
   if ("error" in o) return o.error;
-  return reply(c, await o.stub.getState(o.secret));
+  return ownerReply(c, await o.stub.getState(o.secret));
 });
 
 app.post("/chat", async (c) => {
@@ -214,7 +246,7 @@ app.post("/chat", async (c) => {
   }
   if (b.lang !== undefined && !langOf(b.lang)) return bad(c, "lang must be ar or en");
   const r = await o.stub.chat(o.secret, message, b.requested_tier as Tier | undefined, langOf(b.lang));
-  if (!r.ok) return reply(c, r);
+  if (!r.ok) return ownerReply(c, r);
   return new Response(r.value, {
     headers: {
       "content-type": "text/event-stream; charset=utf-8",
@@ -229,7 +261,7 @@ app.post("/spore", async (c) => {
   const b = p.b;
   const o = await owned(c, b);
   if ("error" in o) return o.error;
-  return reply(c, await o.stub.spore(o.secret));
+  return ownerReply(c, await o.stub.spore(o.secret));
 });
 
 // ---------- judge mode ----------
@@ -265,7 +297,7 @@ app.post("/demo/slider", async (c) => {
   if (stepsError) return bad(c, stepsError);
   const o = await owned(c, b);
   if ("error" in o) return o.error;
-  return reply(c, await o.stub.setSteps(o.secret, b.steps as number));
+  return ownerReply(c, await o.stub.setSteps(o.secret, b.steps as number));
 });
 
 app.post("/demo/midnight", async (c) => {
@@ -274,7 +306,7 @@ app.post("/demo/midnight", async (c) => {
   const b = p.b;
   const o = await owned(c, b);
   if ("error" in o) return o.error;
-  return reply(c, await o.stub.forceMidnight(o.secret));
+  return ownerReply(c, await o.stub.forceMidnight(o.secret));
 });
 
 app.post("/demo/heat", async (c) => {
@@ -284,7 +316,7 @@ app.post("/demo/heat", async (c) => {
   const o = await owned(c, b);
   if ("error" in o) return o.error;
   if (typeof b.on !== "boolean") return bad(c, "on must be true or false");
-  return reply(c, await o.stub.setHeat(o.secret, b.on));
+  return ownerReply(c, await o.stub.setHeat(o.secret, b.on));
 });
 
 app.post("/demo/reset", async (c) => {
@@ -293,7 +325,7 @@ app.post("/demo/reset", async (c) => {
   const b = p.b;
   const o = await owned(c, b);
   if ("error" in o) return o.error;
-  return reply(c, await o.stub.reset(o.secret));
+  return ownerReply(c, await o.stub.reset(o.secret));
 });
 
 app.notFound((c) => c.json({ error: "not found" }, 404));

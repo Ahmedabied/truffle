@@ -82,3 +82,27 @@ export const COORD_REFRESH_MS = HOUR_MS;
 export function coordRefreshAllowed(lastMs: number | undefined, now: number): boolean {
   return lastMs === undefined || now - lastMs >= COORD_REFRESH_MS || now < lastMs;
 }
+
+/**
+ * Give back one quota slot reserved at admission (S11-01), but only in the
+ * window it was taken from. A reply that never showed text is not a reply.
+ */
+export function unreserve(w: RateWindow | undefined, windowStartMs: number): RateWindow | undefined {
+  if (!w || w.start_ms !== windowStartMs || w.count <= 0) return w;
+  return { ...w, count: w.count - 1 };
+}
+
+/**
+ * Failed owner lookups per client IP (S11-05): unknown phrase, wrong or
+ * missing secret. Checked before any Truffle object is touched.
+ */
+export const AUTH_FAILS_PER_MINUTE = 30;
+export const MINUTE_MS = 60_000;
+
+/** Forecast failure backoff (S11-11): 5 minutes, doubling, at most 1 hour. */
+export const WEATHER_BACKOFF_START_MS = 5 * MINUTE_MS;
+export const WEATHER_BACKOFF_MAX_MS = HOUR_MS;
+
+export function nextWeatherBackoff(previousMs: number | undefined): number {
+  return previousMs ? Math.min(previousMs * 2, WEATHER_BACKOFF_MAX_MS) : WEATHER_BACKOFF_START_MS;
+}

@@ -3,10 +3,10 @@
 // fetches weather and calls the brain.
 
 import { DurableObject } from "cloudflare:workers";
-import { TIERS, type Tier } from "./config";
+import { MAX_MEMORY_FACTS, TIERS, type Tier } from "./config";
 import * as engine from "./engine";
 import type { TruffleState } from "./engine";
-import { askBrain, extractFacts, type BrainName, type ChatMessage } from "./brain";
+import { askBrain, extractFacts, hasVisibleText, type BrainName, type ChatMessage } from "./brain";
 import { isInstructionLike, roomForFacts } from "./facts";
 import { buildSystemPrompt, sleepyLine, type Fact } from "./prompt";
 import {
@@ -19,12 +19,13 @@ import {
   feedBaseline,
   jumpCheck,
   MAX_JUMP_STEPS_PER_SECOND,
-  peekRate,
-  plausibleTotal
+  nextWeatherBackoff,
+  plausibleTotal,
+  unreserve
 } from "./ratelimit";
 import { AUTH_FAILED, ownerMatches } from "./pairing";
 import { daysBetween, isValidTimeZone, localDayKey, missedMidnights, nextLocalMidnight } from "./time";
-import type { Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
+import type { ChatTicket, Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
 import { daytimeMax, fetchForecast, forecastDays, parseForecast, stateWeather } from "./weather";
 
 export const DEMO_TTL_MS = 24 * 3_600_000;
@@ -32,6 +33,10 @@ const WEATHER_NOW_TTL_MS = 30 * 60_000;
 const MAX_LOG_ROWS = 200;
 const MAX_TURNS = 20;
 const CONTEXT_TURNS = 6;
+const NOT_CHARGED = "Truffle could not answer right now. Nothing was charged.";
+const FENCED = "Truffle lost the thread of that reply. Nothing was charged.";
+
+type Row = { s: TruffleState; m: Meta };
 
 export interface FeedInput {
   total: number;
@@ -49,6 +54,10 @@ export class TruffleDO extends DurableObject<Env> {
   private sql: SqlStorage;
 
   private hasSchema = false;
+  /** Abort handles for admitted chats, by ticket id (S11-01). In memory only. */
+  private inflight = new Map<string, AbortController>();
+  /** The one forecast fetch in flight, for one coordinate revision (S11-11). */
+  private weatherFlight: { rev: number; p: Promise<Row | null> } | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -95,6 +104,8 @@ export class TruffleDO extends DurableObject<Env> {
   }
 
   private log(kind: string, detail: unknown): void {
+    // A demo can expire while a chat is still running: never recreate storage to log.
+    if (!this.schemaExists()) return;
     this.sql.exec("INSERT INTO log (ts, kind, detail) VALUES (?, ?, ?)", Date.now(), kind, JSON.stringify(detail));
     this.sql.exec(`DELETE FROM log WHERE id NOT IN (SELECT id FROM log ORDER BY id DESC LIMIT ${MAX_LOG_ROWS})`);
   }
@@ -114,19 +125,20 @@ export class TruffleDO extends DurableObject<Env> {
   }
 
   /**
-   * Store new facts, at most 60 per life (S10-10). Once a life has 60, new
-   * ones are dropped. Nothing is evicted: death is what clears memory.
+   * Store new facts. Rolling memory (docs/01, S11-08): at most 60 are kept, and
+   * a new distinct fact pushes out the oldest one. A duplicate is skipped and
+   * evicts nothing. Death still clears everything.
    */
   private addFacts(texts: string[], day: string, affection: number): number {
-    const stored = this.sql.exec<{ n: number }>("SELECT count(*) AS n FROM facts").one().n;
-    let room = roomForFacts(stored);
     let added = 0;
     for (const t of texts) {
-      if (room <= 0) break;
       const dup = this.sql.exec("SELECT 1 FROM facts WHERE lower(text) = lower(?)", t).toArray();
       if (dup.length) continue;
+      const stored = this.sql.exec<{ n: number }>("SELECT count(*) AS n FROM facts").one().n;
+      if (roomForFacts(stored) <= 0) {
+        this.sql.exec("DELETE FROM facts WHERE id IN (SELECT id FROM facts ORDER BY id LIMIT ?)", stored - MAX_MEMORY_FACTS + 1);
+      }
       this.sql.exec("INSERT INTO facts (text, day_written, affection) VALUES (?, ?, ?)", t, day, affection);
-      room--;
       added++;
     }
     return added;
@@ -135,7 +147,7 @@ export class TruffleDO extends DurableObject<Env> {
   /**
    * Death, new spore and demo reset: every fact and the whole conversation go.
    * Only the favourite memory survives, on the gravestone. The generation bump
-   * drops any fact extraction still running for the old life.
+   * fences out any chat or fact extraction still running for the old life.
    */
   private wipeMemory(m: Meta): void {
     this.sql.exec("DELETE FROM facts");
@@ -182,21 +194,45 @@ export class TruffleDO extends DurableObject<Env> {
   }
 
   /**
-   * Fetch Open-Meteo if the stored cache is stale. Works on the STORED row and
-   * re-reads it after the fetch: other requests (a /feed) can run while we
-   * await the network, and their writes must not be lost. Returns the fresh
-   * row, or null if there is no Truffle or the fetch failed.
+   * Fetch Open-Meteo if the stored cache is stale (S11-11):
+   * - one fetch in flight per object: concurrent callers share it;
+   * - after a failure, owner reads wait out a backoff (5 minutes, doubling to
+   *   1 hour) and keep the old data; forced refreshes (pairing, midnight) skip it;
+   * - a forecast for an older point is discarded if the point moved meanwhile.
+   * Works on the STORED row and re-reads it after the fetch: other requests (a
+   * /feed) can run while we await the network, and their writes must not be
+   * lost. Returns the fresh row, the unchanged row when no fetch is due, or
+   * null if there is no Truffle or the fetch failed or was discarded.
    */
-  private async refreshWeather(now: number, force = false): Promise<{ s: TruffleState; m: Meta } | null> {
+  private async refreshWeather(now: number, force = false): Promise<Row | null> {
     const before = this.load();
     if (!before) return null;
     const w = before.m.weather_now;
     if (!force && w && now - w.fetched_ms < WEATHER_NOW_TTL_MS) return before;
-    const json = await fetchForecast(before.m.lat, before.m.lon);
+    if (!force && (before.m.weather_fail?.until_ms ?? 0) > now) return before;
+    const rev = before.m.coords_rev ?? 0;
+    if (this.weatherFlight && this.weatherFlight.rev === rev) return this.weatherFlight.p;
+    const p: Promise<Row | null> = this.fetchWeather(before.m.lat, before.m.lon, rev, now).finally(() => {
+      if (this.weatherFlight?.p === p) this.weatherFlight = null;
+    });
+    this.weatherFlight = { rev, p };
+    return p;
+  }
+
+  private async fetchWeather(lat: number, lon: number, rev: number, now: number): Promise<Row | null> {
+    const json = await fetchForecast(lat, lon);
     const row = this.load();
     if (!row) return null;
+    if ((row.m.coords_rev ?? 0) !== rev) {
+      // The point moved while we waited. This forecast is for the old one.
+      this.log("weather", { ok: false, discarded: "point moved" });
+      return null;
+    }
     if (json === null) {
-      this.log("weather", { ok: false });
+      const backoff_ms = nextWeatherBackoff(row.m.weather_fail?.backoff_ms);
+      row.m.weather_fail = { until_ms: now + backoff_ms, backoff_ms };
+      this.save(row.s, row.m);
+      this.log("weather", { ok: false, backoff_s: backoff_ms / 1000 });
       return null;
     }
     for (const day of forecastDays(json)) {
@@ -204,6 +240,7 @@ export class TruffleDO extends DurableObject<Env> {
       if (max !== null) row.m.weather_days[day] = max;
     }
     row.m.weather_now = { ...parseForecast(json, localDayKey(now, row.m.tz)), fetched_ms: now };
+    delete row.m.weather_fail;
     this.save(row.s, row.m);
     return row;
   }
@@ -258,8 +295,9 @@ export class TruffleDO extends DurableObject<Env> {
   /**
    * Load, check the secret, catch up on missed midnights. With a secret (owner
    * routes), an unknown phrase, an expired demo and a wrong secret all get the
-   * same 401 after the same hash-and-compare work (S10-01). Nothing is written
-   * for an unknown phrase and no weather is fetched.
+   * same 401 body (S10-01). The response time is not equal across these cases
+   * (S11-05), so the route also rate-limits failed lookups per IP. Nothing is
+   * written for an unknown phrase and no weather is fetched.
    */
   private async open(secret: string | null, now: number) {
     let row = this.load();
@@ -410,6 +448,7 @@ export class TruffleDO extends DurableObject<Env> {
     if (lat === m.lat && lon === m.lon) return;
     m.lat = lat;
     m.lon = lon;
+    m.coords_rev = (m.coords_rev ?? 0) + 1; // a forecast already in flight is for the old point
     m.city = ""; // request.cf city no longer matches the point
     const refresh = coordRefreshAllowed(m.coords_refresh_ms, now);
     if (refresh) {
@@ -441,6 +480,13 @@ export class TruffleDO extends DurableObject<Env> {
    *   event: token  {t}                        visible text deltas
    *   event: done   {tier, brain, half_awake, spent, summary}
    *   event: error  {error}                    nothing is charged
+   *
+   * S11-01, S11-02: every admitted chat gets a ticket (an id and the pet
+   * generation) and reserves its quota at admission. Only the ticket holder
+   * may charge, write the transcript, start fact extraction or release the
+   * slot. After the deadline the next request aborts the old inference and
+   * takes the slot. A completion for an older generation (death, new spore,
+   * demo reset) is discarded: no charge, no transcript, no facts.
    */
   async chat(
     secret: string,
@@ -455,21 +501,35 @@ export class TruffleDO extends DurableObject<Env> {
     if (s.dead) return err(409, "truffle is dead; POST /spore to plant a new one");
     // S10-04: one chat in flight per Truffle, and a per-Truffle hourly cap
     // (real and demo alike). Both are checked before any model call.
-    if ((m.chat_lock_until ?? 0) > now) {
+    const held = m.chat;
+    if (held && held.until > now) {
       return err(429, "Truffle is still answering your last message. One at a time, please.");
     }
-    const decision = engine.decideTier(s, requested);
-    // S10-05: a demo Truffle gets at most 30 model replies a day. Checked
-    // here, counted only when a reply is charged.
-    if (m.demo && decision.model_call) {
-      const quota = peekRate(m.demo_replies, now, DEMO_REPLIES_PER_DAY, DAY_MS);
-      if (!quota.allowed) {
-        return err(
-          429,
-          `This demo Truffle has used its ${DEMO_REPLIES_PER_DAY} replies for today. Try again in ${Math.ceil(quota.retry_after_s / 3600)} h.`,
-          quota.retry_after_s
-        );
+    if (held) {
+      // Past its deadline. Cancel the old inference before a new slot opens.
+      // Clearing its ticket fences it: it can no longer charge or release.
+      const running = this.inflight.get(held.id);
+      if (running) {
+        running.abort(new Error("chat deadline"));
+      } else if (held.demo_window !== undefined) {
+        // Its run died with an earlier instance of this object: no reply came.
+        m.demo_replies = unreserve(m.demo_replies, held.demo_window);
       }
+      delete m.chat;
+      this.log("chat_deadline", {});
+    }
+    const decision = engine.decideTier(s, requested);
+    // S10-05: a demo Truffle gets at most 30 model replies a day. The slot is
+    // reserved here, before the model call, and given back only if no visible
+    // text comes out (S11-01, S11-06).
+    const quota = m.demo && decision.model_call ? checkRate(m.demo_replies, now, DEMO_REPLIES_PER_DAY, DAY_MS) : null;
+    if (quota && !quota.allowed) {
+      this.save(s, m);
+      return err(
+        429,
+        `This demo Truffle has used its ${DEMO_REPLIES_PER_DAY} replies for today. Try again in ${Math.ceil(quota.retry_after_s / 3600)} h.`,
+        quota.retry_after_s
+      );
     }
     const rate = checkRate(m.chat_window, now, CHAT_LIMIT_PER_HOUR);
     m.chat_window = rate.window;
@@ -481,12 +541,23 @@ export class TruffleDO extends DurableObject<Env> {
         rate.retry_after_s
       );
     }
-    m.chat_lock_until = now + CHAT_LOCK_MS;
+    if (quota) m.demo_replies = quota.window;
+    const ticket: ChatTicket = {
+      id: crypto.randomUUID(),
+      generation: m.generation ?? 0,
+      until: now + CHAT_LOCK_MS,
+      ...(quota ? { demo_window: quota.window.start_ms } : {})
+    };
+    m.chat = ticket;
     if (langIn && langIn !== m.lang) m.lang = langIn;
     this.save(s, m);
 
+    const ctrl = new AbortController();
+    this.inflight.set(ticket.id, ctrl);
+    // The whole reply, not just the first token, must end by the deadline.
+    const deadline = setTimeout(() => ctrl.abort(new Error("chat deadline")), CHAT_LOCK_MS);
+
     const lang = m.lang;
-    const generation = m.generation ?? 0;
     const today = localDayKey(now, m.tz);
     const enc = new TextEncoder();
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -496,24 +567,48 @@ export class TruffleDO extends DurableObject<Env> {
     const send = (event: string, data: unknown) =>
       writer.write(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)).catch(() => {});
 
-    // The only place a chat is charged. Runs at most once per chat.
-    let charged = false;
+    /** Why this chat no longer owns its slot or its life, or null if it still does. */
+    const fenced = (row: Row | null): string | null => {
+      if (!row) return "gone";
+      if (row.m.chat?.id !== ticket.id) return "deadline";
+      if ((row.m.generation ?? 0) !== ticket.generation || row.s.dead) return "new life";
+      return null;
+    };
+
+    /** Give back the demo reply slot. Only for a chat that showed no visible text. */
+    let unreserved = false;
+    const giveBackSlot = () => {
+      if (unreserved || ticket.demo_window === undefined) return;
+      unreserved = true;
+      const cur = this.load();
+      if (cur) this.save(cur.s, { ...cur.m, demo_replies: unreserve(cur.m.demo_replies, ticket.demo_window) });
+    };
+
+    // The only place a chat is charged. Runs at most once per chat. True if charged.
+    let settled = false;
     const finish = async (
       reply: string,
       brain: BrainName | "none",
       half_awake: boolean,
       partial = false,
       retried = false
-    ) => {
-      if (charged) return;
-      charged = true;
+    ): Promise<boolean> => {
+      if (settled) return false;
+      settled = true;
       // Re-read: a /feed may have landed while the brain was talking.
-      const cur = this.load()!;
-      const after = engine.chargeChat(cur.s, decision);
-      if (cur.m.demo && brain !== "none") {
-        cur.m.demo_replies = checkRate(cur.m.demo_replies, Date.now(), DEMO_REPLIES_PER_DAY, DAY_MS).window;
+      const cur = this.load();
+      const why = fenced(cur);
+      if (why !== null || !cur) {
+        // S11-02: not this chat's slot or not this life any more. Nothing is
+        // charged and nothing is written. A reply that showed text keeps its
+        // demo slot: the words did reach the client.
+        if (!hasVisibleText(reply)) giveBackSlot();
+        this.log("chat_stale", { tier: decision.tier, why, chars: reply.length });
+        await send("error", { error: FENCED });
+        return false;
       }
-      this.save(after, cur.m);
+      const after = engine.chargeChat(cur.s, decision);
+      this.save(after, cur.m); // the demo reply was counted at admission
       this.sql.exec("INSERT INTO turns (ts, day, role, content) VALUES (?, ?, 'user', ?)", now, today, message);
       this.sql.exec("INSERT INTO turns (ts, day, role, content) VALUES (?, ?, 'assistant', ?)", Date.now(), today, reply);
       this.sql.exec(`DELETE FROM turns WHERE id NOT IN (SELECT id FROM turns ORDER BY id DESC LIMIT ${MAX_TURNS})`);
@@ -527,6 +622,7 @@ export class TruffleDO extends DurableObject<Env> {
         spent: decision.cost,
         summary: this.summary(after, cur.m, Date.now())
       });
+      return true;
     };
 
     let reply = "";
@@ -546,7 +642,8 @@ export class TruffleDO extends DurableObject<Env> {
         // and fixed words. Anything else is "unavailable".
         const weather = stateWeather(m.weather_now, m.city, "en"); // decision 0012: English for every lang
         const system = buildSystemPrompt({
-          stateBlock: engine.stateBlock(s, { lang, weather_text: weather }),
+          // Decision 0013: the block shows the tier that is charged and capped.
+          stateBlock: engine.stateBlock(s, { lang, weather_text: weather, tier: decision.tier }),
           facts: this.facts(),
           lang,
           tier: decision.tier,
@@ -558,7 +655,8 @@ export class TruffleDO extends DurableObject<Env> {
           tier: decision.tier,
           thinking: decision.thinking,
           maxTokens: decision.max_tokens,
-          lang
+          lang,
+          signal: ctrl.signal
         });
         if (res.fallback_reason) this.log("brain_fallback", { reason: res.fallback_reason });
         brainUsed = res.brain;
@@ -566,33 +664,49 @@ export class TruffleDO extends DurableObject<Env> {
         retry = res.retry;
         await send("brain", { brain: res.brain, half_awake: res.half_awake });
         const reader = res.stream.getReader();
-        for (;;) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          reply += value;
-          await send("token", { t: value });
+        // A provider may ignore the signal once it streams: cancel our side too.
+        const stop = () => void reader.cancel(ctrl.signal.reason).catch(() => {});
+        ctrl.signal.addEventListener("abort", stop, { once: true });
+        try {
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            reply += value;
+            await send("token", { t: value });
+          }
+        } finally {
+          ctrl.signal.removeEventListener("abort", stop);
         }
-        if (!reply.trim()) {
-          // Empty even after the one retry: nothing to charge for.
+        ctrl.signal.throwIfAborted();
+        if (!hasVisibleText(reply)) {
+          // Empty even after the one retry: nothing to charge for (S11-06).
+          giveBackSlot();
           this.log("chat_empty", { tier: decision.tier, brain: res.brain, retried: retry.retried });
-          await send("error", { error: "Truffle could not answer right now. Nothing was charged." });
+          await send("error", { error: NOT_CHARGED });
           return;
         }
-        await finish(reply, res.brain, res.half_awake, false, retry.retried);
-        if (decision.tier === "medium" || decision.tier === "high") {
-          this.ctx.waitUntil(this.rememberFrom(message, reply, today, generation));
+        const charged = await finish(reply, res.brain, res.half_awake, false, retry.retried);
+        if (charged && (decision.tier === "medium" || decision.tier === "high")) {
+          this.ctx.waitUntil(this.rememberFrom(message, reply, today, ticket.generation));
         }
       } catch (e) {
         this.log("chat_error", { error: e instanceof Error ? e.message : String(e), chars: reply.length });
-        if (reply.length > 0) {
+        if (hasVisibleText(reply)) {
           // Failed mid-reply: the words were produced, so charge once and say it was cut short.
           await finish(reply, brainUsed, halfAwake, true, retry.retried).catch(() => {});
         } else {
-          await send("error", { error: "Truffle could not answer right now. Nothing was charged." });
+          giveBackSlot();
+          await send("error", { error: NOT_CHARGED });
         }
       } finally {
+        clearTimeout(deadline);
+        this.inflight.delete(ticket.id);
+        // Release only our own slot. A newer chat's ticket is left alone.
         const cur = this.load();
-        if (cur) this.save(cur.s, { ...cur.m, chat_lock_until: 0 });
+        if (cur && cur.m.chat?.id === ticket.id) {
+          delete cur.m.chat;
+          this.save(cur.s, cur.m);
+        }
         await writer.close().catch(() => {});
       }
     };
@@ -618,8 +732,8 @@ export class TruffleDO extends DurableObject<Env> {
     const facts = await extractFacts(this.env, `human: ${message}\ntruffle: ${reply}`);
     if (!facts.length) return;
     const row = this.load();
-    // Generation fence (S10-11): a Truffle that died, was replanted or reset
-    // while this ran must not get the old life's facts back.
+    // Generation fence (S10-11, S11-02): a Truffle that died, was replanted or
+    // reset while this ran must not get the old life's facts back.
     if (!row || row.s.dead || (row.m.generation ?? 0) !== generation) {
       this.log("facts_dropped", { reason: "new life" });
       return;
@@ -698,6 +812,7 @@ export class TruffleDO extends DurableObject<Env> {
       if (now >= m.created_ms + DEMO_TTL_MS) {
         await this.ctx.storage.deleteAlarm();
         await this.ctx.storage.deleteAll();
+        this.hasSchema = false; // a chat still running must not write to the deleted Truffle
       } else {
         await this.schedule(m, now);
       }

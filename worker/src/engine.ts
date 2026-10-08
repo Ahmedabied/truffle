@@ -262,13 +262,18 @@ export function newSpore(state: TruffleState): TruffleState {
   return { ...cloneState(DEFAULT_STATE), gravestones };
 }
 
-/** The exact one-line block the model sees. String-for-string per golden case 30. */
+/**
+ * The exact one-line block the model sees. String-for-string per golden case 30.
+ * `tier` is the admitted tier the Worker charges and caps (decision 0013). It
+ * goes through decideTier, so it can only lower the tier energy allows. Without
+ * it the block shows the tier energy allows, as the original goldens expect.
+ */
 export function stateBlock(
   state: TruffleState,
-  opts: { lang: "ar" | "en"; weather_text: string }
+  opts: { lang: "ar" | "en"; weather_text: string; tier?: Tier }
 ): string {
   const pct = Math.round((100 * state.energy) / stageConfig(state.stage).energy_max);
-  const tier = decideTier(state).tier;
+  const tier = decideTier(state, opts.tier).tier;
   const weather = opts.weather_text.replace(/[\]\r\n]/g, " ").replace(/"/g, "'").trim();
   return (
     `[truffle stage=${state.stage} energy=${pct}% tier=${tier} mood=${moodOf(state)}` +
