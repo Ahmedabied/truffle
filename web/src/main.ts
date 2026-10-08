@@ -66,6 +66,8 @@ const reduced = () => media.matches || motionBox.checked;
 
 const hourParam = params.get("hour");
 world.set({ hourOverride: hourParam !== null && Number.isFinite(Number(hourParam)) ? Number(hourParam) % 24 : null });
+const moonParam = new URLSearchParams(location.search).get("moon");
+world.set({ moonOverride: moonParam !== null && Number.isFinite(Number(moonParam)) ? Number(moonParam) % 1 : null });
 
 makeFitter($("scene"), $("world"), $("probe"), () => world.draw());
 
@@ -146,8 +148,10 @@ function render(s: StateSummary): void {
     country: s.country,
     tz: s.tz,
     rain: (s.weather?.precipitation_mm ?? 0) > 0,
+    precipMm: s.weather?.precipitation_mm ?? 0,
     windKmh: s.weather?.wind_kmh ?? 8,
-    weatherCode: s.weather?.weather_code ?? 1
+    weatherCode: s.weather?.weather_code ?? 1,
+    apparentC: s.weather?.apparent_c ?? 30
   });
   world.draw(); // show a state change at once, not on the next tick
 

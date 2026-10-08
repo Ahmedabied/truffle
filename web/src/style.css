@@ -49,15 +49,22 @@ body {
   letter-spacing: 0; white-space: pre; direction: ltr; unicode-bidi: isolate;
 }
 #world {
-  margin: 0; padding: 0; border: 0; width: 100%; font-size: 16px; line-height: 1.12;
-  color: var(--ink, #243f37);
-  background: linear-gradient(to bottom,
-    var(--sky, #dceddf) 0%, var(--sky, #dceddf) 60.714286%,
-    var(--soil, #dcd3a7) 60.714286%, var(--soil, #dcd3a7) 100%);
-  border-radius: 6px;
-  overflow: hidden;
-  transition: filter 0.6s;
+  position: relative; width: 100%; font-size: 16px; line-height: 1.12;
+  background: linear-gradient(to bottom, #86bce6 0%, #d8eaf3 57.143%, #e8dcad 57.143%, #d6c791 100%);
+  border-radius: 6px; overflow: hidden;
+  transition: filter 0.8s;
 }
+/* Stacked layers share the grid metrics of #world. The first one gives it height. */
+#world .layer {
+  margin: 0; padding: 0; border: 0; background: transparent;
+  font: inherit; letter-spacing: inherit; line-height: inherit;
+  position: absolute; inset: 0; pointer-events: none;
+  transition: color 1.2s, filter 0.8s;
+}
+#world .layer:first-child { position: relative; }
+#world .layer[data-layer="weather"] { opacity: 0.85; }
+#world .layer[data-layer="cloudsFar"] { opacity: 0.9; }
+#world .layer[data-layer="stars"] { opacity: 0.95; }
 #probe { position: fixed; left: -20000px; top: 0; visibility: hidden; pointer-events: none; }
 
 .hud { margin: 8px 0 4px; font-size: 0.85em; color: var(--muted); font-variant-numeric: tabular-nums; }

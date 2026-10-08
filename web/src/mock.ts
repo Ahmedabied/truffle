@@ -86,6 +86,7 @@ export class MockBackend implements Backend {
   private key: string;
   private weather: WeatherSummary;
   private cold: boolean;
+  private country: string;
 
   constructor(params: URLSearchParams, demo: boolean) {
     this.key = demo ? "truffle.mock.demo" : "truffle.mock.main";
@@ -99,16 +100,21 @@ export class MockBackend implements Backend {
     }
     this.s = saved ?? seed(scene ?? (demo ? "fresh" : null));
     const rain = params.get("rain") === "1";
+    // Debug knobs for screenshots: ?wx=<open-meteo code> ?temp=<apparent C> ?mm=<precipitation>
+    const code = Number(params.get("wx") ?? (rain ? 61 : 1));
+    const temp = Number(params.get("temp") ?? (rain ? 27 : 34));
+    const mm = Number(params.get("mm") ?? (rain ? 1.2 : 0));
     this.weather = {
-      text: rain ? "light rain, Muscat" : "34C clear, Muscat",
-      apparent_c: rain ? 27 : 34,
+      text: rain ? "light rain, Muscat" : `${Math.round(temp)}C clear, Muscat`,
+      apparent_c: temp,
       daytime_max_c: this.s.burrowed ? 44 : 36,
-      precipitation_mm: rain ? 1.2 : 0,
+      precipitation_mm: mm,
       wind_kmh: Number(params.get("wind") ?? 14) || 0,
       is_day: true,
-      weather_code: rain ? 61 : 1
+      weather_code: code
     };
     this.cold = params.get("cold") === "1";
+    this.country = (params.get("country") ?? "OM").toUpperCase().slice(0, 2);
   }
 
   private save(): void {
@@ -128,7 +134,7 @@ export class MockBackend implements Backend {
       energy_max,
       energy_pct: Math.round((100 * this.s.energy) / energy_max),
       tz: "Asia/Muscat",
-      country: "OM",
+      country: this.country,
       lang: this.lang,
       city: "Muscat",
       demo: this.key.endsWith("demo"),
