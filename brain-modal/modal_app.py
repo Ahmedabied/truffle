@@ -434,13 +434,15 @@ class Brain:
                 if not result.get("choices"):
                     raise RuntimeError(f"Warmup failed for {model}")
 
-    @modal.enter(snap=True)
+    # snap=True is only legal when the class enables memory snapshots. With
+    # TRUFFLE_GPU_SNAPSHOT=0 both hooks are plain enter hooks, in this order.
+    @(modal.enter(snap=True) if GPU_SNAPSHOT else modal.enter())
     def capture(self):
         if GPU_SNAPSHOT:
             self._start()
             _local_api("/sleep?level=1", post=True)
 
-    @modal.enter(snap=False)
+    @(modal.enter(snap=False) if GPU_SNAPSHOT else modal.enter())
     def resume(self):
         import uuid
 
