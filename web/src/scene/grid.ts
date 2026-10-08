@@ -1,8 +1,8 @@
-// Fit a 40-column <pre> to its container width. DOM probe, no canvas (S08 approach).
+// Fit a 100-column <pre> to its container width. DOM probe, no canvas (S08 approach).
 
-export const COLS = 40;
-export const ROWS = 28;
-export const LINE_HEIGHT = 1.12;
+export const COLS = 100;
+export const ROWS = 68;
+export const LINE_HEIGHT = 1.0;
 
 export interface Layout {
   fontSize: number;

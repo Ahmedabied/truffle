@@ -19,6 +19,10 @@ Fable 5.1 integrating. Ahmed launched the fleet with "the bells are ringing", ga
 
 Ahmed asked for richer, more alive ASCII with depth, dimension and shadow, like image-to-ASCII tools. Two GPT asset agents (A01 Truffle sprites, A02 sky and landscape) rendered candidates through a Pillow pipeline with PNG previews in three styles; Fable rebuilt the renderer as nine coloured layers with a continuous palette, real sun and moon, weather effects and a living Truffle, then adopted A01's classic shaded sprites (mirrored by light side) and A02's moon phases and sun. Verified with headless Chrome screenshots of 20 scenes and a compose benchmark (under 0.4 ms per frame). Deployed.
 
+## Second art pass: the dense dither (Oct 8, 10:50 to 11:45)
+
+Ahmed looked at the result and said it still looked like pixel art made of two pixels, and pointed at the Hermes Agent site, where pictures are a fine dither of tiny glyphs. Fable scraped the site, compared it against the live world, and rebuilt the renderer: a 100 x 68 luminance raster per layer, Bayer dithered into glyph density, with the Truffle as a lit ellipsoid model (cap, body, feet, eyes, mouth; moods as geometry), dunes as a lit heightfield with the creature's cast shadow, clouds as shaded blob fields, the sun as a disc with glow and rays. Two false starts caught by screenshots: the first render was flat stripes (ground tone too uniform, noon light with no side), and a batch where every layer painted in the page's dark text colour, which turned out to be the 1.2 s colour transition on the layers caught mid-way by the headless capture (removed, the palette already interpolates per frame). Decision 0011 records the change. Compose benchmark in node: about 2 ms per frame for rain, clouds and a Truffle. Deployed.
+
 ## Numbers
 
 - 23 commits, 0 co-author trailers.
@@ -29,7 +33,7 @@ Ahmed asked for richer, more alive ASCII with depth, dimension and shadow, like 
 
 ## Decisions recorded
 
-None new in `decisions/`. Pending: 0011 serving plan (after S01 runs), missing-forecast rule, timezone migration rule.
+`decisions/0011_dense_dither_world.md`. Pending: 0012 serving plan (after S01 runs), missing-forecast rule, timezone migration rule.
 
 ## For next session
 

@@ -18,6 +18,14 @@ export interface Palette {
   pet: string;
   fx: string;
   hud: string;
+  /** Sun glow and horizon haze ink. */
+  glow: string;
+  /** The Truffle's cap highlight ink (rust). */
+  cap: string;
+  /** The Truffle's skin ink (warm tan). */
+  skin: string;
+  /** Eye whites, spots and petals. */
+  white: string;
 }
 
 type Rgb = [number, number, number];
@@ -133,6 +141,12 @@ export function paletteAt(canonical: number, c: Conditions): Palette {
     groundTop = mix(groundTop, "#7d7f78", 0.3);
     groundBottom = mix(groundBottom, "#5f615c", 0.3);
   }
+  // The creature's own inks: rust cap and cream skin by day, both sinking toward moonlight at night.
+  const dark = night ? 1 : canonical < 7 ? 1 - (canonical - 5.4) / 1.6 : canonical > 17.5 ? (canonical - 17.5) / 1.7 : 0;
+  const cap = mix("#c4552c", "#8c6a62", Math.max(0, Math.min(1, dark)));
+  const skin = mix("#b07a4c", "#b9b4a6", Math.max(0, Math.min(1, dark)) * 0.85);
+  const white = mix("#fff6e6", "#d9dcd6", Math.max(0, Math.min(1, dark)) * 0.6);
+  const glow = mix(sun, skyHorizon, 0.35);
   return {
     skyTop,
     skyHorizon,
@@ -146,6 +160,10 @@ export function paletteAt(canonical: number, c: Conditions): Palette {
     ground: c.sand ? L("groundSand") : L("groundGrass"),
     pet: L("pet"),
     fx: L("fx"),
-    hud: L("hud")
+    hud: L("hud"),
+    glow,
+    cap: c.mood === "dead" ? mix(cap, "#777777", 0.6) : cap,
+    skin: c.mood === "dead" ? mix(skin, "#8a8a86", 0.7) : skin,
+    white
   };
 }

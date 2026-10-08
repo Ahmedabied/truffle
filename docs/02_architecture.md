@@ -50,7 +50,7 @@ Status: **settled 2026-10-07**. Ahmed's instruction: all app infrastructure on C
 ### web/ (Cloudflare Pages)
 
 - Vanilla TypeScript + Vite. One page. `<pre>` ASCII grid sized to the viewport (portrait first).
-- Scene layers and timing in `web/src/scene/*`. Truffle sprites per stage and mood in `web/src/sprites.ts` (hand-drawn ASCII, 5 - 9 lines tall).
+- Scene layers and timing in `web/src/scene/*`. The world is a 100 x 68 luminance raster dithered into glyphs (decision 0011); the Truffle is a lit model in `web/src/scene/pet.ts`, shaded per cell for every stage and mood.
 - State polling every 30s plus after each chat. SSE for chat.
 - Sky colour from local hour (the user's tz from `/state`). Clouds drift with Open-Meteo wind speed. Rain glyphs when precipitation > 0.
 - Judge mode UI at `/demo`: slider, midnight, heat, reset, and a small "what's happening" line explaining the engine's decision ("energy 42% -> medium, thinking off").

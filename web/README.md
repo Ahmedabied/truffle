@@ -27,8 +27,7 @@ Debug parameters for the offline demo: `scene=content|affectionate|asleep|tired|
 
 - `src/api.ts`: typed client, SSE parser for `/chat`, timeouts, backend selection.
 - `src/mock.ts`: the offline demo backend.
-- `src/scene/`: grid fitting, sky palette, world composition and the 12 fps loop.
-- `src/sprites.ts`: Truffle per stage and mood, gravestone, burrow mound.
+- `src/scene/`: grid fitting (`grid.ts`), palette (`palette.ts`), sun and moon (`astro.ts`), the luminance raster and dither (`raster.ts`), the Truffle model (`pet.ts`), the scene and the 12 fps loop (`world.ts`).
 - `src/chat.ts`: input line, tier-speed typing, yawn, explanation line.
 - `src/copy.ts`: UI copy in English and Arabic.
 - `src/main.ts`: boot, pairing, polling, settings, judge mode.

@@ -164,6 +164,11 @@ function render(s: StateSummary): void {
     MOOD_WORD[lang][s.mood]
   ];
   if (s.weather?.text) hud.push(s.weather.text);
+  if (st.dead) {
+    const days = st.gravestones[st.gravestones.length - 1]?.age_days ?? st.age_days;
+    const steps = st.gravestones[st.gravestones.length - 1]?.lifetime_steps ?? st.lifetime_steps;
+    hud.push(lang === "ar" ? `عاش ${days.toLocaleString("en-US")} يوم و ${steps.toLocaleString("en-US")} خطوة` : `lived ${days.toLocaleString("en-US")} days and ${steps.toLocaleString("en-US")} steps`);
+  }
   $("hud").textContent = hud.join(sep);
   $("world").setAttribute(
     "aria-label",

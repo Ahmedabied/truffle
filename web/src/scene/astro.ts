@@ -30,9 +30,9 @@ export function sunHeight(hour: number, rise: number, set: number): number {
   return -Math.sin((since / night) * Math.PI);
 }
 
-/** Where the sun or moon sits on a 40 x 28 grid for a progress p in [0, 1] along its arc. */
-export function arc(p: number, cols = 40, top = 1, horizon = 15): { x: number; y: number } {
-  const x = Math.round(3 + p * (cols - 10));
+/** Where the sun or moon sits on the grid for a progress p in [0, 1] along its arc. */
+export function arc(p: number, cols = 100, top = 6, horizon = 36): { x: number; y: number } {
+  const x = Math.round(cols * 0.08 + p * cols * 0.84);
   const y = Math.round(horizon - Math.sin(p * Math.PI) * (horizon - top));
   return { x, y };
 }
@@ -54,7 +54,7 @@ export interface Star {
 }
 
 /** Fixed star field, hashed so it never changes between frames. */
-export function starField(cols = 40, rows = 13, count = 44): Star[] {
+export function starField(cols = 100, rows = 34, count = 90): Star[] {
   const out: Star[] = [];
   let s = 1234567;
   const rnd = () => {

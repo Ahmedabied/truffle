@@ -144,8 +144,8 @@ The fine-tune teaches Truffle to behave like this block says, in its own voice. 
 
 ## The ASCII world
 
-- A `<pre>` grid, mobile-first (portrait, ~40 columns), 10 - 12 fps, no WebGL.
-- Layers: sky (tinted by local time of day, from the user's timezone), drifting clouds, sun or moon, horizon, grass or sand depending on `burrowed` and country (Oman and Gulf: sand and a few grass tufts; elsewhere: grass), Truffle itself, a small HUD line (energy bar, stage, steps today).
+- A `<pre>` grid, mobile-first (portrait, ~100 columns of tiny glyphs, dithered like an engraving), 10 - 12 fps, no WebGL. See decision 0011.
+- Layers: sky (tinted by local time of day, from the user's timezone), drifting clouds, sun or moon, horizon, grass or sand depending on `burrowed` and country (Oman and Gulf: sand and a few grass tufts; elsewhere: grass), Truffle itself. The HUD line (energy, stage, steps today) sits under the grid in HTML.
 - Rain falls only when Open-Meteo says precipitation now. Wind speed nudges cloud drift.
 - Reduced motion: respect `prefers-reduced-motion` (stop drift, keep state).
 - Chat is a single input line under the world. Replies type out at a speed that depends on tier (low = slow, high = quick). Asleep = one grey line, no input focus.

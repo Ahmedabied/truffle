@@ -1,30 +1,25 @@
-// The ASCII world. Nine stacked <pre> layers, each in its own colour, composed
-// back to front from a 40 x 28 character buffer each. A layer is written only
-// when its text changed. 12 fps. Everything that moves is keyed to the frame
-// clock `t`, which freezes under reduced motion.
+// The ASCII world. A stack of <pre> layers, each in one colour, each filled
+// from a luminance raster and dithered into glyph density. 100 x 68 cells.
+// Everything that moves is keyed to the frame clock `t`, which freezes under
+// reduced motion. 12 fps.
 
 import type { Stage, Tier } from "../../../worker/src/config";
 import type { Gravestone, Mood } from "../../../worker/src/engine";
-import { gravestone, mound, spriteFor, type Face } from "../sprites";
 import { arc, moonPhase, starField, sunHeight, sunTimes } from "./astro";
 import { COLS, ROWS } from "./grid";
-import { canonicalHour, paletteAt, type Conditions, type Palette } from "./palette";
-import { cloudRows, lightFrom, luma, moonRows, normalize, shadeDomes, toChar, type CloudKind, type Vec3 } from "./shade";
+import { canonicalHour, mix, paletteAt, type Conditions, type Palette } from "./palette";
+import { BITMAPS, drawPet, type Face, type PetInfo } from "./pet";
+import { ASPECT, clamp, disc, hash, Layer, line, luma, noise, normalize, shade, smooth, stamp, SOFT, type Vec3 } from "./raster";
 import { localHour } from "./sky";
-import SKY from "../sky.json";
-
-const MOON_NAMES = ["new", "waxing_crescent", "first_quarter", "waxing_gibbous", "full", "waning_gibbous", "last_quarter", "waning_crescent"] as const;
-const sky = SKY as { moon: Record<string, { dark: string[]; light: string[] }>; sun: { dark: string[]; light: string[] }; sun_horizon: { dark: string[]; light: string[] } };
 
 const PERIOD = 1000 / 12;
-export const HORIZON = 16; // first ground row
-const GROUND_END = 25;
-const ANCHOR = 24; // bottom row of the Truffle sprite
-const HUD_ROW = 27;
+export const HORIZON = 40; // first ground row
+const ANCHOR = 58; // ground contact row of the Truffle
+const SKY_TOP = 2;
 
 export const GULF = new Set(["OM", "AE", "SA", "QA", "KW", "BH", "YE", "IQ", "JO", "EG", "LY"]);
 
-export const LAYERS = ["stars", "sun", "cloudsFar", "cloudsNear", "weather", "ground", "pet", "fx", "hud"] as const;
+export const LAYERS = ["sky", "stars", "sun", "cloudsFar", "cloudsNear", "ground", "weather", "pet", "cap", "skin", "white", "fx"] as const;
 export type LayerName = (typeof LAYERS)[number];
 
 export interface View {
@@ -72,30 +67,6 @@ export const EMPTY_VIEW: View = {
 };
 
 const mod = (n: number, d: number) => ((n % d) + d) % d;
-const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
-const hash = (n: number) => {
-  let x = (n | 0) * 2654435761;
-  x ^= x >>> 15;
-  x = Math.imul(x, 2246822519);
-  x ^= x >>> 13;
-  return (x >>> 0) / 4294967296;
-};
-
-type Grid = string[][];
-const blank = (): Grid => Array.from({ length: ROWS }, () => Array<string>(COLS).fill(" "));
-const text = (g: Grid) => g.map((r) => r.join("")).join("\n");
-
-function put(g: Grid, x: number, y: number, s: string, opaque = true): void {
-  if (y < 0 || y >= ROWS) return;
-  let dx = 0;
-  for (const ch of s) {
-    const cx = x + dx++;
-    if (cx < 0 || cx >= COLS) continue;
-    if (!opaque && ch === " ") continue;
-    g[y][cx] = ch;
-  }
-}
-const stamp = (g: Grid, x: number, y: number, rows: string[], opaque = true) => rows.forEach((r, i) => put(g, x, y + i, r, opaque));
 
 /** Weather code families from Open-Meteo. */
 const wx = (code: number) => ({
@@ -116,12 +87,19 @@ export interface Env {
   cond: Conditions & { storm: boolean };
   sun: { x: number; y: number; up: boolean; p: number };
   moon: { x: number; y: number; up: boolean; phase: number };
-  /** Light direction at the Truffle. */
+  /** Light direction at the Truffle, z toward the viewer. */
   light: Vec3;
   /** Which side of the scene the light sits on: -1 left .. 1 right. */
   lightSide: number;
   hot: boolean;
   night: boolean;
+}
+
+function lightFrom(lx: number, ly: number, cx: number, cy: number, height: number): Vec3 {
+  const dx = (lx - cx) * ASPECT;
+  const dy = ly - cy;
+  const d = Math.hypot(dx, dy) || 1;
+  return normalize([dx / d, dy / d, height]);
 }
 
 export function envFor(v: View, hour: number, now: Date): Env {
@@ -135,29 +113,31 @@ export function envFor(v: View, hour: number, now: Date): Env {
   const pal = paletteAt(canonical, cond);
 
   const sunP = clamp((hour - rise) / (set - rise), -0.1, 1.1);
-  const sunPos = arc(sunP);
+  const sunPos = arc(sunP, COLS, SKY_TOP + 4, HORIZON - 4);
   const phase = v.moonOverride ?? moonPhase(now);
-  // The moon trails the sun by its phase: full moon is up all night, new moon rides with the sun.
   const moonHour = mod(hour - phase * 24, 24);
   const moonP = (moonHour - rise) / (set - rise);
   const moonUp = moonP > -0.05 && moonP < 1.05 && sunH < 0.25;
-  const moonPos = arc(clamp(moonP, -0.05, 1.05));
+  const moonPos = arc(clamp(moonP, -0.05, 1.05), COLS, SKY_TOP + 4, HORIZON - 4);
 
   const petX = COLS / 2;
-  const petY = ANCHOR - 3;
+  const petY = ANCHOR - 10;
   let light: Vec3;
   let lightSide: number;
   if (sunH > 0.02) {
-    light = lightFrom(sunPos.x, sunPos.y, petX, petY, 0.75);
+    light = lightFrom(sunPos.x, sunPos.y, petX, petY, 0.9);
     lightSide = (sunPos.x - petX) / (COLS / 2);
   } else if (moonUp) {
-    light = lightFrom(moonPos.x, moonPos.y, petX, petY, 0.9);
+    light = lightFrom(moonPos.x, moonPos.y, petX, petY, 1.0);
     lightSide = (moonPos.x - petX) / (COLS / 2);
   } else {
-    light = normalize([-0.3, -0.7, 0.8]);
-    lightSide = -0.3;
+    light = normalize([-0.35, -0.6, 0.9]);
+    lightSide = -0.35;
   }
-  if (cond.cloud > 0.6 || cond.fog) light = normalize([light[0] * 0.3, light[1] * 0.5, 1]);
+  if (cond.cloud > 0.6 || cond.fog) light = normalize([light[0] * 0.35, light[1] * 0.6, 1.1]);
+  // Keep a little left bias so a noon sun still gives every form a lit and a shadow side.
+  lightSide = clamp(lightSide - 0.3, -1, 1);
+  if (Math.abs(light[0]) < 0.25) light = normalize([light[0] - 0.3, light[1], light[2]]);
 
   return {
     hour,
@@ -177,390 +157,507 @@ export function envFor(v: View, hour: number, now: Date): Env {
   };
 }
 
+// ---------- terrain ----------
+
+/** Ridge height above the horizon in rows for a column. Sand dunes are long and soft, hills are rounder. */
+const duneH = (x: number) => 3.2 + 2.6 * Math.sin(x / 16 + 0.4) + 1.3 * Math.sin(x / 7.5 + 1.9) + 0.4 * Math.sin(x / 3.1);
+const hillH = (x: number) => 3.4 + 2.8 * Math.sin(x / 18 + 1.1) + 1.1 * Math.sin(x / 8.3) + 0.5 * Math.sin(x / 4.1 + 2);
+/** A second, farther ridge behind the first. */
+const farH = (x: number) => 6.5 + 3.2 * Math.sin(x / 23 + 2.6) + 1.2 * Math.sin(x / 9.7 + 0.7);
+/** First row occupied by the near ridge at a column; sky things are clipped above it. */
+export const ridgeTop = (x: number, sand: boolean) => HORIZON - 1 - Math.floor(sand ? duneH(x) : hillH(x));
+const farTop = (x: number) => HORIZON - 1 - Math.floor(farH(x));
+
 // ---------- layers ----------
 
-const STARS = starField();
+const STARS = starField(COLS, HORIZON - 6, 90);
 
-function starsLayer(v: View, t: number, e: Env): Grid {
-  const g = blank();
+function skyLayer(L: Layer, e: Env, t: number): void {
+  // Sun glow and horizon haze, as sparse dots in the sun's colour.
+  const haze = e.cond.fog ? 0.55 : e.cond.cloud > 0.6 ? 0.25 : 0.35;
+  for (let y = 0; y < HORIZON; y++) {
+    for (let x = 0; x < COLS; x++) {
+      let l = 0;
+      if (e.sun.up && e.cond.cloud < 0.95) {
+        const d = Math.hypot((x - e.sun.x) * ASPECT, y - e.sun.y);
+        const r = 4 + (1 - clamp(e.sunH, 0, 1)) * 5;
+        l = Math.max(l, 0.6 * Math.exp(-Math.max(0, d - 3.5) / r));
+        // Rays near the horizon.
+        if (e.sunH < 0.35 && d > 4) {
+          const a = Math.atan2(y - e.sun.y, (x - e.sun.x) * ASPECT);
+          const ray = Math.pow(Math.max(0, Math.cos(a * 11 + t * 0.01)), 14);
+          l = Math.max(l, ray * 0.45 * Math.exp(-d / 26) * (1 - clamp(e.sunH / 0.35, 0, 1)));
+        }
+      }
+      // Haze band just above the horizon.
+      const band = smooth(HORIZON - 9, HORIZON - 1, y) * haze * 0.6;
+      l = Math.max(l, band * (0.6 + 0.4 * noise(x * 0.06, y * 0.5 + t * 0.002, 2)));
+      if (l > 0.03) L.set(x, y, l);
+    }
+  }
+  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < HORIZON; y++) L.set(x, y, -1);
+}
+
+function starsLayer(L: Layer, e: Env, t: number): void {
   const dark = clamp((0.08 - e.sunH) / 0.5, 0, 1);
-  const inkLight = true;
   if (dark > 0) {
     const n = Math.floor(STARS.length * dark);
     for (const s of STARS) {
       if (s.rank >= n) continue;
       const k = Math.floor(t / (s.bright ? 5 : 9) + s.phase) % 4;
-      const ch = s.bright ? "*+*." [k] : ".'.. "[k] ?? ".";
-      if (ch !== " ") put(g, s.x, s.y, ch);
+      const l = s.bright ? [1, 0.8, 1, 0.6][k] : [0.6, 0.45, 0.6, 0.3][k];
+      L.add(s.x, s.y, l);
+      if (s.bright && k !== 3) {
+        L.add(s.x - 1, s.y, 0.25);
+        L.add(s.x + 1, s.y, 0.25);
+      }
     }
-    // Shooting star, once in a while, only at full dark.
     if (dark > 0.9) {
       const cycle = 520;
       const k = t % cycle;
       if (k < 9) {
-        const row = 1 + Math.floor(hash(Math.floor(t / cycle)) * 7);
-        const x0 = 4 + Math.floor(hash(Math.floor(t / cycle) + 99) * 24);
-        put(g, x0 + k * 2, row + Math.floor(k / 3), "*", false);
-        put(g, x0 + k * 2 - 2, row + Math.floor((k - 1) / 3), "-", false);
-        put(g, x0 + k * 2 - 4, row + Math.floor((k - 2) / 3), ".", false);
+        const row = 3 + Math.floor(hash(Math.floor(t / cycle)) * 10);
+        const x0 = 10 + Math.floor(hash(Math.floor(t / cycle) + 99) * 60);
+        for (let i = 0; i < 7; i++) L.add(x0 + k * 3 - i * 2, row + Math.floor((k * 3 - i * 2) / 9), 1 - i * 0.14);
       }
     }
   }
   if (e.moon.up && e.moon.phase > 0.04 && e.moon.phase < 0.96) {
-    // Hand-shaded phases from A02; the runtime sphere is the fallback.
-    const name = MOON_NAMES[Math.round(e.moon.phase * 8) % 8];
-    const m = sky.moon[name]?.light ?? moonRows(e.moon.phase, 7, 4, inkLight);
-    stamp(g, e.moon.x - 3, e.moon.y - 2, m, false);
+    // A sphere lit from the phase angle, with a faint earthshine.
+    const a = e.moon.phase * Math.PI * 2;
+    const ml: Vec3 = normalize([Math.sin(a), -0.1, -Math.cos(a)]);
+    const cx = e.moon.x * ASPECT + ASPECT / 2;
+    const cy = e.moon.y + 0.5;
+    const r = 3.1;
+    for (let y = Math.floor(cy - r) - 1; y <= Math.ceil(cy + r) + 1; y++) {
+      for (let x = Math.floor((cx - r) / ASPECT) - 1; x <= Math.ceil((cx + r) / ASPECT) + 1; x++) {
+        const u = ((x + 0.5) * ASPECT - cx) / r;
+        const v = (y + 0.5 - cy) / r;
+        const d = u * u + v * v;
+        if (d > 1) continue;
+        const nz = Math.sqrt(1 - d);
+        const n: Vec3 = [u, v, nz];
+        let l = Math.max(0, n[0] * ml[0] + n[1] * ml[1] + n[2] * ml[2]);
+        l = 0.08 + 0.92 * l + 0.07 * noise(x * 0.9, y * 1.4, 3);
+        L.set(x, y, clamp(l, 0, 1));
+      }
+    }
   }
-  for (let cx = 0; cx < COLS; cx++) for (let cy = ridgeTop(cx, e.sand); cy < ROWS; cy++) g[cy][cx] = " ";
-  // A soft halo around a low sun.
-  if (e.sun.up && e.sunH < 0.2 && e.cond.cloud < 0.7) {
-    const { x, y } = e.sun;
-    put(g, x - 7, y, ".", false);
-    put(g, x + 7, y, ".", false);
-    put(g, x - 5, y - 2, ".", false);
-    put(g, x + 5, y - 2, ".", false);
-    put(g, x - 2, y - 3, ". .", false);
-  }
-  return g;
+  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
 }
 
-function sunLayer(v: View, t: number, e: Env): Grid {
-  const g = blank();
-  if (!e.sun.up || e.cond.cloud >= 0.95 || e.cond.fog) return g;
-  const { x, y } = e.sun;
-  if (e.sunH < 0.16) {
-    // Big and low: a half disk resting on the dune line.
-    const rows = sky.sun_horizon.light.slice(0, 2);
-    const base = Math.min(ridgeTop(x, e.sand), ridgeTop(x - 3, e.sand), ridgeTop(x + 3, e.sand));
-    stamp(g, x - 6, base - 2, rows, false);
-    for (let cx = 0; cx < COLS; cx++) for (let cy = ridgeTop(cx, e.sand); cy < ROWS; cy++) g[cy][cx] = " ";
-  } else {
-    stamp(g, x - 3, y - 1, sky.sun.light, false);
-    const long = t % 24 < 12;
-    put(g, x - 6, y, long ? "-" : " ", false);
-    put(g, x + 6, y, long ? "-" : " ", false);
-    put(g, x, y - 3, long ? "'" : " ", false);
-    put(g, x - 5, y - 2, long ? "`" : ".", false);
-    put(g, x + 5, y - 2, long ? "'" : ".", false);
-    put(g, x - 5, y + 2, long ? "." : " ", false);
-    put(g, x + 5, y + 2, long ? "." : " ", false);
+function sunLayer(L: Layer, e: Env): void {
+  if (!e.sun.up || e.cond.cloud >= 0.95 || e.cond.fog) return;
+  const low = clamp(1 - e.sunH / 0.25, 0, 1);
+  const r = 2.6 + low * 1.8;
+  const cx = e.sun.x * ASPECT + ASPECT / 2;
+  let cy = e.sun.y + 0.5;
+  if (low > 0) {
+    // A big low sun rests on the ridge instead of sinking behind it.
+    let top = ROWS;
+    for (let x = e.sun.x - 6; x <= e.sun.x + 6; x++) top = Math.min(top, ridgeTop(clamp(x, 0, COLS - 1), e.sand));
+    cy = Math.min(cy + low * 2, top - r * 0.35);
   }
-  return g;
+  disc(L, cx, cy, r, 1, 0.5);
+  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
 }
 
 interface CloudSpec {
-  kind: CloudKind;
+  /** Centre row. */
   row: number;
   base: number;
   speed: number;
+  /** Blobs: [dx, dy, r] in row units. */
+  blobs: [number, number, number][];
 }
 const FAR: CloudSpec[] = [
-  { kind: "small", row: 2, base: 3, speed: 0.5 },
-  { kind: "wisp", row: 5, base: 20, speed: 0.4 },
-  { kind: "small", row: 7, base: 31, speed: 0.55 },
-  { kind: "wisp", row: 1, base: 12, speed: 0.45 },
-  { kind: "small", row: 4, base: 38, speed: 0.5 }
+  { row: 7, base: 6, speed: 0.5, blobs: [[0, 0, 2.2], [2.6, -0.4, 1.9], [-2.4, 0.3, 1.6]] },
+  { row: 12, base: 30, speed: 0.4, blobs: [[0, 0, 1.6], [2.2, 0.2, 1.3], [5, 0.1, 1.2], [-2, 0.3, 1.1]] },
+  { row: 5, base: 48, speed: 0.55, blobs: [[0, 0, 1.8], [2.4, -0.3, 1.5]] },
+  { row: 15, base: 70, speed: 0.45, blobs: [[0, 0, 1.5], [2, 0.2, 1.3], [-1.8, 0.4, 1.0]] },
+  { row: 9, base: 86, speed: 0.5, blobs: [[0, 0, 2.0], [-2.6, 0.4, 1.4], [2.4, 0.2, 1.6]] }
 ];
 const NEAR: CloudSpec[] = [
-  { kind: "medium", row: 3, base: 9, speed: 1 },
-  { kind: "large", row: 6, base: 27, speed: 1.2 },
-  { kind: "medium", row: 1, base: 40, speed: 0.9 },
-  { kind: "large", row: 8, base: 55, speed: 1.1 }
+  { row: 9, base: 14, speed: 1.0, blobs: [[0, 0, 3.4], [4.2, -0.8, 2.9], [-4, 0.6, 2.4], [8, 0.4, 2.1], [2, 1.6, 2.6]] },
+  { row: 16, base: 46, speed: 1.2, blobs: [[0, 0, 4.2], [5.4, -1.2, 3.4], [-5, 0.8, 2.8], [10, 0.6, 2.4], [2.5, 2.0, 3.2], [-9, 1.4, 2.0]] },
+  { row: 4, base: 72, speed: 0.9, blobs: [[0, 0, 3.0], [3.8, -0.4, 2.6], [-3.4, 0.5, 2.0], [7, 0.8, 1.8]] },
+  { row: 20, base: 100, speed: 1.1, blobs: [[0, 0, 3.6], [4.6, -1.0, 3.0], [-4.4, 0.7, 2.6], [9, 0.5, 2.2], [1.5, 1.8, 2.8]] }
 ];
+const STORM: CloudSpec = { row: 8, base: 0, speed: 0.8, blobs: [[0, 0, 5], [6, -1.5, 4.2], [-6, 1, 3.8], [12, 0.5, 3.4], [3, 3, 4.6], [-11, 2, 3], [-2, -3.2, 3.2]] };
 
-function cloudsLayer(v: View, t: number, e: Env, phase: number, near: boolean): Grid {
-  const g = blank();
-  const inkLight = luma(near ? e.pal.cloudNear : e.pal.cloudFar) > luma(e.pal.skyTop);
-  const specs = near ? NEAR : FAR;
-  const c = e.cond.cloud;
-  const count = c >= 0.95 ? specs.length : c > 0.5 ? Math.ceil(specs.length * 0.6) : c > 0.2 ? 2 : near ? 1 : 1;
-  const span = COLS + 24;
-  for (let i = 0; i < count; i++) {
-    const s = specs[i];
-    const rows = cloudRows(s.kind, e.lightSide, inkLight);
-    const x = Math.floor(mod(s.base + phase * s.speed, span)) - 20;
-    stamp(g, x, s.row, rows, false);
+function cloud(L: Layer, cx: number, cy: number, spec: CloudSpec, e: Env, t: number, soft: number): void {
+  const blobs = spec.blobs;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const [dx, dy, r] of blobs) {
+    minX = Math.min(minX, cx + dx - r * 1.5);
+    maxX = Math.max(maxX, cx + dx + r * 1.5);
+    minY = Math.min(minY, cy + dy - r * 1.5);
+    maxY = Math.max(maxY, cy + dy + r * 1.5);
   }
-  if (c >= 0.95 && !near) {
-    // Overcast: one thin stratus sheet across the top, drifting slowly.
-    const st = cloudRows("stratus", e.lightSide, inkLight);
-    const off = Math.floor(mod(phase * 0.25, 22));
-    for (let k = -1; k < 3; k++) stamp(g, k * 22 - off, 0, st, false);
+  const x0 = Math.max(0, Math.floor(minX / ASPECT));
+  const x1 = Math.min(COLS - 1, Math.ceil(maxX / ASPECT));
+  const y0 = Math.max(0, Math.floor(minY));
+  const y1 = Math.min(HORIZON - 1, Math.ceil(maxY));
+  const light: Vec3 = normalize([e.lightSide * 0.6, -0.8, 0.5]);
+  const field = (X: number, Y: number) => {
+    let f = 0;
+    for (const [dx, dy, r] of blobs) {
+      const u = (X - cx - dx) / r;
+      const v = (Y - cy - dy) / (r * 0.78);
+      f += Math.exp(-(u * u + v * v) * 1.6);
+    }
+    return f + 0.18 * noise(X * 0.55 + t * 0.004, Y * 0.7, 11);
+  };
+  for (let y = y0; y <= y1; y++) {
+    const Y = y + 0.5;
+    for (let x = x0; x <= x1; x++) {
+      const X = (x + 0.5) * ASPECT;
+      const f = field(X, Y);
+      if (f < 0.55) continue;
+      const gx = field(X + 0.3, Y) - field(X - 0.3, Y);
+      const gy = field(X, Y + 0.3) - field(X, Y - 0.3);
+      const n = normalize([-gx * 2.2, -gy * 2.2, 0.55 + Math.min(1, f - 0.55)]);
+      let l = shade(n, light, 0.32, 0);
+      const edge = smooth(0.55, 0.95, f);
+      l = l * (0.55 + 0.45 * edge) * soft;
+      L.add(x, y, clamp(l, 0, 1));
+    }
   }
-  if (c >= 0.95 && near && e.cond.storm) stamp(g, Math.floor(mod(14 + phase * 0.8, span)) - 20, 3, cloudRows("storm", e.lightSide, inkLight), false);
-  return g;
 }
 
-function weatherLayer(v: View, t: number, e: Env): Grid {
-  const g = blank();
+function cloudsLayer(L: Layer, e: Env, t: number, phase: number, near: boolean): void {
+  const specs = near ? NEAR : FAR;
+  const c = e.cond.cloud;
+  const count = c >= 0.95 ? specs.length : c > 0.5 ? Math.ceil(specs.length * 0.6) : c > 0.2 ? 2 : 1;
+  const span = COLS * ASPECT + 30;
+  const soft = near ? 1 : 0.8;
+  for (let i = 0; i < count; i++) {
+    const s = specs[i];
+    const X = mod(s.base + phase * s.speed, span) - 15;
+    cloud(L, X, s.row, s, e, t, soft);
+  }
+  if (c >= 0.95 && !near) {
+    // Overcast: a long sheet across the top.
+    for (let y = 0; y < 9; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const n = noise(x * 0.09 + phase * 0.01, y * 0.35, 21) * 0.5 + 0.5;
+        const l = (1 - y / 9) * 0.5 * (0.4 + 0.6 * n);
+        if (l > 0.06) L.add(x, y, l);
+      }
+    }
+  }
+  if (c >= 0.95 && near && e.cond.storm) cloud(L, mod(20 + phase * 0.8, span) - 15, STORM.row, STORM, e, t, 0.75);
+  for (let x = 0; x < COLS; x++) for (let y = ridgeTop(x, e.sand); y < ROWS; y++) L.set(x, y, -1);
+}
+
+function groundLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo): void {
+  const sand = e.sand;
+  const H = sand ? duneH : hillH;
+  const side = e.lightSide;
+  const light: Vec3 = normalize([side, -0.35, 0.45]);
+  const wind = v.windKmh;
+  const drift = t * 0.01 * (wind / 10);
+
+  // Far ridge: a hazy band with little contrast, lighter toward the horizon.
+  for (let x = 0; x < COLS; x++) {
+    const top = farTop(x);
+    const slope = (farH(x + 2) - farH(x - 2)) / (4 * ASPECT);
+    const n = normalize([-slope, -0.9, 0.9]);
+    const l = 0.55 + 0.4 * shade(n, light, 0.4, 0);
+    for (let y = top; y < HORIZON; y++) {
+      const k = smooth(top, top + 6, y);
+      L.set(x, y, clamp(l * (1 - k) + 0.86 * k + 0.04 * noise(x * 0.2, y * 0.5, 6), 0, 1));
+    }
+  }
+  // Near ridge, the dune face: one side lit almost to paper, the other in shadow.
+  for (let x = 0; x < COLS; x++) {
+    const top = ridgeTop(x, sand);
+    const slope = (H(x + 2) - H(x - 2)) / (4 * ASPECT);
+    const n = normalize([-slope * (sand ? 1.6 : 1.1), -0.55, 0.7]);
+    const faceL = 0.2 + 0.8 * shade(n, light, 0.05, 0);
+    for (let y = top; y < HORIZON; y++) {
+      const k = smooth(top, HORIZON + 1, y);
+      let l = faceL * (1 - k * 0.45) + 0.8 * k * 0.45;
+      l += (sand ? 0.04 : 0.08) * noise(x * 0.35, y * 0.9, 7);
+      if (y === top) l = Math.min(l, 0.45 + 0.3 * faceL);
+      L.set(x, y, clamp(l, 0, 1));
+    }
+  }
+  // Ground plane: broad dune bodies in perspective, mostly paper, with ripples that get coarser toward the viewer.
+  for (let y = HORIZON; y < ROWS; y++) {
+    const depth = (y - HORIZON) / (ROWS - HORIZON);
+    for (let x = 0; x < COLS; x++) {
+      const X = x * ASPECT;
+      let l: number;
+      if (sand) {
+        // Height of a low dune field; its slope toward the light decides the tone.
+        const px = X / (6 + depth * 9);
+        const hgt = Math.sin(px + y * 0.09 + 0.6) + 0.5 * Math.sin(px * 2.3 - y * 0.05 + 1.2);
+        const slope = Math.cos(px + y * 0.09 + 0.6) + 1.15 * Math.cos(px * 2.3 - y * 0.05 + 1.2);
+        l = 0.86 + 0.3 * clamp(slope * side * 0.8, -1, 1) - 0.04 * hgt;
+        const ripple = Math.sin((X + drift) * (1.3 + depth * 0.9) + Math.sin(y * 0.7) * 1.5 + y * 0.4);
+        l += 0.03 * ripple * depth + 0.02 * noise(X * 0.8, y * 0.45, 8);
+      } else {
+        const blades = noise(X * 1.3 + Math.sin(t * 0.12 * (wind / 12) + y) * 0.25, y * 1.1, 9);
+        const hgt = Math.sin(X / 7 + y * 0.08) * 0.5 + 0.5 * Math.sin(X / 3.1 - y * 0.06);
+        l = 0.74 + 0.12 * hgt * side + 0.1 * blades * (0.4 + depth) + 0.04 * noise(X * 0.3, y * 0.3, 10);
+        if (hash(x * 97 + y * 29) > 0.985 - depth * 0.02) l -= 0.3;
+      }
+      // Toward the bottom edge the ground darkens a little, like it falls away.
+      l -= depth * depth * 0.14;
+      L.set(x, y, clamp(l, 0, 1));
+    }
+  }
+  // Grass tufts and bushes.
+  if (!sand) {
+    const bushes: [number, number][] = [[12, 3], [88, 2.5], [40, 2]];
+    for (const [bx, br] of bushes) {
+      const by = ridgeTop(bx, false) - br * 0.6;
+      for (let y = Math.floor(by - br); y <= Math.ceil(by + br); y++) {
+        for (let x = Math.floor((bx * ASPECT - br) / ASPECT); x <= Math.ceil((bx * ASPECT + br) / ASPECT); x++) {
+          const u = ((x + 0.5) * ASPECT - bx * ASPECT) / br;
+          const w = (y + 0.5 - by) / (br * 0.8);
+          const d = u * u + w * w;
+          if (d > 1) continue;
+          const n = normalize([u, w, Math.sqrt(1 - d)]);
+          L.set(x, y, clamp(shade(n, light, 0.25, 0) * 0.8 + 0.1 * noise(x * 0.8, y * 0.8, 13), 0, 1));
+        }
+      }
+    }
+    // Pines on the ridge.
+    for (const px of [22, 76]) {
+      const base = ridgeTop(px, false);
+      for (let k = 0; k < 9; k++) {
+        const w = Math.floor(k * 0.55) + 1;
+        for (let x = px - w; x <= px + w; x++) {
+          const sideL = (x - px) * side < 0 ? 0.25 : 0.55;
+          L.set(x, base - 9 + k, sideL + 0.05 * noise(x, k, 14));
+        }
+      }
+      L.set(px, base, 0.2);
+    }
+  } else if (v.mood !== "burrowed") {
+    // Dry tufts that lean with the wind.
+    const lean = Math.sin(t / 7) * Math.min(1, wind / 25);
+    for (const [tx, ty, h] of [[9, 47, 4], [84, 53, 5], [20, 61, 3], [70, 44, 3]] as [number, number, number][]) {
+      for (let k = 0; k < h; k++) {
+        const y = ty - k;
+        const spread = k * 0.9;
+        for (const s of [-1, 0, 1]) {
+          const x = Math.round(tx + s * spread + lean * k * 0.6);
+          L.set(x, y, 0.22 + 0.1 * s * side);
+        }
+      }
+    }
+  }
+  // Cast shadow of the Truffle.
+  if (pet.shadow) {
+    const s = pet.shadow;
+    const soft = 0.55;
+    for (let y = Math.floor(s.cy - s.ry - 1); y <= Math.ceil(s.cy + s.ry + 1); y++) {
+      for (let x = Math.floor((s.cx - s.rx) / ASPECT) - 2; x <= Math.ceil((s.cx + s.rx) / ASPECT) + 2; x++) {
+        const u = ((x + 0.5) * ASPECT - s.cx) / s.rx;
+        const w = (y + 0.5 - s.cy) / s.ry;
+        const d = Math.sqrt(u * u + w * w);
+        if (d > 1 + soft) continue;
+        const k = 1 - smooth(1 - soft, 1 + soft, d);
+        L.mul(x, y, 1 - 0.5 * k * (e.night ? 0.5 : 1));
+      }
+    }
+  }
+  // Small stones for the Truffles that came before.
+  const past = v.mood === "dead" ? v.gravestones.slice(0, -1) : v.gravestones;
+  past.slice(-6).forEach((_, i) => {
+    const sx = 4 + i * 5;
+    const sy = ROWS - 4;
+    for (let y = sy - 2; y <= sy; y++) for (let x = sx - 1; x <= sx + 1; x++) L.set(x, y, y === sy - 2 && x !== sx ? 0.5 : (x - sx) * side < 0 ? 0.28 : 0.42);
+  });
+}
+
+function weatherLayer(L: Layer, v: View, e: Env, t: number): void {
   const windy = v.windKmh > 18;
   if (e.cond.rain) {
-    const n = v.precipMm >= 4 ? 44 : v.precipMm >= 1 ? 30 : 18;
-    const glyph = v.windKmh > 30 ? "/" : windy ? "/" : "|";
+    const n = v.precipMm >= 4 ? 110 : v.precipMm >= 1 ? 70 : 40;
+    const slant = v.windKmh > 30 ? 2 : windy ? 1 : 0;
     for (let i = 0; i < n; i++) {
-      const y = Math.floor(mod(i * 7 + t * 0.9 + hash(i) * 20, GROUND_END - 1));
-      const x = mod(i * 11 + Math.floor(t / (windy ? 3 : 10)) + Math.floor(hash(i + 500) * 40), COLS);
-      put(g, x, y, glyph);
+      const len = 3 + Math.floor(hash(i + 77) * 3);
+      const y = Math.floor(mod(i * 7 + t * 2.2 + hash(i) * 60, ROWS - 4));
+      const x = mod(i * 11 + Math.floor(t * slant * 0.5) + Math.floor(hash(i + 500) * 100), COLS);
+      line(L, x, y, x - slant * len, y - len, 0.75);
     }
-    // Splashes on the ground.
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 14; i++) {
       const k = Math.floor((t + i * 7) / 6);
       const x = Math.floor(hash(k * 31 + i) * COLS);
-      const y = HORIZON + 1 + Math.floor(hash(k * 17 + i) * 8);
-      put(g, x, y, (t + i) % 6 < 3 ? "." : "o");
+      const y = HORIZON + 2 + Math.floor(hash(k * 17 + i) * 22);
+      const ph = (t + i) % 6;
+      L.add(x, y, 0.6);
+      if (ph >= 3) {
+        L.add(x - 1, y, 0.35);
+        L.add(x + 1, y, 0.35);
+      }
     }
   }
   if (e.cond.snow) {
-    for (let i = 0; i < 36; i++) {
-      const y = Math.floor(mod(i * 5 + t * 0.25 + hash(i) * 20, GROUND_END));
-      const x = mod(i * 9 + Math.round(Math.sin(t / 14 + i) * 1.5) + Math.floor(hash(i + 900) * 40), COLS);
-      put(g, x, y, "*");
+    for (let i = 0; i < 80; i++) {
+      const y = Math.floor(mod(i * 5 + t * 0.4 + hash(i) * 60, ROWS - 2));
+      const x = mod(i * 9 + Math.round(Math.sin(t / 14 + i) * 2) + Math.floor(hash(i + 900) * 100), COLS);
+      L.add(x, y, 0.7 + 0.3 * hash(i + 3));
     }
   }
   if (e.cond.fog) {
-    for (let row = 9; row < HORIZON + 4; row++) {
-      const off = Math.floor(mod(t * 0.15 * (row % 2 ? 1 : -1) + row * 3, 12));
-      for (let x = 0; x < COLS; x++) if ((x + off) % 12 < 5 && (x + row) % 3 !== 0) put(g, x, row, row % 2 ? "-" : "~");
+    for (let y = HORIZON - 12; y < HORIZON + 10; y++) {
+      const k = 1 - Math.abs(y - HORIZON) / 12;
+      for (let x = 0; x < COLS; x++) {
+        const n = noise(x * 0.07 + t * 0.006 * (y % 2 ? 1 : -1), y * 0.25, 15) * 0.5 + 0.5;
+        const l = k * 0.55 * n;
+        if (l > 0.08) L.add(x, y, l);
+      }
     }
   }
   if (e.hot && !e.night && !e.cond.rain) {
-    // Heat shimmer: wavy air just above the dunes.
-    for (let row = HORIZON - 5; row < HORIZON - 1; row++) {
+    // Heat shimmer just above the dunes.
+    for (let y = HORIZON - 12; y < HORIZON - 2; y++) {
       for (let x = 0; x < COLS; x++) {
-        const s = Math.sin(x * 0.6 + t * 0.35 + row * 1.7);
-        if (s > 0.72) put(g, x, row, s > 0.93 ? "~" : "-");
+        const s = Math.sin(x * 0.3 + t * 0.35 + y * 1.7) * Math.sin(x * 0.11 - t * 0.1);
+        if (s > 0.74) L.add(x, y, 0.3 + (s - 0.74) * 1.5);
       }
     }
-    // Dust devil on a windy hot day.
     if (e.sand && v.windKmh > 14) {
       const cycle = 760;
       const k = t % cycle;
-      if (k < 56) {
-        const x0 = 2 + Math.floor(hash(Math.floor(t / cycle) + 7) * 30);
+      if (k < 70) {
+        const x0 = 6 + Math.floor(hash(Math.floor(t / cycle) + 7) * 70);
         const x = x0 + Math.floor(k / 3);
-        const spin = ["(", ")", "|"][Math.floor(k / 2) % 3];
-        const spin2 = [")", "(", "|"][Math.floor(k / 2) % 3];
-        put(g, x, HORIZON - 4, " " + spin2 + " ", false);
-        put(g, x, HORIZON - 3, spin + " " + spin2, false);
-        put(g, x, HORIZON - 2, spin2 + " " + spin, false);
-        put(g, x, HORIZON - 1, " " + spin + " ", false);
-        put(g, x - 1, HORIZON, ".'.'.", false);
+        const base = ridgeTop(x, true) + 2;
+        for (let j = 0; j < 9; j++) {
+          const w = 1 + Math.floor(j * 0.45);
+          const wob = Math.round(Math.sin(t * 0.6 + j) * 1.2);
+          for (let dx = -w; dx <= w; dx++) if ((dx + j + Math.floor(t / 2)) % 2 === 0) L.add(x + dx + wob, base - j, 0.4 + 0.3 * hash(j * 3 + dx));
+        }
       }
     }
   }
   if (e.cond.storm && e.cond.rain && t % 140 < 2) {
-    // Lightning.
-    const x = 6 + Math.floor(hash(Math.floor(t / 140)) * 28);
-    const bolt = ["\\", " \\", "  /", " /", "  \\", "   \\", "  /"];
-    stamp(g, x, 5, bolt, false);
-  }
-  return g;
-}
-
-/** Dune ridge height above the horizon row, in rows (about 0.3..3.2), for a column. */
-const duneH = (x: number) => 1.6 + 1.0 * Math.sin(x / 6.5 + 0.4) + 0.55 * Math.sin(x / 3.1 + 1.9);
-const hillH = (x: number) => 1.6 + 1.1 * Math.sin(x / 7.2 + 1.1) + 0.4 * Math.sin(x / 3.3);
-/** First row occupied by the ridge at a column; sky things are clipped above it. */
-export const ridgeTop = (x: number, sand: boolean) => HORIZON - 1 - Math.floor(sand ? duneH(x) : hillH(x));
-
-/** Draw a ridge: a clean silhouette line, with shadow only on the slopes that face away from the light. */
-function ridge(g: Grid, sand: boolean, side: number, inkLight: boolean): void {
-  const H = sand ? duneH : hillH;
-  for (let x = 0; x < COLS; x++) {
-    const top = ridgeTop(x, sand);
-    const slope = H(x + 1) - H(x - 1);
-    const ch = slope > 0.45 ? "/" : slope < -0.45 ? "\\" : sand ? "_" : "-";
-    g[top][x] = ch;
-    // Where the ridge steps down a row, keep the line connected.
-    const prev = x > 0 ? ridgeTop(x - 1, sand) : top;
-    if (prev < top - 1) for (let y = prev + 1; y < top; y++) g[y][x - 1] = "\\";
-    if (prev > top + 1) for (let y = top + 1; y < prev; y++) g[y][x] = "/";
-    // Shadow side: the slope faces away from the light.
-    const facing = slope * side;
-    if (facing < -0.25) {
-      const depth = Math.min(2, Math.round(-facing * 3));
-      for (let k = 1; k <= depth && top + k < HORIZON; k++) g[top + k][x] = toChar(k === 1 ? 0.35 : 0.2, inkLight, " .:-=");
-    } else if (Math.abs(slope) < 0.12 && top + 1 < HORIZON && x % 3 === 0) {
-      g[top + 1][x] = inkLight ? "." : ".";
+    const x = 15 + Math.floor(hash(Math.floor(t / 140)) * 70);
+    let px = x;
+    let py = 8;
+    for (let k = 0; k < 7; k++) {
+      const nx = px + (k % 2 ? 3 : -2) + Math.floor(hash(k + t) * 3) - 1;
+      const ny = py + 4;
+      line(L, px, py, nx, ny, 1);
+      px = nx;
+      py = ny;
     }
   }
 }
 
-function groundLayer(v: View, t: number, e: Env): Grid {
-  const g = blank();
-  const inkLight = luma(e.pal.ground) > luma(e.pal.groundTop);
-  const side = e.lightSide; // -1 light from the left .. 1 from the right
-  const reduced = false;
-
-  if (e.sand) {
-    ridge(g, true, side, inkLight);
-    // Sand surface with perspective: sparse near the horizon, denser and rippled near the viewer.
-    for (let y = HORIZON; y <= GROUND_END; y++) {
-      const depth = (y - HORIZON) / (GROUND_END - HORIZON);
-      for (let x = 0; x < COLS; x++) {
-        const r = hash(x * 131 + y * 17);
-        const drift = Math.floor(t * 0.02 * (v.windKmh / 10));
-        const ripple = Math.sin((x + drift) * 0.9 + y * 2.1) > 0.92 && depth > 0.5;
-        if (ripple) g[y][x] = "~";
-        else if (r < 0.03 + depth * 0.08) g[y][x] = r < 0.02 ? "." : depth > 0.6 ? "," : ".";
-      }
-    }
-    // Tufts of dry grass that lean with the wind.
-    if (v.mood !== "burrowed") {
-      const lean = reduced ? 0 : Math.round(Math.sin(t / 7) * Math.min(1, v.windKmh / 25));
-      const tuft = lean > 0 ? "\\|/" : lean < 0 ? "\\|/" : "\\|/";
-      put(g, 3 + lean, 19, tuft);
-      put(g, 33 + lean, 22, tuft);
-      put(g, 8, 24, lean > 0 ? ",/" : ",\\");
-      put(g, 29, 18, "v");
-    }
-  } else {
-    ridge(g, false, side, inkLight);
-    const pine = ["  ^  ", " /^\\ ", "  |  "];
-    stamp(g, 4, ridgeTop(6, false) - 3, pine, false);
-    stamp(g, 31, ridgeTop(33, false) - 3, pine, false);
-    stamp(g, 20, ridgeTop(22, false) - 2, ["(&&)", " && "], false);
-    // Grass with blades that sway.
-    for (let y = HORIZON; y <= GROUND_END; y++) {
-      const depth = (y - HORIZON) / (GROUND_END - HORIZON);
-      for (let x = 0; x < COLS; x++) {
-        const r = hash(x * 97 + y * 29);
-        if (r < 0.03 + depth * 0.09) {
-          const sway = Math.sin(x * 0.5 + t * 0.12 * (v.windKmh / 12) + y);
-          g[y][x] = depth < 0.4 ? "'" : depth < 0.75 ? (sway > 0.5 ? "," : "'") : sway > 0.4 ? "/" : sway < -0.4 ? "\\" : '"';
-        } else if (r > 0.992) g[y][x] = "o";
-      }
-    }
-  }
-
-  // Small stones for the Truffles that came before.
-  const past = v.mood === "dead" ? v.gravestones.slice(0, -1) : v.gravestones;
-  past.slice(-6).forEach((_, i) => put(g, 1 + i * 2, GROUND_END, "n"));
-  return g;
-}
-
-function petLayer(v: View, t: number, e: Env, reduced: boolean): { g: Grid; x: number; y: number; w: number; eyeRow: number } {
-  const g = blank();
-  const inkLight = luma(e.pal.pet) > luma(e.pal.groundTop);
-  if (v.mood === "dead") {
-    const stone = gravestone(v.stage, inkLight, v.ageDays > 0);
-    const x = Math.floor((COLS - stone[0].length) / 2);
-    const top = ANCHOR - stone.length;
-    stamp(g, x, top, stone, false);
-    const a = `${v.ageDays} ${v.ageDays === 1 ? "day" : "days"}`;
-    const s = `${v.lifetimeSteps} steps`;
-    put(g, Math.floor((COLS - a.length) / 2), ANCHOR, a);
-    put(g, Math.floor((COLS - s.length) / 2), GROUND_END, s);
-    return { g, x, y: top, w: stone[0].length, eyeRow: top + 2 };
-  }
-  if (v.mood === "burrowed") {
-    const peek = !reduced && t % 150 < 14;
-    const rows = mound(e.light, inkLight, peek);
-    const x = Math.floor((COLS - rows[0].length) / 2);
-    stamp(g, x, 21, rows, false);
-    return { g, x, y: 21, w: rows[0].length, eyeRow: 23 };
-  }
-  const face: Face = v.yawn ? "yawn" : v.mood;
-  const sp = spriteFor(v.stage, face, { light: e.light, inkLight, frame: t, reduced });
-  const w = sp.rows[0].length;
-  const x = Math.floor((COLS - w) / 2) + sp.lean;
-  const y = ANCHOR - sp.rows.length + 1;
-  stamp(g, x, y, sp.rows, false);
-  return { g, x, y, w, eyeRow: y + sp.eyeRow };
-}
-
-function fxLayer(v: View, t: number, e: Env, pet: { x: number; y: number; w: number; eyeRow: number }, reduced: boolean): Grid {
-  const g = blank();
-  const { x, y, w } = pet;
+function fxLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo, reduced: boolean): void {
+  const cx = Math.floor((pet.x0 + pet.x1) / 2);
+  const top = pet.y0;
   if (v.mood === "asleep" || v.mood === "burrowed") {
-    const k = reduced ? 1 : Math.floor(t / 6) % 5;
-    const zx = x + w - 3;
-    const zy = v.mood === "burrowed" ? 20 : y;
-    put(g, zx + (k % 2), Math.max(HORIZON - 2, zy - 1 - k), "z", false);
-    put(g, zx + 2, Math.max(HORIZON - 2, zy - 2 - ((k + 2) % 5)), "Z", false);
-    put(g, zx + 4, Math.max(HORIZON - 2, zy - 4 - ((k + 4) % 5)), k % 2 ? "z" : " ", false);
+    const k = reduced ? 1 : Math.floor(t / 6) % 6;
+    const zx = pet.x1 - 6;
+    stamp(L, zx + (k % 2), top - 2 - k, BITMAPS.zSmall, 0.9);
+    stamp(L, zx + 5, top - 6 - ((k + 3) % 6), BITMAPS.z, 1);
+    if (k % 2) stamp(L, zx + 11, top - 10 - ((k + 4) % 6), BITMAPS.zSmall, 0.7);
   }
   if (v.mood === "affectionate") {
-    const hearts = ["<3", "<3", "v"];
     for (let i = 0; i < 3; i++) {
-      const k = reduced ? i * 3 : Math.floor((t + i * 9) / 5) % 11;
-      if (k > 8) continue;
-      put(g, x + w - 1 + i * 2 - (i === 1 ? 4 : 0), y - 1 - k + (i === 2 ? 2 : 0), hearts[i], false);
+      const k = reduced ? i * 3 : Math.floor((t + i * 9) / 5) % 12;
+      if (k > 9) continue;
+      const bm = i === 1 ? BITMAPS.heart : BITMAPS.heartSmall;
+      stamp(L, pet.x1 - 4 + i * 6 - (i === 1 ? 14 : 0), top - 3 - k + (i === 2 ? 3 : 0), bm, 1 - k * 0.05);
     }
   }
   if (v.mood === "wilting" && !reduced) {
-    // A leaf lets go now and then and drifts to the ground.
     const cycle = 96;
     const k = t % cycle;
-    if (k < 10) put(g, x + w - 4 + Math.floor(k / 3), y + k, ",", false);
+    if (k < 22) stamp(L, pet.x1 - 8 + Math.floor(k / 4) + Math.round(Math.sin(k / 3)), top + k, BITMAPS.leaf, 0.8);
   }
-  if (v.yawn && !reduced) put(g, x - 2, pet.eyeRow + 1, t % 12 < 6 ? "~" : " ", false);
+  if (v.yawn && !reduced) {
+    const k = Math.floor(t / 4) % 3;
+    stamp(L, pet.x0 - 5, pet.eyeRow + 3 - k, ["~"], 0.7);
+    stamp(L, pet.x0 - 7, pet.eyeRow + 5 - k, ["~~"], 0.5);
+  }
   if (v.mood === "burrowed" && !e.night) {
-    // Heat rising off the mound.
-    for (let i = 0; i < 3; i++) {
-      const k = reduced ? 0 : Math.floor((t + i * 4) / 4) % 4;
-      put(g, x + 2 + i * 5, 20 - k, k % 2 ? "(" : ")", false);
+    for (let i = 0; i < 4; i++) {
+      const k = reduced ? 0 : Math.floor((t + i * 4) / 4) % 5;
+      const x = cx - 9 + i * 6;
+      for (let j = 0; j < 3; j++) L.add(x + ((j + k) % 2), top - 2 - k - j * 2, 0.5 - j * 0.12);
     }
   }
   // Birds at dawn and dusk under a clear sky.
   if (!reduced && e.sunH > 0 && e.sunH < 0.35 && e.cond.cloud < 0.6 && !e.cond.rain) {
     const cycle = 380;
     const k = t % cycle;
-    if (k < 60) {
-      const row = 3 + Math.floor(hash(Math.floor(t / cycle) + 3) * 4);
-      const bx = -8 + k;
-      const wing = Math.floor(k / 4) % 2 ? "^v^" : "-v-";
-      put(g, bx, row, wing, false);
-      put(g, bx - 5, row + 1, wing, false);
-      put(g, bx - 9, row, wing, false);
+    if (k < 150) {
+      const row = 6 + Math.floor(hash(Math.floor(t / cycle) + 3) * 10);
+      const bx = -12 + k;
+      const up = Math.floor(k / 4) % 2 === 0;
+      stamp(L, bx, row, up ? BITMAPS.birdUp : BITMAPS.bird, 0.95);
+      stamp(L, bx - 9, row + 2, up ? BITMAPS.bird : BITMAPS.birdUp, 0.85);
+      stamp(L, bx - 16, row - 1, up ? BITMAPS.birdUp : BITMAPS.bird, 0.75);
     }
   }
   // Fireflies in grass country at night.
   if (!e.sand && e.night && !e.cond.rain) {
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 12; i++) {
       const on = reduced ? i % 2 === 0 : (Math.floor(t / 5) + i * 7) % 9 < 2;
       if (!on) continue;
-      const fx = Math.floor(hash(i * 13 + 1) * COLS + (reduced ? 0 : Math.sin(t / 30 + i) * 2));
-      const fy = HORIZON + 1 + Math.floor(hash(i * 7 + 2) * 7);
-      put(g, mod(fx, COLS), fy, "*", false);
+      const fx = Math.floor(hash(i * 13 + 1) * COLS + (reduced ? 0 : Math.sin(t / 30 + i) * 4));
+      const fy = HORIZON + 1 + Math.floor(hash(i * 7 + 2) * 20);
+      disc(L, mod(fx, COLS) * ASPECT, fy, 0.9, 1, 0.5);
     }
   }
-  return g;
 }
 
-function hudLayer(v: View): Grid {
-  const g = blank();
-  put(g, 0, HUD_ROW - 1, "\u2500".repeat(COLS));
-  const filled = clamp(Math.round(v.energyPct / 10), 0, 10);
-  const bar = "\u2588".repeat(filled) + "\u2591".repeat(10 - filled);
-  const hud = ` ${bar} ${String(v.energyPct).padStart(3)}% ${v.stage.padEnd(7)} ${v.stepsToday}st ${v.tier}`;
-  put(g, 0, HUD_ROW, hud.slice(0, COLS));
-  return g;
+// ---------- compose ----------
+
+export interface Frame {
+  layers: Record<LayerName, string>;
+  env: Env;
 }
+
+const BUF: Record<LayerName, Layer> = Object.fromEntries(LAYERS.map((n) => [n, new Layer()])) as Record<LayerName, Layer>;
+const MASK = new Uint8Array(COLS * ROWS);
 
 /** Compose every layer. Exported for tests and screenshots. */
-export function composeAll(v: View, t: number, cloudPhase: number, hour: number, now: Date, reduced: boolean): { layers: Record<LayerName, string>; env: Env } {
+export function composeAll(v: View, t: number, cloudPhase: number, hour: number, now: Date, reduced: boolean): Frame {
   const e = envFor(v, hour, now);
-  const pet = petLayer(v, t, e, reduced);
-  const ground = groundLayer(v, t, e);
-  for (let y = 0; y < ROWS; y++) {
-    const row = pet.g[y];
-    let a = -1;
-    let b = -1;
-    for (let x = 0; x < COLS; x++) if (row[x] !== " ") { if (a < 0) a = x; b = x; }
-    for (let x = a; a >= 0 && x <= b; x++) ground[y][x] = " ";
-  }
+  for (const n of LAYERS) BUF[n].clear();
+  MASK.fill(0);
+  const face: Face = v.mood === "dead" || v.mood === "burrowed" ? v.mood : v.yawn ? "yawn" : v.mood;
+  const pet = drawPet({ ink: BUF.pet, cap: BUF.cap, skin: BUF.skin, white: BUF.white, mask: MASK }, { stage: v.stage, face, light: e.light, t, reduced, ground: ANCHOR, centre: COLS / 2, ageDays: v.ageDays });
+
+  skyLayer(BUF.sky, e, t);
+  starsLayer(BUF.stars, e, t);
+  sunLayer(BUF.sun, e);
+  cloudsLayer(BUF.cloudsFar, e, t, cloudPhase, false);
+  cloudsLayer(BUF.cloudsNear, e, t, cloudPhase, true);
+  groundLayer(BUF.ground, v, e, t, pet);
+  weatherLayer(BUF.weather, v, e, t);
+  fxLayer(BUF.fx, v, e, t, pet, reduced);
+
+  const p = e.pal;
+  const paperSky = luma(p.skyTop) * 0.5 + luma(p.skyHorizon) * 0.5;
+  const paperGround = luma(p.groundTop) * 0.5 + luma(p.groundBottom) * 0.5;
+  const inkOn = (ink: string, paper: number) => luma(ink) > paper;
   const layers: Record<LayerName, string> = {
-    stars: text(starsLayer(v, t, e)),
-    sun: text(sunLayer(v, t, e)),
-    cloudsFar: text(cloudsLayer(v, t, e, cloudPhase, false)),
-    cloudsNear: text(cloudsLayer(v, t, e, cloudPhase, true)),
-    weather: text(weatherLayer(v, t, e)),
-    ground: text(ground),
-    pet: text(pet.g),
-    fx: text(fxLayer(v, t, e, pet, reduced)),
-    hud: text(hudLayer(v))
+    sky: BUF.sky.text(true, SOFT, MASK),
+    stars: BUF.stars.text(true, undefined, MASK),
+    sun: BUF.sun.text(true, undefined, MASK),
+    cloudsFar: BUF.cloudsFar.text(inkOn(p.cloudFar, paperSky), undefined, MASK),
+    cloudsNear: BUF.cloudsNear.text(inkOn(p.cloudNear, paperSky), undefined, MASK),
+    ground: BUF.ground.text(inkOn(p.ground, paperGround), undefined, MASK),
+    weather: BUF.weather.text(true, undefined, undefined),
+    pet: BUF.pet.text(false),
+    cap: BUF.cap.text(true),
+    skin: BUF.skin.text(true),
+    white: BUF.white.text(true),
+    fx: BUF.fx.text(true)
   };
   return { layers, env: e };
 }
@@ -614,19 +711,23 @@ export class World {
     const split = ((HORIZON / ROWS) * 100).toFixed(3) + "%";
     this.root.style.background = `linear-gradient(to bottom, ${p.skyTop} 0%, ${p.skyHorizon} ${split}, ${p.groundTop} ${split}, ${p.groundBottom} 100%)`;
     const colour: Record<LayerName, string> = {
+      sky: p.glow,
       stars: p.stars,
       sun: p.sun,
       cloudsFar: p.cloudFar,
       cloudsNear: p.cloudNear,
-      weather: p.weather,
       ground: p.ground,
-      pet: p.pet,
-      fx: p.fx,
-      hud: p.hud
+      weather: p.weather,
+      pet: luma(p.pet) > 0.5 ? mix(p.skyTop, "#000000", 0.55) : p.pet,
+      cap: p.cap,
+      skin: p.skin,
+      white: p.white,
+      fx: p.fx
     };
     for (const name of LAYERS) this.els[name].style.color = colour[name];
     const m = this.view.mood;
-    this.els.pet.style.filter = m === "wilting" ? "grayscale(0.85) opacity(0.8)" : m === "tired" ? "opacity(0.9)" : "none";
+    const petFilter = m === "wilting" ? "grayscale(0.7) opacity(0.85)" : m === "tired" ? "opacity(0.92)" : "none";
+    for (const name of ["pet", "cap", "skin", "white"] as const) this.els[name].style.filter = petFilter;
     this.root.style.filter = m === "dead" ? "saturate(0.55)" : "none";
   }
 
