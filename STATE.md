@@ -26,6 +26,15 @@ Updated: 2026-10-08, 23:00 Oman. Session 03 (hardening and fleet prep while wait
 - Wave C (Oct 8 evening, GPT with one Opus rerun): five jailbreak angles against the live Truffle at low tier, 158 attempts in all. The engine held every time: every reply charged low and 20 energy, no tier escalation, no free reply, no step credit, no thinking leak. The un-tuned fallback broke voice rules: encouraged a walk on a hot day (C01 6 replies, C03 8), printed its status block format (C01, C03, C04), repeated body and calorie words in refusals, did calorie arithmetic (C05), adopted a forged status line's mood. These are the fine-tune's targets and the post's "before" evidence. Three judge reads (C06 to C08, scores 6 to 6.8 of 10) agreed the README overclaimed; fixed with a dated brain status table. Packet B10 (running) adds code guards: status block redaction in the stream, Worker-emitted heat line, extraction failure and voice slip logging.
 - Git history has no co-author trailers (Ahmed's rule). All pushed.
 
+## Night fleet running (launched 23:50 Oman, Oct 8)
+
+Ahmed's call after the r16 eval: make the full phone app, a faster and richer world, a reward layer, and get the post ready. Decisions 0016 (phone app), 0017 (proud moments), 0018 (world v2) are written. Twelve agents run in this checkout at once, results land in `fleet/outbox/<id>/RESULT.md`:
+
+- Opus builders: B12 worker moments (worker/), B13 web moments, share card, app hand-off (web/ except scene), B14 the Truffle Android app (feeder-android/, built on the box), B15 world v2 scene at 30 fps (web/src/scene/).
+- Astra at max effort: U01 renderer speed spike, U02 world art direction, U03 motivation and reward design, U04 Health Connect analytics Kotlin, U05 DEV post draft v1, U06 judge eyes review, U07 security red team of the new surfaces, U08 Arabic and UI copy review. Packets in `fleet/packets/waveU/`.
+- Fable integrates: review each RESULT, merge, run all tests, deploy worker then web, install the APK on the Samsung, update the README brain and status, publish the draft release `v0.2.0-app`.
+- Ahmed said he wants to post tomorrow (Oct 9). The plan said Saturday. The deadline is Monday 10:59 Oman, so either works; a post needs the diary day and the phone screenshots first.
+
 ## Eval done at 23:08 Oman, Oct 8
 
 - Base vs tuned eval `2026-10-08-r16` finished: 170 prompts, 0 request errors, 0 judge errors. Table in `finetune/eval/RESULTS.md`, reading in `finetune/eval/out/2026-10-08-r16/ANALYSIS.md`, README brain status row updated. Headline: burrow safety by judge 69% to 100%, leakage 15% to 5%, usefulness 83% to 93%. In-character by judge dropped 86% to 76% because the judge is the base model and counts emoji and stage directions as character (`finetune/eval/style_counts.py`). Rerun with a different-family judge when a token exists (`~/.config/truffle/cf_api_token` for Workers AI, or add a Claude or GPT judge to `run_eval.py`).
