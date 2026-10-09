@@ -17,8 +17,8 @@ The existing warm, non-pressuring companion copy was reviewed and left unchanged
 
 - Initial new suite: 37 expected behavioral failures and 55 passes. This demonstrated the intent/quiet/rest omissions, false-positive quiet preferences, and movement-priority bug before fixes.
 - Added return cases next: six expected failures before their implementation.
-- Final full web test command: `npm test -- --reporter=dot` — **18 files, 427 tests passed**, including all 105 new adversarial cases.
-- `npm run typecheck` — passed.
+- Final full web test command: `npm test -- --reporter=dot`: **18 files, 427 tests passed**, including all 105 new adversarial cases.
+- `npm run typecheck`: passed.
 
 ## Limits
 

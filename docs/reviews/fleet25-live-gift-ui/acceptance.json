@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-10-09T08:47:57.049Z",
+  "page": "Production root world, dedicated non-user QA owner",
+  "browser": "155.0.8059.39",
+  "viewport": {
+    "width": 390,
+    "height": 800
+  },
+  "deviceScaleFactor": 2,
+  "reducedMotion": true,
+  "gift": {
+    "mock": false,
+    "demo": false,
+    "generation": 0,
+    "count": 1,
+    "pending": false,
+    "name": "Paper bouquet",
+    "note": "A little keepsake for a rest or a pause. No hurry to come back. Small things feel just right at my spore size.",
+    "art": "     {+}\n (o)  |\n  <\\  |> {+}\n   <\\/  /\n   <||>/\n   \\___/\n    \\_/",
+    "provenance": {
+      "art": "procedural",
+      "note": "authored",
+      "version": 1
+    },
+    "localDay": "2026-10-09",
+    "foodAtRead": 3996
+  },
+  "worldObjectClick": "PASS",
+  "keyboardCollectionOpen": "PASS",
+  "sameArtAndNote": "PASS",
+  "explicitProvenance": "PASS",
+  "focusReturnedToChatGift": "PASS",
+  "screenshotsCredentialCheck": "PASS",
+  "apiRequests": [
+    {
+      "path": "/state",
+      "method": "GET"
+    },
+    {
+      "path": "/companion",
+      "method": "POST"
+    },
+    {
+      "path": "/state",
+      "method": "GET"
+    }
+  ],
+  "localHealthProbes": 1,
+  "blockedRequests": [],
+  "pageErrors": [],
+  "chatRequests": 0,
+  "pairRequests": 0,
+  "feedRequests": 0,
+  "resetRequests": 0,
+  "inferenceCalls": 0,
+  "result": "PASS",
+  "boundary": "Existing server gift rendered through production UI; no claim that this browser observation establishes when the alarm ran. Dedicated QA credentials and private identifiers omitted."
+}

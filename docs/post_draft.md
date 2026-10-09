@@ -44,8 +44,6 @@ Heat also changes the underlying rules. A daytime apparent-temperature forecast 
 
 **[Try the sample world](https://truffle-web.ahmed-abied.workers.dev/demo?mock=1).** No phone setup or model call is needed. The sample runs the shared food engine:
 
-<!-- Publication gate: confirm the decision 0023 public deploy and this exact flow before publishing. Root owns the release checkpoint. -->
-
 1. Choose **Try a 4,000-step walk** below the world to wake the creature with simulated steps.
 2. Choose **Everyday** or **Think deeper** and send a message. The reply and food charge are labelled as simulated.
 3. In Pocket, choose **Take a moment**. Put the screen away; **I'm back** returns you to chat.
@@ -54,9 +52,11 @@ Heat also changes the underlying rules. A daytime apparent-temperature forecast 
 
 For live conversation, the [main world](https://truffle-web.ahmed-abied.workers.dev) distinguishes a trained Gemma reply from **half-awake**, an untuned fallback while the adapted brain wakes. **Offline demo** means local sample replies. A drawing preview demonstrates the generator, not a server alarm or an AI conversation.
 
-The [Android setup guide](https://github.com/Ahmedabied/truffle/tree/main/feeder-android) links the available debug test APK and distinguishes the physically checked 0.3 build from the new 0.4 source and build evidence.
+The [Android 0.4 test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app) is a public debug prerelease with an anonymously verified download and checksum. The [setup guide](https://github.com/Ahmedabied/truffle/tree/main/feeder-android) distinguishes its build and emulator evidence from the physically checked 0.3 version.
 
-[Browser integration](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-20-browser.md) and [identity checks](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-21-identity.md) use isolated local fixtures. The [earlier public walkthrough](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/README.md) records live fallback replies from the previous release.
+The [public sample check](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-public-web.md) passed on October 9: expected deployed assets, a full-width mobile world and the direct 4,000-step simulation, without API calls. The rest of the flow has [local browser coverage](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-25-final.md).
+
+In a separate live check, one synthetic test pet [migrated to v2](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-live-release/migration.json) and had a [Paper bouquet waiting before any return request](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-live-release/gift.json). No user pet was changed and no model was called. The [earlier public walkthrough](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/README.md) records fallback replies from the previous release.
 
 ## Code
 
@@ -111,7 +111,7 @@ A direct-counter check with version 0.3 on a Samsung SM-A366B recorded **81 step
 
 Serving has a less charming edge: a recorded GPU cold start took about ten minutes. The earlier public high-effort fallback check took about 53 seconds to show text. The new router gives the trained provider four seconds to produce visible text for ordinary replies, or eight for explicit deep replies, before starting the labelled fallback. Those are routing deadlines, not total response-time promises. No new paid inference was used to validate this change, so faster live conversation remains unmeasured. [Serving history](https://github.com/Ahmedabied/truffle/blob/main/decisions/0015_serving_plan_a.md) · [Earlier public timing](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/chat-and-gift.json) · [Current routing review](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-13-demo-chat.md).
 
-> **Demonstrated:** the trained adapter and matched comparison; v2 accounting and server-alarm tests; local browser checks; Android build and emulator checks; a historical 81-step sensor-to-energy feed; controlled desktop frame timing.
+> **Demonstrated:** the trained adapter and matched comparison; v2 accounting tests and one synthetic live migration/gift-alarm check; local browser checks and the public sample world; a verified public debug APK, Android build and emulator checks; a historical 81-step sensor-to-energy feed; controlled desktop frame timing.
 >
 > **Still unproved:** the new native reactions on a physical phone, step accuracy against a counted reference, sustained phone performance, faster live replies, independent model judging, blind Arabic preference and any change in walking habits. The walk had no recorded outdoor observation. [Evidence and remaining checks](https://github.com/Ahmedabied/truffle/blob/main/docs/submission_checklist.md).
 
@@ -123,7 +123,7 @@ Energy gating also works with a closed API; open weights give this project contr
 
 ## My Agent Session
 
-I used GPT and Claude agents for implementation, synthetic examples, performance experiments and adversarial review. One found that the prompt described maximum effort even when the person requested a cheaper answer. The fix made Gemma read the tier actually admitted and charged. [That decision](https://github.com/Ahmedabied/truffle/blob/main/decisions/0013_state_block_shows_charged_tier.md) and the [task reports](https://github.com/Ahmedabied/truffle/tree/main/fleet/outbox) preserve the work, including failures.
+I used GPT and Claude agents for implementation, synthetic examples, performance experiments and adversarial review. For the companion redesign, 25 Astra Ultra assignments ran in waves of up to three alongside one integrator. Separate reviewers tested accounting, gifts, native identity and the unfamiliar-user experience. The [roster and reports](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-roster.md) show their scopes; the integrator made the final changes and release checks. One found that the prompt described maximum effort even when the person requested a cheaper answer. The fix made Gemma read the tier actually admitted and charged. [That decision](https://github.com/Ahmedabied/truffle/blob/main/decisions/0013_state_block_shows_charged_tier.md) and the [task reports](https://github.com/Ahmedabied/truffle/tree/main/fleet/outbox) preserve the work, including failures.
 
 The next test is whether returning to this small creature is worth putting the phone away. For now, the line I want it to remember is the one it learned to say in the heat: **today there is no rescue mission.**
 

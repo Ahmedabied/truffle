@@ -1,0 +1,41 @@
+{
+  "generation": 0,
+  "zone": "Asia/Muscat",
+  "steps_today": 4000,
+  "lifetime_steps": 4000,
+  "food": 3998,
+  "capacity": 12000,
+  "burrowed": false,
+  "expected_continuous_food_interval": [
+    3998.227689127039,
+    3998.236768835562
+  ],
+  "observed_utc": "2026-10-09T08:45:33.127670+00:00",
+  "source": "d8a51ed",
+  "synthetic_real_pet": true,
+  "paid_chat_requests": 0,
+  "pending_job": false,
+  "gift_count": 1,
+  "gift_created_utc": "2026-10-09T08:45:18.151000+00:00",
+  "gift_due_utc": "2026-10-09T08:45:18.151000+00:00",
+  "gift_exists_before_return": true,
+  "art": "     {+}\n (o)  |\n  <\\  |> {+}\n   <\\/  /\n   <||>/\n   \\___/\n    \\_/",
+  "text": {
+    "en": {
+      "name": "Paper bouquet",
+      "note": "A little keepsake for a rest or a pause. No hurry to come back. Small things feel just right at my spore size."
+    },
+    "ar": {
+      "name": "باقة ورقية",
+      "note": "تذكار صغير للراحة أو الاستراحة. لا داعي للاستعجال في العودة. الأشياء الصغيرة تناسب حجمي وأنا بوغ صغير."
+    }
+  },
+  "provenance": {
+    "art": "procedural",
+    "note": "authored",
+    "version": 1
+  },
+  "return_preserves_gift": true,
+  "repeat_away_is_successful_noop": true,
+  "duplicate_feed_adds_no_food": true
+}

@@ -1,98 +1,93 @@
 # STATE
 
-Updated October 9, 2026. Current work integrates decisions 0019 through 0022.
-The new energy work is an exploration, not a changed production economy.
+Updated October 9, 2026. Decision 0023 is implemented and deployed. This
+supersedes the earlier exploration-only status. All 25 Astra Ultra assignments
+are complete; the [roster](docs/reviews/fleet25-roster.md) records actual work.
 
-## Live application
+## Delivered application
 
-- Web: https://truffle-web.ahmed-abied.workers.dev and `/demo`.
-  Web checkpoint `f388eef`, version `7d31e6ff-aff6-4584-b604-d4410332778b`.
-  Full-width expressive ASCII mushroom, chat beneath, Pocket tools, local return
-  keepsakes, clickable scene gifts, warm manual outings and a 60 fps target.
-  Return gifts survive refresh failures; imports remain pending until verified,
-  including cancellation/reload/native ownerless recovery.
-- API: https://truffle.ahmed-abied.workers.dev ; version
-  `2872c460-58fd-4277-b11c-3dcaaf289853`, source `1f86536`.
-  Required dated/zone-matched feeds, preserved heat protection on weather failure,
-  provider cancellation, finite streaming and successful-weather timestamps.
-  Prompt guidance separates fuel from fatigue and supports rest without walking
-  pressure. A live zero-energy reply spent zero and made no model call.
-  `/health` returns `ok: true, modal: true`; this means configured, not GPU-warm.
-- Worker typecheck and all 428 tests pass. Web typecheck, 177 unit tests, all
-  40 browser scenarios and the production build pass. The public walkthrough
-  passed; retained earlier harness mistakes are explained in its report.
+- Web: https://truffle-web.ahmed-abied.workers.dev . Offline sample:
+  `/demo?mock=1`. Source `d8a51ed`, deployment
+  `3b5bbf7c-8100-46af-8219-38a5dadd109c`.
+- API: https://truffle.ahmed-abied.workers.dev . Same source checkpoint,
+  deployment `c5ea5b7c-336b-4fff-a557-3ad4a9086334`.
+  Both deployments preceded the food cutover at `2026-10-09T08:43:00Z`.
+  The legacy-cursor guard remains intact. A live synthetic pet preserved its
+  owner generation, 4,000-step history and pending gift through migration.
+  Food measured 3,999 at 08:44:08 UTC, matching elapsed consumption since cutover.
+- Food carries through midnight. Upkeep is 1,000 points per actual 24 hours,
+  independent of stage. Capacities are 12,000/24,000/32,000/42,000; absolute
+  effort thresholds are 20/1,500/3,600. Replies cost 20/60/200 and charge once
+  at visible output. Ordinary chat uses medium or lower; deep effort is explicit.
+  Heat pauses upkeep and the 96-hour continuous empty-food survival clock.
+- Server alarms create fresh procedural ASCII gifts after ten minutes away,
+  with authored bilingual notes, one per pinned day and twelve retained.
+  These use no model and charge no food. Early return cancels unstarted work;
+  owner, life, job and request fences protect delayed callbacks. Legacy local
+  gifts remain an archive; sample previews are explicitly unearned.
+- The width-fitted ASCII world has a full sleeping mushroom, distinct
+  anticipation and movement reactions, intelligence freckles and planted feet.
+  Chat follows the world, shows the latest user/reply exchange, and leaves
+  detailed tools in Pocket. The sample has a direct first-walk action.
+- English/Arabic outing and rest intent is conservative. Native foreground
+  movement changes expression only after verified owner/document handoff.
+  Optional reminders start off and suppress unsuitable weather or recent
+  movement. Dated, zone-matched feeds and retained weather shelter remain.
 
-## Phone proof
+## Verification and Android release
 
-- Samsung SM-A366B, Android SDK 36. Ahmed selected his existing Chrome pet when
-  it differed from the legacy feeder. Native ownership was retained through
-  upgrades without uninstall or data clearing.
-- Native hardware counter recorded 81 steps. Worker accepted 81 steps and
-  81/6,000 energy for October 9 in Asia/Muscat. Repeating that feed left both
-  values at 81. Reminders remained off. The user did not count actual steps;
-  accuracy and outdoor activity are not established.
-- Health Connect earlier matched Samsung Health at zero after midnight. This
-  is a separate source check, not a nonzero accuracy result.
-- Current Chrome world showed 60 fps, compose 0.9 ms / paint 1.0 ms. This is a
-  short physical-phone sample. Five throttled desktop Chrome scenes measured
-  59.85–60.05 fps; neither test establishes battery life or sustained performance.
-- Android 0.3 has direct step sensing, a silent foreground service, source fences,
-  dated feeds, optional quiet reminders and a revised ASCII Walk journal.
-  Final Android `4c86a68` passed 101 JVM tests and lint with zero errors /
-  62 warnings. APK SHA-256:
-  `aa312a365866ae2c5895e3ecf60d9718a1968ca308c6f99e0f84fc5310cc0eab`.
-- Final inspection found embedded World could reject an import silently and show
-  another pet. Native fixes at `4c86a68` add proper JS confirmation, explicit
-  retry and no hidden pairing. The corrected APK is installed; embedded World visibly showed the chosen
-  81-step pet. The later final-web reload was triggered before USB disconnected,
-  but its final readback was not observed. No further phone access is needed
-  for the completed code/evidence work. [Android QA](docs/reviews/android-qa.md).
+- Final source: 607 Worker tests, 436 web tests, both typechecks, web build and
+  75 browser cases passed. [Independent audit](docs/reviews/fleet25-25-final.md).
+- The deployed mobile sample passed expected-asset, full-width, complete
+  mushroom, first-walk and no-error checks in isolated Chrome, without inference.
+  [Public evidence](docs/reviews/fleet25-public-web.md).
+- Final full-width desktop storm: 58.91 fps over about ten seconds, 740 by
+  838.656 CSS pixels, DPR 2, 4x CPU slowdown. Nine frame intervals exceeded
+  25 ms. This is near the target, not a sustained-phone or guaranteed-60 result.
+- Android [0.4.0 test prerelease](https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app)
+  is public. Build source `0a3c56c`; app/build source unchanged at `d8a51ed`.
+  Release target `630a42e`. Workstation build: 129 JVM tests, lint 0 errors /
+  69 warnings. Three synthetic emulator reloads created fresh WebViews and
+  retained native settings; they did not authenticate a live Truffle owner.
+- APK: 12,588,066 bytes, debug-signed, version 0.4.0/code 4. Anonymous download
+  and published checksum matched SHA-256
+  `1ddc5b0d50240a610078c36693580f4fa5074500a0aab1d7afd429f97ae47962`.
+  [Download record](docs/reviews/fleet25-live-release/apk-download.json).
+- Live alarm acceptance passed: a Paper bouquet existed at its scheduled
+  08:45:18.151 UTC creation time before any return action. Return preserved it;
+  repeat away and duplicate feed minted neither gifts nor food.
+  The real gift also opened from the deployed world and Pocket keyboard list.
+  [Release evidence](docs/reviews/fleet25-live-release/README.md).
 
-## Energy exploration requested by Ahmed
+## Remaining limits
 
-Two independent Astra specialists examined useful spending and carryover.
-Current energy already carries, but midnight stage burn, cap loss and the
-zero-midnight death counter create unfair outcomes. No live balances changed.
-
-Recommended experiment: one balance, flat 1,000 points per elapsed 24 hours,
-no midnight charge, no increased upkeep with growth. Optional bounded storage
-can preserve overflow; a fixed 1,000-point chat floor was rejected because it
-prevents an initial small walk from buying any conversation. Useful spending
-is actual requested conversation/explanation/planning, not animation or invented
-background jobs. Death/dormancy and ordinary-vs-deep effort need explicit spec
-choices. [Report](docs/reviews/energy-carryover-exploration.md),
-[value review](docs/reviews/energy-value-review.md), and
-[reproducible simulations](explorations/energy-carryover/README.md): 45 exploratory
-checks plus 72 unchanged production tests pass. Historical unsent feeds remain
-separate from energy carryover and must not bypass replay protection.
-
-## Submission evidence
-
-- Trained Gemma 4 31B `r16` adapter, 170 matched prompts. Same-base model judge,
-  not independent validation. Human Arabic review remains open.
-- Exact Google/Unsloth/Red Hat checkpoints publish Apache 2.0. Application code
-  is MIT. [Model notice](NOTICE-GEMMA.md).
-- [Post](docs/post_draft.md) is unpublished. No invented outdoor diary.
-  [Checklist](docs/submission_checklist.md) records public/device evidence.
-- Final public high-effort demo reply used the untuned fallback, correctly
-  labelled half-awake, and took about 53 seconds to first visible text. It charged
-  200 once. Requested-low fallback text appeared in about 27 seconds and
-  charged 20 once. Neither check exercised the trained adapter. The later
-  prompt clarification was unit-tested; generated adherence is not yet measured.
-- Provider costs are not reconciled. The ledger includes estimated credit usage,
-  not zero compute cost. No new training or weight download ran.
+- Phone disconnected by the user's choice. Do not request it again for this
+  completed software task. Version 0.4 still lacks physical import/reload,
+  reaction, notification, TalkBack, battery and overnight/reboot evidence.
+  Historical 0.3 recorded 81 hardware steps and an accepted, replay-safe feed.
+  There was no manually counted reference. [Historical QA](docs/reviews/android-qa.md).
+- Browser absence is best effort. A hidden peer can schedule while another tab
+  remains visible; a closed page may fail to send its away event. Daily fences
+  prevent extra gifts but do not provide cross-tab presence coordination.
+- Provider totals remain unreconciled against the $50 cap. No paid inference,
+  training or model download ran in this session. Trained-provider deadlines
+  are four/eight seconds before fallback, not a total latency guarantee.
+  Faster live replies and model-made gifts remain unverified/disabled.
+- The r16 evaluation is a 170-prompt same-base comparison, not independent
+  model judging. Blind human Arabic review and habit change remain unproved.
+- DEV [draft](docs/post_draft.md) remains `published: false`. No article
+  publication or external messaging occurred. [Checklist](docs/submission_checklist.md).
 
 ## Operating constraints
 
-Astra waves use at most root plus three agents. Only the app agent controls ADB.
-Android builds run on `workstation` clone `/home/tamlik/truffle-source/review-20261008`;
-GitHub is the only source link. APKs/screenshots may be copied, never a source repo.
-The unrelated Tamlik deploy guard applies only to that website.
+Android builds run only on the workstation clone
+`/home/tamlik/truffle-source/review-20261008`, with GitHub as the source link.
+Only finished APKs and sanitized evidence move between machines. The Tamlik
+website's deploy guard concerns the unrelated website. Preserve the selected
+pet and never clear private data to simplify an upgrade.
 
-MemPalace KG is empty for Truffle. Promotion is blocked by peer writer PID 1442453.
-Do not bypass or terminate it. Repository reports preserve facts and provenance.
-Raw fleet evidence and partial U01–U08 outputs are not blanket-staged for publication.
-
-Android [v0.3.0-app](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app)
-is public as a clearly labelled debug test prerelease. Anonymous download and
-SHA-256 match passed; eight key evidence/article URLs returned HTTP 200. The DEV article remains unpublished.
+MemPalace query and final fact promotion returned `Transport closed`; repository reports and fresh
+observations provide this session's evidence. Do not bypass a peer lock or
+claim an unavailable KG result. Private `fleet/outbox/U01` through `U08` and raw
+QA credentials remain excluded from Git. The session record is
+[session 06](sessions/2026-10-09_session-06_companion_v2.md).

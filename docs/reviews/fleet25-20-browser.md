@@ -80,55 +80,55 @@ server tests. The browser fixture does not establish real server enforcement.
 
 ### Existing smoke suite: 41/41
 
-- PASS — pending slider cannot undo Reset
-- PASS — pending slider cannot feed the next day
-- PASS — rapid slider changes commit only the last value
-- PASS — chat canceled before first token stays cleared
-- PASS — chat canceled after first token stays cleared
-- PASS — heat, steps, and progress persist through reload
-- PASS — seen moments do not replay on reload
-- PASS — demo and main simulation retain separate pet progress
-- PASS — 320px English/Arabic layout and maximum text size do not overflow
-- PASS — reduced motion freezes actual canvas pixels
-- PASS — demo share card includes provenance and downloads a PNG
-- PASS — system reduced motion disables the conflicting app toggle
-- PASS — Reset clears a canceled chat cooldown
-- PASS — chat recovers after a temporary server error
-- PASS — 401 chat opens settings without replacing the saved pet
-- PASS — invalid API address is rejected without navigating
-- PASS — temporary boot failure exposes a working Retry action
-- PASS — background refresh failure marks stale state and Retry recovers
-- PASS — an offline return preserves its keepsake through heartbeat and recovery
-- PASS — 404 on real-pet startup preserves saved identity and does not pair
-- PASS — declined fresh import stays unpaired through reload
-- PASS — native declined import never displays the other saved pet
-- PASS — failed import preserves saved identity and Retry retains the stripped candidate
-- PASS — accepted verified import survives reload without another pairing
-- PASS — malformed import cannot create a replacement pet
-- PASS — offline import cannot substitute a sample and Retry reconnects
-- PASS — native World without an owner directs setup to Feed without pairing
-- PASS — native Retry after a later outage keeps the real backend
-- PASS — a generation-bearing legacy API without companion capability retains native identity and Retry
-- PASS — explicit Forget clears an unfinished browser import
-- PASS — Arabic world description follows the UI language
-- PASS — pause ritual freezes the world and returns without sending a message
-- PASS — heat pause invites comfort indoors without asking for a walk
-- PASS — invalid saved language and scale do not prevent startup
-- PASS — gift previews are temporary, labelled, and never enter the earned count
-- PASS — an elapsed absence creates one local gift on a rest day
-- PASS — heading out is a warm local interaction, and heat keeps the invitation indoors
-- PASS — mobile world fills the width and chat follows it with secondary controls in Pocket
-- PASS — outing survives a quick reload without claiming an absence, then welcomes once after time away
-- PASS — world gift and its keyboard alternative open the same keepsake in chat
-- PASS — normal chat uses plain food feedback while Pocket discloses simulated effort and cost
+- PASS: pending slider cannot undo Reset
+- PASS: pending slider cannot feed the next day
+- PASS: rapid slider changes commit only the last value
+- PASS: chat canceled before first token stays cleared
+- PASS: chat canceled after first token stays cleared
+- PASS: heat, steps, and progress persist through reload
+- PASS: seen moments do not replay on reload
+- PASS: demo and main simulation retain separate pet progress
+- PASS: 320px English/Arabic layout and maximum text size do not overflow
+- PASS: reduced motion freezes actual canvas pixels
+- PASS: demo share card includes provenance and downloads a PNG
+- PASS: system reduced motion disables the conflicting app toggle
+- PASS: Reset clears a canceled chat cooldown
+- PASS: chat recovers after a temporary server error
+- PASS: 401 chat opens settings without replacing the saved pet
+- PASS: invalid API address is rejected without navigating
+- PASS: temporary boot failure exposes a working Retry action
+- PASS: background refresh failure marks stale state and Retry recovers
+- PASS: an offline return preserves its keepsake through heartbeat and recovery
+- PASS: 404 on real-pet startup preserves saved identity and does not pair
+- PASS: declined fresh import stays unpaired through reload
+- PASS: native declined import never displays the other saved pet
+- PASS: failed import preserves saved identity and Retry retains the stripped candidate
+- PASS: accepted verified import survives reload without another pairing
+- PASS: malformed import cannot create a replacement pet
+- PASS: offline import cannot substitute a sample and Retry reconnects
+- PASS: native World without an owner directs setup to Feed without pairing
+- PASS: native Retry after a later outage keeps the real backend
+- PASS: a generation-bearing legacy API without companion capability retains native identity and Retry
+- PASS: explicit Forget clears an unfinished browser import
+- PASS: Arabic world description follows the UI language
+- PASS: pause ritual freezes the world and returns without sending a message
+- PASS: heat pause invites comfort indoors without asking for a walk
+- PASS: invalid saved language and scale do not prevent startup
+- PASS: gift previews are temporary, labelled, and never enter the earned count
+- PASS: an elapsed absence creates one local gift on a rest day
+- PASS: heading out is a warm local interaction, and heat keeps the invitation indoors
+- PASS: mobile world fills the width and chat follows it with secondary controls in Pocket
+- PASS: outing survives a quick reload without claiming an absence, then welcomes once after time away
+- PASS: world gift and its keyboard alternative open the same keepsake in chat
+- PASS: normal chat uses plain food feedback while Pocket discloses simulated effort and cost
 
 ### New v2 integration suite: 8/8
 
-- PASS — server gifts use authenticated owner and current generation; device gifts remain labelled archive
-- PASS — a fresh life clears open server gifts and never promotes an old life response
-- PASS — verified owner change scopes server gifts and device archives to the new pet
-- PASS — natural chat sends exactly once and schedules one owned job only after its server receipt
-- PASS — uncertain speech never schedules work; quiet preference cancels and persists across reload
-- PASS — failed gift scheduling makes no pending or earned-gift claim and preserves normal chat
-- PASS — an already-gifted day acknowledges another away quietly without a new job or gift
-- PASS — food reserve, reply ceiling, greeting price and explicit deep effort are distinct
+- PASS: server gifts use authenticated owner and current generation; device gifts remain labelled archive
+- PASS: a fresh life clears open server gifts and never promotes an old life response
+- PASS: verified owner change scopes server gifts and device archives to the new pet
+- PASS: natural chat sends exactly once and schedules one owned job only after its server receipt
+- PASS: uncertain speech never schedules work; quiet preference cancels and persists across reload
+- PASS: failed gift scheduling makes no pending or earned-gift claim and preserves normal chat
+- PASS: an already-gifted day acknowledges another away quietly without a new job or gift
+- PASS: food reserve, reply ceiling, greeting price and explicit deep effort are distinct

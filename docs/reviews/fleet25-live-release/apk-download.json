@@ -1,0 +1,12 @@
+{
+  "observed_utc": "2026-10-09T08:42:12.817202+00:00",
+  "anonymous": true,
+  "url": "https://github.com/Ahmedabied/truffle/releases/download/v0.4.0-app/truffle-0.4.0-debug.apk",
+  "bytes": 12588066,
+  "sha256": "1ddc5b0d50240a610078c36693580f4fa5074500a0aab1d7afd429f97ae47962",
+  "checksum_asset_matches": true,
+  "source_build": "0a3c56c6d1c7ddfbfc0873560142e66ab2bf75bb",
+  "release_target": "630a42e167eecf95e94f3c91b302547b47eca839",
+  "debug_prerelease": true,
+  "physical_phone_tested": false
+}

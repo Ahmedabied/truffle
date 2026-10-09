@@ -1,0 +1,21 @@
+{
+  "generation": 0,
+  "zone": "Asia/Muscat",
+  "steps_today": 4000,
+  "lifetime_steps": 4000,
+  "food": 3999,
+  "capacity": 12000,
+  "burrowed": false,
+  "expected_continuous_food_interval": [
+    3999.2127582097937,
+    3999.223134265476
+  ],
+  "observed_utc": "2026-10-09T08:44:08.017702+00:00",
+  "source": "d8a51ed",
+  "synthetic_real_pet": true,
+  "paid_chat_requests": 0,
+  "pending_job": true,
+  "gift_count": 0,
+  "legacy_capacity_before_cutover": 6000,
+  "legacy_food_before_cutover": 4000
+}

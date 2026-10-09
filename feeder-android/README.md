@@ -12,11 +12,13 @@ English and Arabic. Decision records: [0016](../decisions/0016_truffle_phone_app
 the fresh-document WebView fix, with 129 JVM tests passing and lint at
 0 errors / 69 warnings. Three emulator reloads created fresh views and retained
 synthetic owner settings. This was not a live Truffle pairing test.
-No 0.4 build has new physical-phone evidence. The previously verified public
-[0.3 debug test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app)
-and its [device record](../docs/reviews/android-qa.md) remain historical evidence.
-See the [submission checklist](../docs/submission_checklist.md) for the final
-0.4 release checkpoint; this directory's source version alone is not a release.
+[Download the public 0.4 debug prerelease](https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app).
+The anonymous download matched 12,588,066 bytes and the published SHA-256 below.
+Its source is `0a3c56c`, unchanged in deployed API/web checkpoint `d8a51ed`; the
+release targets `630a42e`. [Download verification](../docs/reviews/fleet25-live-release/apk-download.json).
+No 0.4 build has new physical-phone evidence. The [0.3 device record](../docs/reviews/android-qa.md)
+remains historical evidence. See the [submission checklist](../docs/submission_checklist.md)
+for exact release identifiers and remaining checks.
 
 ## Three screens
 
@@ -488,6 +490,12 @@ active source with supported and granted background reads. Recent positive
 activity suppresses a note. Paused direct counting never silently switches to
 Health Connect. V2 treats 1,500 stored food or 3,000 steps today as well fed, so
 expanded storage does not increase reminder pressure. Notes remain off by default.
+
+A separate live server check used one synthetic non-demo test pet, with no user
+pet changed and no chat/model request. It migrated across the cutover and received
+an alarm-created gift before return. This is server acceptance, not Android or
+physical walking evidence. [Migration](../docs/reviews/fleet25-live-release/migration.json)
+and [gift record](../docs/reviews/fleet25-live-release/gift.json).
 
 The embedded world follows server v2 food rules: 1,000 points per elapsed day at
 every age, no midnight debit, heat-paused maintenance and an exact 96-hour empty

@@ -1,4 +1,4 @@
-# Fleet 25 / 25 — final independent integration audit
+# Fleet 25 / 25: final independent integration audit
 
 Date: 2026-10-09. Assignment 25 of 25. Reviewed decision 0023 against the actual
 Worker engine, Durable Object, routing, gift ledger, browser ownership and
@@ -128,7 +128,7 @@ model quality. No paid inference was needed for this audit.
 The DEV draft remains `published: false` and distinguishes simulation, authored
 notes, historical live evidence and new local checks. A bounded pattern scan of
 candidate source/release text found no provider-token or private-key pattern.
-This is not a full secret or git-history audit. Raw `fleet/outbox/U01`–`U08`
+This is not a full secret or git-history audit. Raw `fleet/outbox/U01`-`U08`
 material was neither tracked nor staged during this review and remains outside
 the approved artifact scope. Synthetic emulator images require that label if
 published. No new personal-phone evidence is approved by this assignment.

@@ -1,62 +1,71 @@
 # Truffle handoff, October 9
 
-Read CLAUDE.md, STATE.md, decisions 0019–0022 and the latest session report.
-Continue from the verified checkpoints; preserve the selected Chrome pet.
+Read CLAUDE.md, STATE.md, decision 0023 and
+sessions/2026-10-09_session-06_companion_v2.md. All 25 Astra Ultra assignments
+are complete. Source ownership is back with root; no specialist has unfinished
+app edits. Decisions 0019 through 0022 remain relevant where 0023 does not
+supersede them.
 
-## User direction
+## Current delivery
 
-Ahmed authorized dated/time-zone-matched feeds, retained heat shelter during a
-weather outage, direct phone walking independent of Samsung Health, optional
-quiet reminders, and small away gifts. The world should fill most of the phone,
-with chat directly below and other controls in Pocket. A full mushroom sleeps
-with smooth facial emotion; effort adds cap freckles and slight size changes.
-The target is 60 fps. Keep the revised ASCII walking notebook.
+Web and API source `d8a51ed` are deployed. Both preceded the configured
+`2026-10-09T08:43:00Z` migration cutoff. A live synthetic pet crossed it with
+its history, generation and pending gift preserved; food matched gradual use.
+The server then created its Paper bouquet at the scheduled time, before return.
+Return, repeated away and duplicate-feed checks preserved the single gift and
+added no extra food. These are live synthetic-fixture checks, not physical steps.
+The food redesign is implemented, not merely an exploration: continuous upkeep,
+midnight carryover, useful conversation spending, protected reservations and a
+continuous empty clock. Original v1 goldens remain alongside new v2 goldens.
 
-The newest request is to **explore and test energy consumption/carryover** so a
-busy walking day still feeds Truffle after midnight and energy funds something
-useful. Two Astra reviews and an executable simulation now exist. They recommend
-gentle continuous consumption and real conversational work. This is not a live
-rule change. Read docs/reviews/energy-carryover-exploration.md before proposing
-an implementation; current goldens remain authoritative until a decision record.
-Do not weaken dated feeds to recover historical unsent steps.
+Server-created procedural gifts, conservative outing/rest recognition, fresh
+movement expressions, a complete sleeping mushroom, width-fitted world, recent
+exchange display and progressive Pocket controls are in the release. Notes are
+authored and drawings procedural. Do not call gifts model-generated. Browser
+absence remains best effort without cross-tab presence coordination.
 
-## Verified delivery
+Final validation: 607 Worker, 436 web, 75 browser and 129 Android tests passed.
+Both TypeScript checks, web build and Android build passed. Native lint has
+0 errors and 69 warnings. The deployed mobile sample passed independently.
+The final full-width desktop storm sample is 58.91 fps, not guaranteed 60.
 
-Web f388eef is live; API 1f86536 is live. Final checks: 428 Worker tests,
-177 web unit tests, 40 browser cases, and 101 Android tests. The public
-walkthrough passed. Earlier harness failures remain documented. Two real
-fallback replies took about 53 and 27 seconds to show text; neither was a
-trained-adapter serving proof. Later prompt guidance is code-tested only.
+Android 0.4.0/code 4 is a public debug test prerelease at
+https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app . Its anonymous
+APK download matches the source-built and installed-emulator artifact. Source
+is `0a3c56c`, unchanged in Android app/build inputs at integration `d8a51ed`.
+Release tag targets documentation checkpoint `630a42e`. Exact hash and limits
+are in docs/reviews/fleet25-24-release.md and the live-release evidence folder.
 
-Android 0.3 from 4c86a68 is installed. Native World, Walk and Feed showed the
-chosen 81-step pet after the ownership fix. No manually counted accuracy
-reference exists. Chrome on the Samsung has a short 60 fps sample. The phone
-is now disconnected by the user's choice; stop requesting more physical
-checks unless needed for a new task. The last final-web reload was triggered
-but disconnected before readback, so do not claim that particular recheck.
+## Evidence still missing
 
-All specialist ownership has returned to root; no agent has unfinished source
-edits. Reports and reviewed captures live under docs/reviews and docs/assets.
-The user requested exploration of energy, not a silent migration of living pets.
-The current energy goldens remain unchanged.
+The Samsung is unavailable by the user's choice. Do not request or access it
+for this task. Version 0.3's 81-step reading has no counted accuracy reference;
+it does not verify the new APK. Later physical checks would cover 0.4 owner
+import/reload, reactions, notification delivery, battery/overnight/reboot,
+TalkBack and sustained frame timing. No step-accuracy claim is justified.
 
-## Finish safely
+No new paid inference, training or model download occurred. Before more paid
+work, reconcile the provider ledger against the $50 cap. Four/eight-second
+trained-provider routing deadlines do not establish total response latency.
+Live trained/fallback timing, independent model judging and blind Arabic
+preference remain unmeasured. Keep existing evaluation limitations visible.
 
-Build Android only by pulling committed GitHub source on the workstation.
-Upgrade with install-r, preserving private preferences and the recorded diary.
-Pause tracking before an upgrade, resume explicitly, and verify repeated Feed is
-idempotent. Do not bypass the phone's keyguard or change lock settings.
+The DEV article remains unpublished. Preparing a draft and releasing the APK
+do not authorize posting it. Any outdoor story must use actual user observations.
+Do not invent a walk diary or assert a competition win.
 
-For future changes, commit and deploy a tested checkpoint and verify the
-public demo plus native ownership again when the phone is available. Public demo replies must retain trained/fallback/sample
-provenance. The verified debug test APK is public at v0.3.0-app; an anonymous download
-matched its checksum. Future releases require matching ownership evidence. Never publish the DEV article
-without an explicit publication instruction. Energy redesign is a separate
-spec/migration task; do not quietly replace balances or golden cases.
+## Safe continuation
 
-The current record is sessions/2026-10-09_session-05_companion_finish.md.
-For a later energy implementation, first write a decision/spec, then add v2
-goldens and migration/settlement reservation tests. Keep existing owner, history
-and memories. DEV publication still requires a publication instruction.
-Review artifacts before staging; keep raw/private fleet outputs out of git.
-MemPalace promotion is blocked by another writer; do not override its lock.
+Build Android only after committed source travels through GitHub to the
+workstation clone. Preserve private preferences and history during upgrades.
+Never copy a source repository between machines or uninstall to simplify tests.
+Keep dated/zone-matched feeding and the migration cursor guard intact.
+
+Private U01 through U08 outputs, raw QA owner credentials and raw emulator
+profiles are not approved for publication. Only reviewed report/capture paths
+were staged. The unavailable MemPalace transport must not be bypassed.
+Current facts and provenance are retained in repository records.
+
+Final live migration/alarm observations and public artifact/link checks belong
+in docs/reviews/fleet25-live-release/README.md. Continue from the measured
+release checkpoint, not the older exploration or 0.3 deployment summary.

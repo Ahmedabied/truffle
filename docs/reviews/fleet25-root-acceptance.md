@@ -77,7 +77,7 @@ Root confirmed both deployments completed before the aligned v2 cutover,
 | Component | Source checkpoint supplied | Deployed version |
 | --- | --- | --- |
 | API Worker | `d8a51ed` | `c5ea5b7c-336b-4fff-a557-3ad4a9086334` |
-| Web | Recorded by root's web deployment | `3b5bbf7c-8100-46af-8219-38a5dadd109c` |
+| Web | `d8a51ed` | `3b5bbf7c-8100-46af-8219-38a5dadd109c` |
 
 The [final source audit](fleet25-25-final.md) independently checked that config,
 decision, product spec and architecture used that same prospective cutover and
@@ -95,3 +95,11 @@ debug test prerelease with no new physical-phone verification. The historical
 Provider totals remain unreconciled against the $50 cap. No new paid inference,
 faster measured live replies, model-made gifts or independently judged model
 quality is claimed by this acceptance record.
+
+## Final delivery addendum
+
+Root subsequently verified the [live migration and pre-return server alarm](fleet25-live-release/README.md),
+[public sample](fleet25-public-web.md), [real gift in the deployed UI](fleet25-live-gift-ui.md),
+and anonymous Android 0.4 download/checksum. These later checks close the
+delivery gates above without changing the earlier independent review scores.
+The phone and live-inference limitations remain.

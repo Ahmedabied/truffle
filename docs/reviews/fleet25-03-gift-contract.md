@@ -31,7 +31,7 @@ Gifts cost **zero game energy**. They change no steps, mood, tier, affection, li
 Use the existing `owned()` / `ownerReply()` path and secret header; phrase-only `/feed` must neither start jobs nor expose gifts. Preserve uniform owner-auth failure behavior and the request-body cap. No gift URL is public, and this feature publishes or sends nothing to others.
 
 ```ts
-// POST /companion — owner-authenticated existing button or browser lifecycle
+// POST /companion: owner-authenticated existing button or browser lifecycle
 type CompanionAction = {
   phrase: string;
   action: "away" | "return" | "cancel";
@@ -95,7 +95,7 @@ Do not silently delete the existing local collection. Read shelf v1 as a separat
 
 Do not run this extension in the present review. Default `PAID_GIFTS_ENABLED=false`; missing, stale, or unknown budget state denies model work and uses procedural creation. The user's feature authorization does not mean new training, public posting, or an unlimited GPU allocation.
 
-Before enabling, reconcile all prior consumption against the $50 cap and account for active Modal containers, cold starts, idle tails, CPU/RAM, and pending bills. Do not calculate remaining budget from the sum of estimates alone. Every paid attempt—including failed/aborted attempts, chat fallbacks, retries, and fact extraction—must have a durable usage record. A per-pet gift quota cannot enforce a project-wide dollar ceiling.
+Before enabling, reconcile all prior consumption against the $50 cap and account for active Modal containers, cold starts, idle tails, CPU/RAM, and pending bills. Do not calculate remaining budget from the sum of estimates alone. Every paid attempt, including failed/aborted attempts, chat fallbacks, retries, and fact extraction, must have a durable usage record. A per-pet gift quota cannot enforce a project-wide dollar ceiling.
 
 Add a small centralized budget authority used only for spending reservations, not every app request. Store amounts in integer microdollars and separate provider balances. Require atomic `reserve(attemptId, worstCaseUsd, purpose)` before dispatch, `markStarted`, and idempotent settlement. Suggested gift sublimits after reconciliation: one attempt per admitted daily job; maximum $0.01 verified worst-case reservation per attempt, $0.10 across all gifts per day, and $1 cumulative experiment budget drawn from the remaining $50, not added to it. These are proposed admission ceilings, not provider-price claims. Deny any provider whose full exposure cannot fit a proven bound; a client timeout is not evidence GPU billing stopped. In particular, do not wake Modal for a tiny gift without a provider-side lifecycle cost bound.
 

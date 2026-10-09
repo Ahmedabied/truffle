@@ -1,4 +1,4 @@
-# Fleet 25 / 17 — independent gift adversary
+# Fleet 25 / 17: independent gift adversary
 
 Date: 2026-10-09. Reviewed `worker/src/gifts.ts`, companion ownership and alarm integration in `worker/src/do.ts`, `web/src/companion/controller.ts`, the real API client, and gift rendering/adapters. No production source changed, paid inference, physical phone, external write, or commit. All network/provider activity in the new tests is mocked.
 
@@ -6,7 +6,7 @@ Final status: all three reproduced findings below were fixed by the root agent a
 
 ## Reproduced findings
 
-### P2 — a delayed same-life return can cancel a newer outing
+### P2: a delayed same-life return can cancel a newer outing
 
 `worker/src/do.ts:555` treats every return/cancel lacking `job_id` as permission to cancel the current job. `client_request_id` is validated but ignored on these actions. Generation fences protect a new life, but do not distinguish outings in the same life.
 
@@ -14,7 +14,7 @@ Reproduction: admit outing A, return with A's job ID, admit outing B, then deliv
 
 Recommended contract: cancel only a matching job ID or matching original away request ID. A no-token return needs a current owner-state read before cancelling the discovered job. Preserve the existing ability for a freshly opened owner client to cancel a shared pending job after it has read that receipt.
 
-### P2 — queued return discards the receipt needed to target its job
+### P2: queued return discards the receipt needed to target its job
 
 `web/src/companion/controller.ts:135-143` captures `pendingJobId` when a return is queued, before the earlier away request resolves. The incremented operation suppresses that away receipt entirely, including internal identity tracking. Consequently the queued return has no job ID even when the successful admission receipt arrives before return execution. A lost receipt also loses the original request ID: only away actions receive `requestId`.
 
@@ -22,7 +22,7 @@ Reproduction: keep the away promise pending, call `returned()`, resolve away wit
 
 Recommended fix: retain admission identity internally even when a superseded receipt should not be rendered; resolve the return target when its queued request actually executes; preserve the original away request ID for response-loss recovery. This must ship together with the server targeting fix above.
 
-### P2 — a delayed same-generation receipt regresses fresh state
+### P2: a delayed same-generation receipt regresses fresh state
 
 `snapshot()` updates the current pending job but does not invalidate already-running receipt rendering. `send()` checks owner/life and operation, but a fresh same-generation snapshot does not change either. Main's `onServerSummary` directly renders the old complete summary.
 
@@ -41,8 +41,8 @@ These were ordinary failing regression tests supplied to the root agent for its 
 
 Final verification:
 
-- `cd web && npm test -- test/gift-adversary.test.ts test/companion-controller.test.ts test/gift-ui.test.ts` — 27 passed.
-- `cd worker && npm test -- test/gift-adversary.test.ts test/gifts.test.ts test/gifts-do.test.ts test/companion-api.test.ts` — 70 passed.
+- `cd web && npm test -- test/gift-adversary.test.ts test/companion-controller.test.ts test/gift-ui.test.ts`: 27 passed.
+- `cd worker && npm test -- test/gift-adversary.test.ts test/gifts.test.ts test/gifts-do.test.ts test/companion-api.test.ts`: 70 passed.
 - `npm run typecheck` passed in both packages after the production fixes.
 
 Passing independent checks:

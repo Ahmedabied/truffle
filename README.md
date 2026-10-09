@@ -8,13 +8,13 @@ Truffle is فقع, a desert truffle, living in an ASCII world. Steps fill its fo
 
 In a simulated 46°C evaluation, the base model asked someone to walk to keep their pet alive. With the same state and prompt, Truffle's adapter replied: **“today there is no rescue mission.”** [Both responses are recorded](finetune/eval/out/2026-10-08-r16/ANALYSIS.md). During heat shelter, the creature burrows and both continuous food use and its empty-food clock pause.
 
-<img src="docs/reviews/ascii-art/after/day-mobile.png" alt="The current Truffle world and conversation, captured locally with simulated steps" width="320">
+<img src="docs/reviews/fleet25-public-web/sample-after-walk-390.png" alt="Public offline sample world after 4,000 simulated steps, October 9" width="320">
 
-*Earlier local browser capture with simulated state. The world is rendered from real glyphs.*
+*Public offline sample, October 9: 4,000 simulated steps. No API or model call. The world is rendered from real glyphs.*
 
 Built for DEV's [Hacktoberfest Open-Source AI Challenge, Week 1: Touch Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05). The repository began on October 7, 2026, within the challenge window.
 
-**Source status:** decision 0023 implements continuous food, server-created procedural gifts and companion reactions. Android 0.4 adds native movement reactions and a clearer Walk notebook. These features have local test and emulator evidence, including a fresh-document native refresh check. [STATE.md](STATE.md) and the [submission checklist](docs/submission_checklist.md) identify deployed revisions and release limits. Physical phone evidence belongs to version 0.3.
+**Release status:** API and web source `d8a51ed` are deployed, and the [Android 0.4 debug prerelease](https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app) is public. The [public sample check](docs/reviews/fleet25-public-web.md) passed with the expected assets, full-width mobile world and direct simulated-walk action, without API calls. A separate live check of one synthetic test pet passed [migration](docs/reviews/fleet25-live-release/migration.json) and [alarm-created gift acceptance](docs/reviews/fleet25-live-release/gift.json), without a chat or model call. No existing user pet was touched. Physical phone evidence belongs to version 0.3; [the checklist](docs/submission_checklist.md) records exact release identifiers and limits.
 
 ## Try the loop
 
@@ -27,6 +27,8 @@ Built for DEV's [Hacktoberfest Open-Source AI Challenge, Week 1: Touch Grass](ht
 The sample shares the v2 food engine. The main world also supports live conversation and server away jobs. Clear English or Arabic plans can create anticipation without a second chat request. Negation, uncertain plans and quoted speech do not start an outing. Fresh steps can produce a happy expression; heat and rest keep the response quiet.
 
 When an authenticated away plan reaches the server, an alarm can create a fresh procedural ASCII drawing after ten minutes, with a short authored note. It uses no model and charges no food. Early return cancels an unstarted job. There is at most one gift per pinned local day; twelve recent server gifts stay with the pet. Rest and heat days qualify. Tap the object in the world or use Pocket's keyboard-accessible list to open the same gift in chat. Older device keepsakes remain a labelled archive.
+
+A live synthetic test pet received its **Paper bouquet** at the scheduled alarm time, before any return request. Returning preserved it, a second away request that day made no extra gift, and replaying the same feed added no food. [Live gift record](docs/reviews/fleet25-live-release/gift.json).
 
 Browser-away delivery is best effort. Closing the page before it sends the event cannot promise a job, and a hidden tab can schedule one while another tab stays visible. Drawing details state procedural provenance; model-made gifts remain a future option behind cost controls.
 
@@ -67,10 +69,10 @@ Indoor steps count. Step totals do not prove outdoor activity. The heat threshol
 
 | Part | Recorded evidence | Boundary |
 |---|---|---|
-| Food, weather and chat | V2 conservation, migration, reservation/cancellation and adversarial tests; [economy review](docs/reviews/fleet25-16-economy.md) | Automated accounting evidence; latest deployment is recorded separately in STATE |
+| Food, weather and chat | 607 Worker tests; v2 conservation, migration, reservation/cancellation and adversarial tests; [final audit](docs/reviews/fleet25-25-final.md) | Automated accounting plus one synthetic live migration/gift check; not a check of every existing pet |
 | Adapted brain | Completed `r16` training and 170-prompt matched comparison | Same-base judge; independent and blind Arabic review remain open |
-| Current web | [49 browser integration cases](docs/reviews/fleet25-20-browser.md), [12 identity cases](docs/reviews/fleet25-21-identity.md) and [11 accessibility checks](docs/reviews/fleet25-15-accessibility.md) | Isolated local browser fixtures; no paid inference or physical WebView check |
-| Procedural gifts | Owner, day, alarm and delayed-response tests; [gift review](docs/reviews/fleet25-17-gifts.md) | No model generation; browser absence signals are best effort |
+| Current web | 436 unit tests and 75 browser cases; [final audit](docs/reviews/fleet25-25-final.md). [Public sample acceptance](docs/reviews/fleet25-public-web.md) also passed | Browser fixtures and an unpaid public sample check; no live inference or physical WebView claim |
+| Procedural gifts | Owner, day, alarm and delayed-response tests; [gift review](docs/reviews/fleet25-17-gifts.md) and [live world/chat check](docs/reviews/fleet25-live-gift-ui.md) | No model generation; browser absence signals are best effort |
 | Android 0.4 | Final workstation build and 129 JVM tests at `0a3c56c`; synthetic Walk checks and three fresh native WebView reloads preserving fixture settings | [Artifact review](docs/reviews/fleet25-24-release.md); no new phone tests or live-owner verification in the reload fixture |
 | Android 0.3 on Samsung SM-A366B | Upgrade retained ownership; hardware counter recorded 81; dated feed accepted 81 steps and 81 food points | No manually counted reference; no accuracy percentage, outdoor-location or habit claim |
 | Current full-width ASCII world | About ten seconds of desktop storm: 58.91 fps at 4× CPU slowdown, 740 × 838.66 CSS pixels; [raw measurement](docs/reviews/fleet25-19-art-motion/full-width/measurements.json) | Controlled Chrome sample; no sustained or handset guarantee |
@@ -78,7 +80,7 @@ Indoor steps count. Step totals do not prove outdoor activity. The heat threshol
 
 The phone's earlier Health Connect feed matched Samsung Health at zero after midnight. The later 81-step observation came from the direct hardware counter. These are separate source checks. Final native results and remaining endurance/performance limits are recorded in [Android QA](docs/reviews/android-qa.md) and the [submission checklist](docs/submission_checklist.md).
 
-[Android 0.3 test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app) is the previously verified public debug-signed sideload prerelease. The 0.4 build is also a debug test build; release and checksum confirmation belong in the [submission checklist](docs/submission_checklist.md).
+[Download Android 0.4](https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app), a debug-signed sideload prerelease built from `0a3c56c`. Its anonymous download matched all 12,588,066 bytes and the published SHA-256. [Download evidence](docs/reviews/fleet25-live-release/apk-download.json). Android source is unchanged at deployed checkpoint `d8a51ed`; the release targets `630a42e`. No new physical phone test is claimed.
 
 ## What the adapter changed
 

@@ -1,4 +1,4 @@
-# Public web acceptance — decision 0023
+# Public web acceptance: decision 0023
 
 **PASS**, October 9, 2026 at **08:39:37.903 UTC**, on the deployed
 [sample world](https://truffle-web.ahmed-abied.workers.dev/demo?mock=1).

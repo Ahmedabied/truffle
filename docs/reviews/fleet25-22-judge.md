@@ -1,4 +1,4 @@
-# Fleet 25 / Assignment 22 — independent UI judgment
+# Fleet 25 / Assignment 22: independent UI judgment
 
 Reviewed 2026-10-09 at `http://localhost:5191/demo?mock=1`.
 

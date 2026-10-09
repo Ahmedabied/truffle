@@ -1,4 +1,4 @@
-# Assignment 19 — ASCII anticipation and motion
+# Assignment 19: ASCII anticipation and motion
 
 Implemented a separate `anticipating` face in `web/src/scene/pet.ts` and routed it from `presentationFace` in `web/src/scene/world.ts`. Anticipation has attentive `(O)` eyes, a restrained 2.5% upright body lift, a quarter-row cap lean and slightly raised hands. It uses the existing 650 ms geometry interpolation and natural blink clock. Both feet stay grounded; anticipation adds no hop or lateral oscillation. The cap, stem, feet, tier freckles and existing small intelligence growth remain intact.
 
