@@ -1,0 +1,47 @@
+{
+  "phase": "full-width",
+  "measured_at": "2026-10-09T08:28:28.223Z",
+  "browser": "155.0.8059.39",
+  "headless": true,
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "device_scale_factor": 2,
+  "cpu_throttle": 4,
+  "scene": "Elder in GB storm, 5 mm rain, 40 km/h wind, hour 15",
+  "note": "Desktop Chrome RAF intervals and real scene draws. HUD timings cover JavaScript composition/canvas submission, not GPU/display latency. No phone measurement.",
+  "duration_ms": 10065.9,
+  "scene_frames": 593,
+  "scene_fps": 58.91,
+  "raf_samples": 592,
+  "raf_ms": {
+    "p50": 16.7,
+    "p95": 16.7,
+    "p99": 33.3,
+    "max": 50
+  },
+  "raf_over_25ms": 9,
+  "canvas_css_px": [
+    740,
+    838.65625
+  ],
+  "canvas_device_px": [
+    1500,
+    1700
+  ],
+  "mock": true,
+  "hud": [
+    "60 fps · compose 1.7 ms · paint 2.0 ms",
+    "60 fps · compose 1.6 ms · paint 2.1 ms",
+    "60 fps · compose 1.6 ms · paint 2.1 ms",
+    "60 fps · compose 1.6 ms · paint 2.1 ms",
+    "58 fps · compose 1.7 ms · paint 2.5 ms",
+    "57 fps · compose 1.8 ms · paint 2.6 ms",
+    "57 fps · compose 1.8 ms · paint 2.6 ms",
+    "58 fps · compose 1.6 ms · paint 2.3 ms",
+    "58 fps · compose 1.6 ms · paint 2.3 ms",
+    "60 fps · compose 1.4 ms · paint 2.0 ms"
+  ],
+  "errors": []
+}

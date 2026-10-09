@@ -1,0 +1,44 @@
+[
+  {
+    "viewport": {
+      "width": 320,
+      "height": 700
+    },
+    "geometry": {
+      "scene": 320,
+      "art": 320,
+      "walkBottom": 666.265625,
+      "viewport": 700,
+      "overflow": false
+    },
+    "result": "PASS"
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 800
+    },
+    "geometry": {
+      "scene": 390,
+      "art": 390,
+      "walkBottom": 700.234375,
+      "viewport": 800,
+      "overflow": false
+    },
+    "result": "PASS"
+  },
+  {
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "geometry": {
+      "scene": 740,
+      "art": 740,
+      "walkBottom": 1074.890625,
+      "viewport": 1000,
+      "overflow": false
+    },
+    "result": "PASS"
+  }
+]

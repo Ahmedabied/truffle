@@ -1,0 +1,111 @@
+{
+  "checkedAt": "2026-10-09T08:39:37.903Z",
+  "url": "https://truffle-web.ahmed-abied.workers.dev/demo?mock=1",
+  "browser": "155.0.8059.39",
+  "viewport": {
+    "width": 390,
+    "height": 800
+  },
+  "deviceScaleFactor": 2,
+  "reducedMotion": true,
+  "serviceWorkers": "blocked",
+  "pageStatus": 200,
+  "assets": [
+    {
+      "path": "/assets/index-BhwT02vE.css",
+      "status": 200
+    },
+    {
+      "path": "/assets/index-Buvb-sWe.js",
+      "status": 200
+    }
+  ],
+  "initial": {
+    "mock": true,
+    "demo": true,
+    "stage": "Spore",
+    "food": 0,
+    "steps": 0,
+    "energyVersion": 2,
+    "offlineLabel": "offline demo",
+    "offlineVisible": true,
+    "scene": {
+      "x": 0,
+      "y": 60,
+      "width": 390,
+      "height": 480,
+      "top": 60,
+      "bottom": 540
+    },
+    "art": {
+      "x": 0,
+      "y": 79,
+      "width": 390,
+      "height": 442,
+      "top": 79,
+      "bottom": 521
+    },
+    "world": {
+      "x": 0,
+      "y": 60,
+      "width": 390,
+      "height": 514.125,
+      "top": 60,
+      "bottom": 574.125
+    },
+    "chat": {
+      "x": 18,
+      "y": 593.125,
+      "width": 354,
+      "height": 271.265625,
+      "top": 593.125,
+      "bottom": 864.390625
+    },
+    "firstWalk": {
+      "x": 18,
+      "y": 656.234375,
+      "width": 152.09375,
+      "height": 44,
+      "top": 656.234375,
+      "bottom": 700.234375
+    },
+    "firstWalkVisible": true,
+    "overflow": false,
+    "viewportHeight": 800
+  },
+  "afterWalk": {
+    "mock": true,
+    "stage": "Spore",
+    "steps": 4000,
+    "food": 4000,
+    "dead": false,
+    "firstWalkHidden": true,
+    "reply": "",
+    "sceneLabel": "4,000 of 12,000 food points. Spore. 4,000 steps today. effort high. content. 34C clear, Muscat"
+  },
+  "allowedRequests": [
+    {
+      "path": "/demo",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-Buvb-sWe.js",
+      "method": "GET"
+    },
+    {
+      "path": "/assets/index-BhwT02vE.css",
+      "method": "GET"
+    },
+    {
+      "path": "/truffle.svg",
+      "method": "GET"
+    }
+  ],
+  "blockedRequests": [],
+  "pageErrors": [],
+  "liveApiRequests": 0,
+  "modelCalls": 0,
+  "newOwnersCreated": 0,
+  "provenance": "Disposable browser profile; local offline mock state only. Simulated steps, not walking evidence.",
+  "result": "PASS"
+}

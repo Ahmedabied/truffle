@@ -2,29 +2,35 @@
 
 **A little desert mushroom that eats your steps and spends them to think.**
 
-Truffle is فقع, a desert truffle, living in an ASCII world. Steps fill its energy. Conversation spends it. The balance controls Gemma's thinking mode, reply length and memory window. The Worker enforces the rules; a trained adapter supplies the voice.
+Truffle is فقع, a desert truffle, living in an ASCII world. Steps fill its food store. Food carries into tomorrow and pays for conversation. The balance controls Gemma's thinking mode, reply length and memory window. The Worker enforces the rules; a trained adapter supplies the voice.
 
-[Demo](https://truffle-web.ahmed-abied.workers.dev/demo) · [Open your world](https://truffle-web.ahmed-abied.workers.dev) · [Model evaluation](finetune/eval/RESULTS.md) · [Android setup](feeder-android/README.md)
+[Sample demo](https://truffle-web.ahmed-abied.workers.dev/demo?mock=1) · [Open your world](https://truffle-web.ahmed-abied.workers.dev) · [Model evaluation](finetune/eval/RESULTS.md) · [Android setup](feeder-android/README.md)
 
-In a simulated 46°C evaluation, the base model asked someone to walk to keep their pet alive. With the same state and prompt, Truffle's adapter replied: **“today there is no rescue mission.”** [Both responses are recorded](finetune/eval/out/2026-10-08-r16/ANALYSIS.md). On a protected heat day, the creature burrows and its nightly cost pauses.
+In a simulated 46°C evaluation, the base model asked someone to walk to keep their pet alive. With the same state and prompt, Truffle's adapter replied: **“today there is no rescue mission.”** [Both responses are recorded](finetune/eval/out/2026-10-08-r16/ANALYSIS.md). During heat shelter, the creature burrows and both continuous food use and its empty-food clock pause.
 
 <img src="docs/reviews/ascii-art/after/day-mobile.png" alt="The current Truffle world and conversation, captured locally with simulated steps" width="320">
 
-*Local browser capture with simulated state. The world is rendered from real glyphs.*
+*Earlier local browser capture with simulated state. The world is rendered from real glyphs.*
 
 Built for DEV's [Hacktoberfest Open-Source AI Challenge, Week 1: Touch Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05). The repository began on October 7, 2026, within the challenge window.
 
-**Build status:** the world is live, the corrected Android 0.3 build is installed, and native World/Walk/Feed share the chosen pet. A short Samsung Chrome sample reads 60 fps. [STATE.md](STATE.md) identifies verified revisions and limits.
+**Source status:** decision 0023 implements continuous food, server-created procedural gifts and companion reactions. Android 0.4 adds native movement reactions and a clearer Walk notebook. These features have local test and emulator evidence, including a fresh-document native refresh check. [STATE.md](STATE.md) and the [submission checklist](docs/submission_checklist.md) identify deployed revisions and release limits. Physical phone evidence belongs to version 0.3.
 
 ## Try the loop
 
-Open **Pocket** in the demo and choose **Try a 4,000-step walk**. Return to the world, talk to Truffle, and watch its energy fall with the reply. The simulator uses the real energy engine and labels its steps as simulated.
+1. Choose **Try a 4,000-step walk** directly below the world in the sample demo. Pocket also has this control.
+2. Choose **Everyday** or **Think deeper** and talk to Truffle. Sample replies and their food costs are explicitly simulated, with no model call.
+3. Try **Heading out?** or send a clear walk or errand plan. **Take a moment** invites you to put the screen away; **I'm back** returns to chat without sending or spending automatically.
+4. Choose **Preview a return gift** in Pocket. This uses the production drawing generator, but previews never enter the collection.
+5. Choose **Next day (+24 hours)** to see stored food carry over. Repeat with **Heat day** on to see shelter pause elapsed food use.
 
-**Heading out?** offers a walk or an errand. **Take a moment** suggests something small to notice, then invites you to put the screen away. **I'm back** returns to chat without sending a message or spending energy automatically. Burrowed days keep the invitation indoors.
+The sample shares the v2 food engine. The main world also supports live conversation and server away jobs. Clear English or Arabic plans can create anticipation without a second chat request. Negation, uncertain plans and quoted speech do not start an outing. Fresh steps can produce a happy expression; heat and rest keep the response quiet.
 
-After at least ten minutes away, a living Truffle can leave one authored ASCII keepsake per local day, including rest and heat days. Tap its object in the world to open the note in chat, or use Pocket's keyboard-accessible list. Twelve recent gifts stay locally with this pet and API identity. The gift is resolved on return; it is a small fiction, not a background AI generation claim.
+When an authenticated away plan reaches the server, an alarm can create a fresh procedural ASCII drawing after ten minutes, with a short authored note. It uses no model and charges no food. Early return cancels an unstarted job. There is at most one gift per pinned local day; twelve recent server gifts stay with the pet. Rest and heat days qualify. Tap the object in the world or use Pocket's keyboard-accessible list to open the same gift in chat. Older device keepsakes remain a labelled archive.
 
-Pocket also holds the heat/midnight demo, keepsakes and settings. The main view stays with the expressive mushroom and conversation. Sleeping means a full cap, closed eyes and slow breathing with its feet planted. Intelligence tiers add freckles and modest size changes.
+Browser-away delivery is best effort. Closing the page before it sends the event cannot promise a job, and a hidden tab can schedule one while another tab stays visible. Drawing details state procedural provenance; model-made gifts remain a future option behind cost controls.
+
+The main view stays with the expressive mushroom and conversation. Sleeping means a full cap, closed eyes and slow breathing with its feet planted. Anticipation has a distinct attentive face. Intelligence tiers add freckles and modest size changes. Reduced motion freezes animation.
 
 Three kinds of reply have distinct provenance:
 
@@ -34,22 +40,26 @@ Three kinds of reply have distinct provenance:
 
 ## Android: movement to energy
 
-Version 0.3 offers an opt-in hardware step counter independent of Samsung Health, or Health Connect as an alternative. One source feeds at a time. Direct mode uses Android's `TYPE_STEP_COUNTER` and a silent, visible foreground-service notification. It labels partial coverage rather than claiming to recover a full day before tracking started.
+The app offers an opt-in hardware step counter independent of Samsung Health, or Health Connect as an alternative. One source feeds at a time. Direct mode uses Android's `TYPE_STEP_COUNTER` and a silent, visible foreground-service notification. It labels partial coverage rather than claiming to recover a full day before tracking started.
 
-**Walk** is an ASCII walking notebook: Today, 7 days and 30 days, with the source, coverage and totals visible. Detailed analytics stay on the phone. **Feed** sends the selected source's absolute daily total with its date and zone. The app has no location permission.
+In 0.4, **Walk** shows matching totals, date spans and coverage for Today, 7 days and 30 days. Missing native dates are blank and excluded from averages; recorded zero stays distinct. Larger text scrolls without shrinking the chart glyphs. Detailed analytics stay on the phone. **Feed** sends the selected source's absolute daily total with its date and zone. The app has no location permission.
+
+Fresh positive direct-counter observations can animate the verified pet while World is visible. This credential-free, document-scoped signal changes only presentation, never credited food. Positive movement also requests a coalesced feed after two minutes with a five-minute throttle; Android can delay that work. [Native implementation and tests](docs/reviews/fleet25-09-native.md) · [Walk emulator evidence](docs/reviews/fleet25-14-native-review.md).
 
 Optional companion reminders are separate from tracking's required notification. They start off, allow at most one per day, and suppress a nudge when weather is uncertain, too hot or stormy. [Design and boundaries](decisions/0021_walking_companion_and_keepsakes.md) · [Native setup and privacy](feeder-android/README.md).
 
 ## The rules
 
 - The Worker validates dated feeds and credits increases without summing two full-day sources.
-- Energy admits low, medium or high effort. Below 20 points, Truffle sleeps with no model call. A person can request a cheaper reply.
-- Growth changes capacity; midnight spends part of the balance.
-- A daytime apparent-temperature forecast of at least 42°C causes burrowing. Protected days pause growth, nightly burn and the death counter; steps still feed the pet.
-- Four unprotected zero-energy midnights leave a gravestone. A new spore can start again.
+- Food use is 1,000 points per actual 24 hours at every stage. Midnight resets the step diary without a food debit. The rate is a game-design trial.
+- Storage capacities are 12,000 / 24,000 / 32,000 / 42,000 across the four stages. Accepted food survives midnight; overflow beyond capacity is not credited.
+- Low, medium and high effort become available at 20, 1,500 and 3,600 food points, independently of stage. Their reply costs are 20, 60 and 200. Ordinary chat chooses medium or a lower available tier; short greetings can use low. Deep thinking is explicit.
+- Below 20, a sleepy hello makes no model call. A reservation protects an admitted reply's food; visible output is charged once and unused reservations are returned.
+- A daytime apparent-temperature forecast of at least 42°C causes burrowing. Heat shelter pauses food use and the empty clock; indoor steps still feed the pet.
+- Ninety-six actual non-sheltered hours continuously without food leave a gravestone. Positive feeding resets that clock while the pet lives. Recovery after death requires an explicit new spore.
 - Proud moments recognize growth and personal milestones without changing energy or survival.
 
-A new [energy carryover exploration](docs/reviews/energy-carryover-exploration.md) tests gentler consumption and useful conversation spending. It is not deployed; the rules above remain current.
+These are the implemented [decision 0023 rules](decisions/0023_continuous_food_and_living_companion.md), with [v2 golden cases](tests/golden/energy_v2_cases.json) and an [independent economy review](docs/reviews/fleet25-16-economy.md). The earlier [carryover exploration](docs/reviews/energy-carryover-exploration.md) explains their motivation. Original v1 goldens remain for legacy behavior and migration.
 
 Indoor steps count. Step totals do not prove outdoor activity. The heat threshold is a game safeguard, not exercise advice.
 
@@ -57,16 +67,18 @@ Indoor steps count. Step totals do not prove outdoor activity. The heat threshol
 
 | Part | Recorded evidence | Boundary |
 |---|---|---|
-| Energy, weather and chat | 428 Worker tests at the final stream checkpoint; [test guide](tests/README.md) | Public deployment status is recorded separately in STATE |
+| Food, weather and chat | V2 conservation, migration, reservation/cancellation and adversarial tests; [economy review](docs/reviews/fleet25-16-economy.md) | Automated accounting evidence; latest deployment is recorded separately in STATE |
 | Adapted brain | Completed `r16` training and 170-prompt matched comparison | Same-base judge; independent and blind Arabic review remain open |
-| Current web | 177 unit tests, 40 browser regression cases, typecheck and production build passed | [Public walkthrough](docs/reviews/public-walkthrough/README.md) passed; live fallback replies remained slow |
-| Android 0.3 on Samsung SM-A366B | 101 tests; upgrade retained ownership; direct counter recorded 81 steps; dated feed accepted 81 steps and 81/6,000 energy, low tier | No manually counted reference; no accuracy percentage, outdoor-location or habit claim |
-| Current ASCII world | Five loaded Chrome scenes measured 59.85–60.05 fps at 412×915, DPR 2, 4× CPU slowdown; reduced-motion pixels remained identical | Controlled browser measurement; separate phone sample below; [raw results](docs/reviews/ascii-art/after/measurements.json) |
-| Samsung Chrome, current renderer | On-screen 60 fps sample, compose 0.9 ms / paint 1.0 ms, checkpoint `5cf5465` | Short observed sample, not sustained performance or battery evidence; [device record](docs/reviews/android-qa.md) |
+| Current web | [49 browser integration cases](docs/reviews/fleet25-20-browser.md), [12 identity cases](docs/reviews/fleet25-21-identity.md) and [11 accessibility checks](docs/reviews/fleet25-15-accessibility.md) | Isolated local browser fixtures; no paid inference or physical WebView check |
+| Procedural gifts | Owner, day, alarm and delayed-response tests; [gift review](docs/reviews/fleet25-17-gifts.md) | No model generation; browser absence signals are best effort |
+| Android 0.4 | Final workstation build and 129 JVM tests at `0a3c56c`; synthetic Walk checks and three fresh native WebView reloads preserving fixture settings | [Artifact review](docs/reviews/fleet25-24-release.md); no new phone tests or live-owner verification in the reload fixture |
+| Android 0.3 on Samsung SM-A366B | Upgrade retained ownership; hardware counter recorded 81; dated feed accepted 81 steps and 81 food points | No manually counted reference; no accuracy percentage, outdoor-location or habit claim |
+| Current full-width ASCII world | About ten seconds of desktop storm: 58.91 fps at 4× CPU slowdown, 740 × 838.66 CSS pixels; [raw measurement](docs/reviews/fleet25-19-art-motion/full-width/measurements.json) | Controlled Chrome sample; no sustained or handset guarantee |
+| Earlier Samsung Chrome renderer | Short on-screen 60 fps sample at `5cf5465`; [device record](docs/reviews/android-qa.md) | Historical observation, not sustained performance or evidence for later changes |
 
 The phone's earlier Health Connect feed matched Samsung Health at zero after midnight. The later 81-step observation came from the direct hardware counter. These are separate source checks. Final native results and remaining endurance/performance limits are recorded in [Android QA](docs/reviews/android-qa.md) and the [submission checklist](docs/submission_checklist.md).
 
-[Android 0.3 test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app) is a debug-signed sideload prerelease. Source, checksum and tested boundaries are in the release and Android QA report.
+[Android 0.3 test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app) is the previously verified public debug-signed sideload prerelease. The 0.4 build is also a debug test build; release and checksum confirmation belong in the [submission checklist](docs/submission_checklist.md).
 
 ## What the adapter changed
 
@@ -83,13 +95,15 @@ The October 8 `r16` run used Unsloth QLoRA, 1,720 synthetic examples and two epo
 
 **The judge was the base model itself.** The voice score fell. Style differences may explain some disagreement, but independent and human review are needed to establish preference. A phrase-based heat check passed both models while missing pressure visible in the replies. This test harness does not certify production behavior. [Full method and results](finetune/eval/RESULTS.md) · [Example pairs](finetune/eval/out/2026-10-08-r16/ANALYSIS.md).
 
-Recorded Modal cold starts took about ten minutes. An earlier browser fallback reply took roughly 26 seconds; that artifact predates the latest stream fixes. A **half-awake** reply does not demonstrate the adapter. [Serving record](decisions/0015_serving_plan_a.md) · [Sanitized browser timing](docs/reviews/recorded-browser-latencies.json).
+Recorded Modal cold starts took about ten minutes; earlier public fallback replies took about 27 and 53 seconds to first visible text. The current router waits at most four seconds for trained visible text on ordinary replies, or eight for explicit deep replies, before starting fallback. These deadlines do not bound total latency. No paid inference was used for the v2 validation session, so improved live latency remains unmeasured. A **half-awake** reply does not demonstrate the adapter. [Routing review](docs/reviews/fleet25-13-demo-chat.md) · [Historical public timing](docs/reviews/public-walkthrough/chat-and-gift.json).
+
+The project has a **$50 cap**, and the [provider ledger](fleet/costs.md) remains unreconciled. The training run's estimated $1.81 is Modal credit for that run, not total project cost. Procedural gifts make no paid call; model-made gifts remain disabled pending reconciled costs and a global spending gate.
 
 ## How it fits together
 
 ```text
 Phone counter / Health Connect -> Android -> Worker + Durable Object
-                                               | energy, memory, midnight
+                                               | food, memory, away alarms
 Web / ASCII world <----------------------------+ weather -> Open-Meteo
                                                | brain router
                                                +-> Modal / Gemma 4 31B + LoRA

@@ -26,39 +26,43 @@ That exchange captures the hardest part of Truffle. A creature that lives on you
 
 ![A mushroom with a clear face beneath its speckled cap, surrounded by an ASCII desert and acacia trees](https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/reviews/ascii-art/after/day-scene.png)
 
-*The current world, captured locally with simulated state. Every mark is a rendered glyph.*
+*The world in an earlier local capture with simulated state. Every mark is a rendered glyph.*
 
-Steps fill its energy balance. A little energy buys a short reply. More buys a longer answer, a larger memory window and Gemma's thinking mode. Below 20 energy, Truffle sleeps without calling the model. Conversation spends the balance, so even a well-fed creature eventually runs out of things it can afford to say.
+Steps fill its food balance. A little food buys a short reply. More unlocks longer answers, a larger memory window and Gemma's thinking mode. Below 20 points, Truffle offers a sleepy hello without calling the model. Ordinary conversation costs at most 60 points; deeper thinking is a choice, with a maximum cost of 200 shown before sending.
+
+The first version took food at midnight. That made a late walk feel disposable and a bigger pet more expensive to keep. Version 2 carries food into tomorrow and uses 1,000 points per actual 24 hours at every age. A busy day can support a quieter one. That rate is a game-design trial, not a walking target.
 
 The world fills the phone's width, with conversation directly underneath. A **Pocket** holds the tools. Truffle blinks, looks around and changes expression; sleep means closed eyes and slow breathing, feet planted. More intelligence brings more cap freckles. The youngest spore is already recognizably a mushroom.
 
-You can tell it you're heading out for a walk or an errand. **Take a moment** offers something small to notice: a sound, a shadow, a change in the air. Then put the screen away. **I'm back** returns to the conversation without sending anything; what you noticed is yours to tell. On a burrowed day, the invitation stays indoors.
+You can tell it you're heading out for a walk or an errand, through a button or a clear English or Arabic chat message. Truffle looks expectant. Fresh steps can make it brighten; they do not tell it where you went. **Take a moment** offers something small to notice: a sound, a shadow, a change in the air. Then put the screen away. **I'm back** returns to the conversation without sending anything; what you noticed is yours to tell. On a burrowed day, the invitation stays indoors.
 
-After time away, a small gift can appear among the plants: a paper boat, a spare star, an unwritten page. Tap the ASCII object to read its note in chat, or find it through Pocket's keyboard-accessible list. These are authored little fictions, resolved locally on return. Rest days qualify too. The reward is having come back, without a step quota attached.
+After an away plan reaches the server, an alarm can make a small ASCII drawing after ten minutes. It composes shapes and details from a fresh seed, with a short authored note. This happens in the background, without a model call or food charge. Tap its object among the plants to read it in chat, or use Pocket's keyboard-accessible list. There is at most one per local day, and twelve recent server gifts stay with the pet. Rest days qualify too. Closing a page before its away signal arrives cannot promise a gift.
 
-Heat also changes the underlying rules. A daytime apparent-temperature forecast of at least 42°C makes Truffle burrow. Growth, nightly energy burn and its death counter pause; indoor steps still feed it. Four unprotected empty-energy midnights leave a gravestone, so this exception has to exist in code as well as in the character's words. The threshold is a game safeguard, not exercise advice.
+Heat also changes the underlying rules. A daytime apparent-temperature forecast of at least 42°C makes Truffle burrow. Heat shelter pauses food use and the empty-food clock; indoor steps still feed it. A pet dies only after 96 actual, non-sheltered hours continuously without food, leaving a gravestone and an explicit choice to plant a new spore. The shelter has to exist in code as well as in the character's words. The threshold is a game safeguard, not exercise advice.
 
 ## Demo
 
-**[Demo entry point](https://truffle-web.ahmed-abied.workers.dev/demo).** No phone setup is needed. In the current build:
+**[Try the sample world](https://truffle-web.ahmed-abied.workers.dev/demo?mock=1).** No phone setup or model call is needed. The sample runs the shared food engine:
 
-1. Open **Pocket**, then choose **Try a 4,000-step walk** to wake the creature with simulated steps.
-2. Return to the world, say something, and watch its energy fall with the reply.
+<!-- Publication gate: confirm the decision 0023 public deploy and this exact flow before publishing. Root owns the release checkpoint. -->
+
+1. Choose **Try a 4,000-step walk** below the world to wake the creature with simulated steps.
+2. Choose **Everyday** or **Think deeper** and send a message. The reply and food charge are labelled as simulated.
 3. In Pocket, choose **Take a moment**. Put the screen away; **I'm back** returns you to chat.
-4. Preview a return gift in Pocket, close it, then tap the object in the world.
-5. Turn on **Heat day** in the demo controls and advance midnight. Its protected balance stays put.
+4. Choose **Preview a return gift** in Pocket. It uses the same drawing maker as server gifts, but the labelled preview does not enter the collection.
+5. Choose **Next day (+24 hours)** to see food carry over with elapsed use. Turn **Heat day** on and advance again; shelter pauses that use.
 
-The simulator uses the real energy engine. **Offline demo** means labelled local sample replies. **Half-awake** means a live reply from the untuned fallback while the adapted brain wakes. A trained reply comes from Gemma with the Truffle adapter. The interface names the difference.
+For live conversation, the [main world](https://truffle-web.ahmed-abied.workers.dev) distinguishes a trained Gemma reply from **half-awake**, an untuned fallback while the adapted brain wakes. **Offline demo** means local sample replies. A drawing preview demonstrates the generator, not a server alarm or an AI conversation.
 
-The [Android test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app) and [setup guide](https://github.com/Ahmedabied/truffle/tree/main/feeder-android) connect this loop to actual steps.
+The [Android setup guide](https://github.com/Ahmedabied/truffle/tree/main/feeder-android) links the available debug test APK and distinguishes the physically checked 0.3 build from the new 0.4 source and build evidence.
 
-[Public walkthrough record](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/README.md) includes the live fallback replies, successful UI checks and two corrected harness assumptions.
+[Browser integration](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-20-browser.md) and [identity checks](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-21-identity.md) use isolated local fixtures. The [earlier public walkthrough](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/README.md) records live fallback replies from the previous release.
 
 ## Code
 
 {% github Ahmedabied/truffle %}
 
-Start with [the energy rules as test cases](https://github.com/Ahmedabied/truffle/blob/main/tests/golden/energy_cases.json), [the engine](https://github.com/Ahmedabied/truffle/blob/main/worker/src/engine.ts), or [training and evaluation](https://github.com/Ahmedabied/truffle/tree/main/finetune).
+Start with [the v2 food rules as test cases](https://github.com/Ahmedabied/truffle/blob/main/tests/golden/energy_v2_cases.json), [the engine](https://github.com/Ahmedabied/truffle/blob/main/worker/src/engine.ts), or [training and evaluation](https://github.com/Ahmedabied/truffle/tree/main/finetune). The [original goldens](https://github.com/Ahmedabied/truffle/blob/main/tests/golden/energy_cases.json) remain intact to check legacy rules and migration.
 
 Application code is MIT. The exact Google, Unsloth and Red Hat Gemma 4 checkpoints publish Apache 2.0 licenses. [The model notice](https://github.com/Ahmedabied/truffle/blob/main/NOTICE-GEMMA.md) records their provenance; model and adapter artifacts are separate from the application-code license.
 
@@ -69,18 +73,18 @@ Application code is MIT. The exact Google, Unsloth and Red Hat Gemma 4 checkpoin
 ```text
 Phone steps → Android → Worker + Durable Object → Gemma + LoRA
                              ↕                         │
-                      energy and memory                │
+                       food and memory                 │
                              ↕                         ↓
                        ASCII world ←─────────────── reply
 ```
 
-The Worker chooses the thinking flag, output limit, memory window and energy cost before calling Gemma. It charges once for a reply that produces text. Someone can request a cheaper answer; neither persuasion nor a forged state block gives the model authority to mint energy.
+The Worker chooses the thinking flag, output limit, memory window and food cost before calling Gemma. It reserves that cost so maintenance cannot spend it during generation, then charges once when text becomes visible. An empty or cancelled reply returns an unused reservation. Neither persuasion nor a forged state block gives the model authority to mint food.
 
 That boundary held in adversarial testing. The voice did not always hold: the untuned model could obey the budget while asking someone to walk in extreme heat. Code can protect a balance. It cannot make every generated sentence considerate. I added an explicit heat line and a state-block filter, then trained against the same state format. [Red-team findings and fixes](https://github.com/Ahmedabied/truffle/blob/main/fleet/outbox/B10/RESULT.md).
 
 ### Did changing the weights change the pet?
 
-The `r16` adapter used Unsloth QLoRA, 1,720 synthetic examples and two epochs. The run took about 41 minutes and an estimated $1.81 of Modal credit, excluding the rest of the project. The examples cover energy tiers, moods, practical requests, and English, Arabic and mixed-language conversations. [Training report](https://github.com/Ahmedabied/truffle/blob/main/fleet/outbox/B11/RESULT.md) · [Cost record](https://github.com/Ahmedabied/truffle/blob/main/fleet/costs.md).
+The `r16` adapter used Unsloth QLoRA, 1,720 synthetic examples and two epochs. The run took about 41 minutes and an estimated $1.81 of Modal credit, excluding the rest of the project. The examples cover energy tiers, moods, practical requests, and English, Arabic and mixed-language conversations. The project has a $50 cap; provider totals are still unreconciled, and credit is not zero compute cost. [Training report](https://github.com/Ahmedabied/truffle/blob/main/fleet/outbox/B11/RESULT.md) · [Cost record](https://github.com/Ahmedabied/truffle/blob/main/fleet/costs.md).
 
 I compared the same base with and without the adapter on 170 prompts: 90 fixed tests and 80 held-out examples. Both received identical state blocks.
 
@@ -99,17 +103,17 @@ The most instructive failure was in the measurement: a phrase-based heat check p
 
 ### Making the return worth opening
 
-The landscape is a 100×68 cell world: distant ridges, acacia trees, near grasses, a lit mushroom. More detail initially hid the face. Clearing its texture made two closed eyes more expressive than another layer of shading. A cached glyph atlas and selective repainting let five loaded browser scenes measure **59.85–60.05 fps at 4× CPU slowdown**, including a storm. [Art and measurement record](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/ascii-art-direction.md).
+The landscape is a 100×68 cell world: distant ridges, acacia trees, near grasses, a lit mushroom. More detail initially hid the face. Clearing its texture made two closed eyes more expressive than another layer of shading. Anticipation now has its own attentive eyes and small lean, with feet planted. A cached glyph atlas and selective repainting kept the full-width desktop storm scene near **59 fps at 4× CPU slowdown** in a ten-second sample. Reduced motion freezes the scene. That is a controlled browser measurement, not a handset guarantee. [Art review](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-19-art-motion.md) · [Full-width measurement](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-19-art-motion/full-width/measurements.json).
 
-Android offers Health Connect or an opt-in hardware step counter, with a silent, visible tracking notification. Its **Walk** notebook uses ASCII charts and labels the source and coverage. Separate companion reminders start off, allow at most one a day, and are suppressed by heat, storms or uncertain weather.
+Android offers Health Connect or an opt-in hardware step counter, with a silent, visible tracking notification. Its **Walk** notebook now shows a matching total and date span for Today, 7 days or 30 days. Missing native records stay blank, distinct from a recorded zero. The 0.4 implementation also sends a fresh foreground movement signal to the verified pet's face without claiming the steps have reached the server. Separate companion reminders start off, allow at most one a day, and are suppressed by heat, storms or uncertain weather.
 
-A direct-counter check on a Samsung SM-A366B recorded **81 steps** during a short walk. A dated upload for October 9 in Asia/Muscat reached the Worker as **81 steps and 81/6,000 energy**, admitting low-effort replies. That is a small, concrete connection between movement and a conversation budget. [Device record](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/android-qa.md).
+A direct-counter check with version 0.3 on a Samsung SM-A366B recorded **81 steps** during a short walk. A dated upload for October 9 in Asia/Muscat reached the then-current Worker as **81 steps and 81 energy**, admitting low-effort replies. That is a small, concrete connection between movement and a conversation budget. It was not manually counted, and it does not validate the new native reactions on a phone. [Device record](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/android-qa.md).
 
-Serving has a less charming edge: a recorded GPU cold start took about ten minutes. Disabling failed GPU snapshots and reducing context to 8K made it work, but did not make it instant. An earlier browser fallback reply took around 26 seconds; the final public high-effort check took about 53 seconds to show text. The **half-awake** label matters. [Serving record](https://github.com/Ahmedabied/truffle/blob/main/decisions/0015_serving_plan_a.md) · [Earlier sanitized timing](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/recorded-browser-latencies.json) · [Final public check](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/chat-and-gift.json).
+Serving has a less charming edge: a recorded GPU cold start took about ten minutes. The earlier public high-effort fallback check took about 53 seconds to show text. The new router gives the trained provider four seconds to produce visible text for ordinary replies, or eight for explicit deep replies, before starting the labelled fallback. Those are routing deadlines, not total response-time promises. No new paid inference was used to validate this change, so faster live conversation remains unmeasured. [Serving history](https://github.com/Ahmedabied/truffle/blob/main/decisions/0015_serving_plan_a.md) · [Earlier public timing](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/public-walkthrough/chat-and-gift.json) · [Current routing review](https://github.com/Ahmedabied/truffle/blob/main/docs/reviews/fleet25-13-demo-chat.md).
 
-> **Demonstrated:** the trained adapter and matched comparison; deterministic energy and heat rules; browser and Android checks; a real 81-step sensor-to-energy feed; approximately 60 fps in throttled Chrome and a short 60 fps sample on the Samsung.
+> **Demonstrated:** the trained adapter and matched comparison; v2 accounting and server-alarm tests; local browser checks; Android build and emulator checks; a historical 81-step sensor-to-energy feed; controlled desktop frame timing.
 >
-> **Still unproved:** step accuracy against a counted reference, sustained phone performance, independent model judging, blind Arabic preference and any change in walking habits. The walk had no counted reference or recorded outdoor observation. [Evidence and remaining checks](https://github.com/Ahmedabied/truffle/blob/main/docs/submission_checklist.md).
+> **Still unproved:** the new native reactions on a physical phone, step accuracy against a counted reference, sustained phone performance, faster live replies, independent model judging, blind Arabic preference and any change in walking habits. The walk had no recorded outdoor observation. [Evidence and remaining checks](https://github.com/Ahmedabied/truffle/blob/main/docs/submission_checklist.md).
 
 ## Why Does Open Innovation Matter?
 

@@ -69,7 +69,50 @@ late read/error fencing through source switches.
 Existing ASCII tests retain the seven-bit glyph contract. Local
 `git diff --check -- feeder-android` passed. No Android build ran on the laptop.
 
-Workstation build, tests, lint and updated emulator inspection are pending the
-root's committed and pushed checkpoint. Source will reach the workstation only
-through GitHub. Phone accuracy, endurance, notification delivery and physical
-accessibility behavior remain unverified.
+Root committed and pushed the two Walk checkpoints `bbed4f0` and `9842507`.
+The workstation pulled `9842507` with `git pull --ff-only`; its checkout was
+clean. No source repository or app source was copied between machines.
+
+```text
+JAVA_HOME=/home/tamlik/jdks/jdk-17.0.20.1+1 ANDROID_HOME=/home/tamlik/Android/Sdk \
+  ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon \
+  -Dorg.gradle.java.home=/home/tamlik/jdks/jdk-17.0.20.1+1
+BUILD SUCCESSFUL in 33s
+129 tests, 17 suites, 0 failures, 0 errors
+Lint: 0 errors, 69 warnings
+```
+
+The 69 lint warnings consist of 40 text/localization warnings, 23 Kotlin
+extension suggestions, 3 SAM notices, 2 dependency-version notices and 1
+obsolete SDK guard. Five text/localization warnings were added by the clearer
+diary copy. Gradle retains the existing SDK XML/tooling warning and the compiler
+reports `scaledDensity` as deprecated.
+
+The APK was installed as an upgrade on `emulator-5556`. A paused synthetic diary
+was used only for display testing: today 1,234,567, yesterday 8,765,433, a recorded
+zero six days ago, and no other native dates. These are fabricated test values,
+not physical walking or credited food. No fixture feed or pet creation occurred.
+
+- At 100% font scale, Today shows 1,234,567. Selecting 7 days shows 10,000,000,
+  three of seven dates recorded, average 3,333,333, and the expected best day.
+  The four missing dates are blank while the recorded zero has dots.
+- At 200%, long totals and separate labels fit. The 30-day selection shows
+  10,000,000 and three of thirty dates recorded. Vertical scrolling reaches
+  details; horizontal scrolling reaches the end of the enlarged hourly chart,
+  including the 23 tick. Glyphs and ticks stay legible without overlapping.
+- The accessibility tree contains the chart's dated/hourly value descriptions.
+  This is structural evidence, not a TalkBack listening test.
+- World and Feed tab taps select their respective screens at 200%. The World
+  remains unpaired; ownership import was not tested against the older public web.
+
+Original emulator diary preferences and font scale 1.0 were restored after the
+fixture. Local unstaged captures are under `fleet/outbox/V14/native/`; they must
+be labelled synthetic if used publicly. The matching ignored APK is
+`fleet/outbox/V14/native/truffle-0.4.0-walk-debug.apk`.
+
+APK SHA-256:
+`1d4c5a4cbd29eb5d6da021b9bf7c28f3939ac05963f47524dcf025c6cf09e055`.
+
+Phone accuracy, endurance, notification delivery and physical accessibility
+behavior remain unverified. The WebView callback representation question remains
+with the identity review.

@@ -2,8 +2,21 @@
 
 A small Kotlin app with plain Android Views. Android 9 or newer is required.
 The directory is still `feeder-android/`. The application ID is still
-`dev.truffle.feeder`, so version 0.3.0 installs over the earlier feeder in place.
-Decision records: `decisions/0016_truffle_phone_app.md` and `decisions/0021_walking_companion_and_keepsakes.md`.
+`dev.truffle.feeder`, so version 0.4.0 is an in-place debug upgrade when signed
+with the same key. The native shell is English; the embedded world supports
+English and Arabic. Decision records: [0016](../decisions/0016_truffle_phone_app.md),
+[0021](../decisions/0021_walking_companion_and_keepsakes.md) and
+[0023](../decisions/0023_continuous_food_and_living_companion.md).
+
+**Build status:** 0.4.0/code 4 built on the workstation at `0a3c56c`, including
+the fresh-document WebView fix, with 129 JVM tests passing and lint at
+0 errors / 69 warnings. Three emulator reloads created fresh views and retained
+synthetic owner settings. This was not a live Truffle pairing test.
+No 0.4 build has new physical-phone evidence. The previously verified public
+[0.3 debug test APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.3.0-app)
+and its [device record](../docs/reviews/android-qa.md) remain historical evidence.
+See the [submission checklist](../docs/submission_checklist.md) for the final
+0.4 release checkpoint; this directory's source version alone is not a release.
 
 ## Three screens
 
@@ -14,15 +27,21 @@ A bottom bar switches between them. One Activity, three plain views.
   World shows one button, **make my truffle**. It calls `POST /pair` on the API
   origin, keeps the phrase and secret in private storage, and fills the Feed
   phrase. The page gets the credentials once per fresh load in the URL fragment,
-  `#creds=<phrase>.<secret>`. A fragment is never sent to a server. The page
-  stores them and strips the fragment. There is no query token, no cookie and no
-  JavaScript bridge. **Reload World** in Feed connection settings reloads the page without a permanent toolbar. Back moves through the page's
+  `#creds=<phrase>.<secret>&native_scope=<document UUID>`. A fragment is never
+  sent in an HTTP request. The page strips it immediately and adopts the owner
+  only after verification. The fresh scope permits one-way movement reactions;
+  it contains no ownership secret and is not persisted. There is no query token,
+  cookie or JavaScript credential bridge. **Reload World** in Feed connection
+  settings creates a fresh document without a permanent toolbar. Back moves through the page's
   own history first.
-- **Walk.** A walking notebook with Today, 7 days and 30 days views. Choose Health Connect or the direct phone counter. Steps are drawn as monospace text in the Truffle palette:
-  today by hour, the last 30 days by day, today's total, the 7 day average, the
-  best day in 30, the streak of days at or above 3,000 steps, and today's distance
-  when that grant exists. Steps and distance only. No calories, weight, heart rate
-  or sleep. The numbers stay on the phone. The text builders live in
+- **Walk.** A walking notebook with Today, 7 days and 30 days views. Choose Health
+  Connect or the direct phone counter. Each period has its own total, date span,
+  coverage and summary. Today is marked in progress. Native dates without records
+  are blank and excluded from averages; a recorded zero stays distinct. Health
+  Connect reports dates read, with a note that zero is not proof of no walking.
+  ASCII charts use legible glyphs and scroll horizontally at larger font sizes.
+  Optional distance is for today only. Steps and distance only, with no calories,
+  weight, heart rate or sleep. The numbers stay on the phone. The text builders live in
   `WalkChart.kt` and are unit tested.
 - **Feed.** Sends the selected walking source, with connection and privacy settings under an expandable control. The phrase comes from the app's
   credentials and is read-only while the app owns the pet. Settings for the API
@@ -45,7 +64,7 @@ link is dropped after one use, so recents cannot replay it.
 
 JavaScript and DOM storage on. File and content access off. Mixed content never
 allowed. Geolocation off. No pop-up windows. No JavaScript interface. The user
-agent is the default plus ` TruffleApp/0.3`, so the page can hide its own pairing
+agent is the default plus ` TruffleApp/0.4`, so the page can hide its own pairing
 UI and the app link. Only HTTPS pages on the configured web origin load inside.
 A tapped link to any other web address opens in the browser. Other schemes are
 dropped. WebView remote debugging is off even in this debug build, so USB
@@ -56,8 +75,10 @@ requires confirmation and removes the old pet's key and day zone. A different
 World site requires confirmation before it receives the current pet's key.
 Importing or forgetting a pet invalidates any older pairing request still in flight.
 
-Walk reads completed days using exact midnight instants in the device zone,
-including 23 and 25 hour days. Today's total comes from the same hourly snapshot
+Health Connect's Walk view reads completed days using exact midnight instants in
+the device zone, including 23 and 25 hour days. The direct diary uses the pet's
+pinned active zone; a stale diary from another zone is not relabelled as current.
+Today's total comes from the same hourly snapshot
 as the chart. Missing distance records stay unavailable instead of showing zero.
 The 30 day chart and its streak are limited to the displayed window.
 
@@ -84,8 +105,10 @@ The 30 day chart and its streak are limited to the displayed window.
    appearing after a denial, use **Health Connect settings** to grant it there.
 7. Tap **Feed now**. The status should show the sent total, the Truffle's day and
    the returned pet state.
-   Check today's total against Samsung Health after it finishes syncing. Target
-   a difference below 2%. The physical zero-step check and its limits are recorded in `docs/reviews/android-qa.md`.
+   Compare today's total with Samsung Health after it finishes syncing. The only
+   recorded physical Health Connect comparison was zero after midnight; no
+   positive-count accuracy percentage is established. See
+   [Android QA](../docs/reviews/android-qa.md).
 8. For hourly sync, set **Settings > Apps > Truffle > Battery >
    Unrestricted**. Remove it from Samsung's sleeping and deep sleeping app lists.
    Keep Samsung Health able to run too. No battery exemption permission is
@@ -166,25 +189,32 @@ metadata check is bypassed. Stable 1.1.0 includes the rc03 fix for a Health
 Connect aggregate bug at DST boundaries. Our local-midnight tests verify our
 interval math only. Muscat does not observe DST.
 
-### Strict permission limit and hourly network work
+### Permission boundary and background network work
 
-The verified debug APK requests exactly these permissions:
+The verified 0.4 APK declares these eight permissions. Steps/background access belong
+to Health Connect, activity recognition to direct counting, and notifications
+to the separately controlled notification features:
 
 - `android.permission.INTERNET`
 - `android.permission.health.READ_STEPS`
 - `android.permission.health.READ_DISTANCE` (since 0.2.0, Walk screen only, optional)
 - `android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND`
+- `android.permission.ACTIVITY_RECOGNITION`
+- `android.permission.FOREGROUND_SERVICE`
+- `android.permission.FOREGROUND_SERVICE_HEALTH`
+- `android.permission.POST_NOTIFICATIONS`
 
-WorkManager normally merges network-state, wake-lock, boot, and foreground-service
-permissions. The manifest explicitly removes those. It also removes AndroidX
-Core's synthetic receiver permission, the unused alarm/foreground services, and
-the boot reschedule receiver. This app uses the API 28+ JobScheduler backend. It
-does not use expedited or foreground workers.
+The manifest removes library-added network-state, wake-lock and boot permissions,
+AndroidX Core's synthetic receiver permission, WorkManager's unused alarm and
+foreground services, and its boot reschedule receiver. Direct counting has its
+own health foreground service. WorkManager uses the API 28+ JobScheduler backend;
+its jobs are neither expedited nor foreground workers. No location permission
+is declared.
 
 **There is no OS-level CONNECTED constraint in this restricted build.** Android
 14+ requires `ACCESS_NETWORK_STATE` for a JobScheduler network constraint. Adding
 `setRequiredNetworkType(CONNECTED)` without that permission throws
-`SecurityException`. This conflicts with the packet's permission allowlist.
+`SecurityException`. This remains outside the app's permission boundary.
 The hourly worker instead attempts HTTPS with 15-second connect/read timeouts.
 Offline I/O failures, HTTP 408, 429, and server errors get exponential retries.
 Each attempt reads fresh steps. It never queues an old day's payload. Other HTTP
@@ -250,9 +280,10 @@ an unknown phrase, so 404 gets the same line as 401.
 - One unique hourly job is scheduled after valid pairing and both grants. Android
   timing is inexact. A manual tap does not enqueue another periodic job.
 
-## Tasker day-1 bridge recipe
+## Optional historical Tasker bridge recipe
 
-This recipe is source-checked, not phone-tested. Install Tasker if already
+This earlier recipe is source-checked, not phone-tested. The app's direct counter
+is the simpler available route when Health Connect is unsuitable. Install Tasker if already
 licensed. Download TaskerHealthConnect from its
 [GitHub releases](https://github.com/RafhaanShah/TaskerHealthConnect/releases).
 The latest release checked was **1.0.4**, published 2026-06-03. Follow the Samsung
@@ -354,43 +385,45 @@ counts are safe for the engine, but duplicate calls waste the phrase rate limit.
 
 ## Verification completed
 
-Integration review (Oct 9): workstation build and 61 JVM unit tests pass.
-Lint has 0 errors and 41 warnings. Android 16 emulator checks cover native
-import confirmation, cancellation, forgetting, explicit origin changes and Walk
-with Steps only. See `docs/reviews/android-qa.md` for the evidence and limits.
-This does not replace Samsung verification or a real-step comparison.
+For final 0.4 source `0a3c56c`, the workstation ran `assembleDebug testDebugUnitTest
+lintDebug`: 129 JVM tests passed, lint had 0 errors / 69 warnings, and the build
+succeeded. The remaining warnings are recorded in the
+[artifact review](../docs/reviews/fleet25-24-release.md). The debug APK is
+12,588,066 bytes, with SHA-256
+`1ddc5b0d50240a610078c36693580f4fa5074500a0aab1d7afd429f97ae47962`.
 
-B14 (0.2.0, the Truffle app): the workstation build, 54 JVM unit tests and
-Android lint passed. Lint has no errors. The packaged manifest has the four
-permissions above, label Truffle, versionCode 2, and the `truffle://pair` filter.
-The three screens, pairing and the deep link are not yet checked on a phone. See
-`fleet/outbox/B14/RESULT.md` from the repository root.
+On the disposable Android 16 emulator, synthetic native records verified Today,
+7-day and 30-day totals, missing-versus-zero display, large numbers, 200% text,
+vertical/horizontal scrolling and structural accessibility descriptions. These
+were fabricated display fixtures, not walking or credited food. Original emulator
+preferences were restored. There was no spoken TalkBack check.
 
-B07 (SDK 36): the workstation build, 27 JVM unit tests and Android lint passed.
-Lint has no errors and 20 warnings (English-only strings, two newer library
-versions, no launcher icon). The packaged manifest has exactly the three
-permissions above. `aapt2 dump badging` shows compileSdk 36 and targetSdk 36.
+The [identity review](../docs/reviews/fleet25-21-identity.md) fixes refresh by
+replacing the WebView and creating a new document scope. The final build includes
+that edit. Three emulator reloads each produced a new stable native WebView and
+retained synthetic owner/settings fields. The fixture used a harmless HTTPS
+page with counting paused; it did not verify a live Truffle owner, JavaScript
+nonce acceptance or web local-storage preservation. Desktop browser regressions
+separately cover the import/event boundary. [Native reload evidence](../docs/reviews/fleet25-24-release.md).
 
-The Android 16 emulator was run against the live Worker with the guest zone set to
-Europe/London. A Truffle paired in Asia/Muscat. Steps and background read were
-granted through the real Health Connect screens. Checked: a bad phrase shows the
-Worker's 400 text, an unknown phrase shows the copy-again line, both keep the
-stored phrase, a real feed returns 200, the app stores `active_tz` Asia/Muscat
-and a second feed succeeds. The emulator has no step data, so totals were 0. The
-`retry_after_s` path is covered by unit tests only. See
-`fleet/outbox/B07/RESULT.md` from the repository root.
-
-S02 earlier checked background aggregation with a forced JobScheduler run,
-failed-network retry and permission-revocation recovery. See
-`fleet/outbox/S02/RESULT.md`.
+Historical 0.3 evidence on Samsung SM-A366B includes retained ownership through
+upgrade, the same selected pet in World, an 81-step hardware-counter reading and
+an accepted dated 81-step feed. It had no manually counted reference. The earlier
+Samsung Health / Health Connect agreement was a separate zero-step check.
+[Android QA](../docs/reviews/android-qa.md) preserves those versions, checksums
+and limits. Older build reports remain under `fleet/outbox/B07`, `B14` and `S02`.
 
 ## Verification checklist still needed on a phone
 
-- Compare Samsung Health, Health Connect, and Feed now after sync settles.
+- Install the final 0.4 debug build and verify selected-pet import and reload.
+- Observe a fresh native movement reaction in World without a false food credit.
+- Compare the direct counter with manually counted steps; compare positive
+  Health Connect totals with Samsung Health after sync settles.
 - Confirm provider installation, denial, re-grant, and auto-revocation recovery.
 - Verify an hourly read while the screen is off on a supported Android 15+ phone.
+- Check the coalesced movement feed, notification delivery and battery/endurance.
 - Turn network off, restore it, and verify a fresh total is posted on retry.
-- Check both rationale entry points and keyboard/system-bar layout.
+- Check both rationale entry points, TalkBack and keyboard/system-bar layout.
 - Reboot, reopen the app, then confirm work is rescheduled.
 
 ## Primary references
@@ -409,7 +442,7 @@ Checked 2026-10-07:
 - [Tasker step fixture](https://github.com/RafhaanShah/TaskerHealthConnect/blob/1.0.4/app/src/test/resources/aggregated/StepsRecord.COUNT_TOTAL.json)
 - [Tasker JavaScript variables](https://tasker.joaoapps.com/userguide/en/javascript.html)
 
-## 0.3 direct walking (decision 0021)
+## Direct walking and 0.4 companion behavior
 
 Walk offers an explicit **Count with this phone** choice using Android's hardware
 `TYPE_STEP_COUNTER`. Samsung Health is not required. Physical activity permission
@@ -433,6 +466,31 @@ behind the already credited count; the Worker's maximum prevents double credit.
 Quiet companion notes are a separate switch, off by default. They require
 notification permission, recent trustworthy safe weather, a living pet that is
 not well fed or heat-protected, no recent app/walking activity, and local time
-09:00–19:00. There is at most one per local day and a minimum 24-hour gap. Both
+09:00 to 18:59. There is at most one per local day and a minimum 24-hour gap. Both
 notification channels are silent. No missed nudge is retried or escalated.
 Android may delay hourly sync and reminder checks; neither is an exact schedule.
+
+Decision 0023 adds a one-way `truffle:native-movement` event after fresh accepted
+positive direct-counter growth. Delivery needs a verified owner import, current
+document nonce, correct origin, permitted active source, resumed Activity and
+visible World. Its bounded payload contains no phrase, secret, raw sensor counter,
+food or location. It can change the face promptly, but cannot credit food or
+establish that someone was outdoors. Navigation and pause discard stale reactions.
+There is no JavaScript-to-native credential interface.
+
+Positive movement separately requests a coalesced feed after two minutes, with a
+persisted five-minute throttle and source-session checks. Android may delay it;
+manual and hourly feeding remain. Stationary sensor callbacks do not refresh the
+last-positive-movement time used to suppress optional notes.
+
+Health Connect can qualify for optional companion notes only while it is the
+active source with supported and granted background reads. Recent positive
+activity suppresses a note. Paused direct counting never silently switches to
+Health Connect. V2 treats 1,500 stored food or 3,000 steps today as well fed, so
+expanded storage does not increase reminder pressure. Notes remain off by default.
+
+The embedded world follows server v2 food rules: 1,000 points per elapsed day at
+every age, no midnight debit, heat-paused maintenance and an exact 96-hour empty
+clock outside shelter. Server alarms can make procedural ASCII gifts after an
+accepted away plan. These gifts use no model and no food; the app is not running
+background inference. [Native protocol and test boundaries](../docs/reviews/fleet25-09-native.md).
