@@ -1,6 +1,8 @@
 # 01 - Product spec: Truffle
 
-Status: **settled 2026-10-07**. Changes go through `decisions/` first.
+Status: **v2 accepted for implementation 2026-10-09**, decision 0023. Changes go
+through `decisions/` first. The v1 reference below remains for legacy migration
+and golden tests; the following v2 rules govern the new application.
 
 ## One line
 
@@ -20,12 +22,49 @@ Desert truffles (فقع / faqa' in the Gulf, كمأة in classical Arabic) grow 
 2. Steps become **energy**.
 3. You open the ASCII world. Truffle is there, in a mood that matches its energy and the real weather where you are.
 4. You talk to it. The **effort** it can spend answering depends on its energy. Thinking costs energy.
-5. At your local midnight, Truffle **burns** a day's metabolism. Bigger Truffle burns more.
-6. If energy stays at zero for 4 midnights, Truffle **dies**. You get a gravestone and a new spore.
+5. Truffle slowly consumes stored food across the day, at the same rate at every stage. Midnight closes the diary without taking a meal.
+6. After 96 non-sheltered hours continuously without food, Truffle dies. A gravestone remains until you choose a new spore.
 7. If you beat your own 7-day step average, Truffle gets **affectionate**.
 8. If it is dangerously hot where you are, Truffle **burrows**. Burrowed days do not count toward death and do not grow it.
 
-## The energy engine (exact rules, v1)
+## The energy engine and companion, v2
+
+Decision [0023](../decisions/0023_continuous_food_and_living_companion.md) is the
+complete contract, including migration and concurrency. The trial upkeep is
+1,000 points per actual elapsed 24 hours, paused in heat shelter. Use exact
+integer remainder accounting and no debt when empty. Capacity is 12,000 for
+Spore, 24,000 for Sprout, 32,000 for Truffle and 42,000 for Elder. This is one
+balance, including food kept from earlier days. Existing discarded overflow is
+not refunded. Dated, zone-matched, current-day feeds remain mandatory.
+
+Low / medium / high eligibility starts at 20 / 1,500 / 3,600 points, independently
+of stage. Replies cost 20 / 60 / 200. Everyday conversation uses medium or the
+lower available tier, simple greetings may use low, and deeper thinking is an
+explicit visible choice. Animation, reactions and procedural gifts are free.
+The Worker reserves admitted chat food until a visible reply earns its one
+charge or failure returns the reservation. Maintenance cannot spend a reservation.
+
+Empty survival is measured in actual non-sheltered milliseconds, not midnights.
+Positive food resets it immediately. Existing dead pets stay dead. The cutover
+is 2026-10-09T07:30:00Z: v1 closes only its earlier midnights, then v2 settles
+elapsed time. Living migrated pets start a new measurable empty clock. Owner,
+energy, history, memory and graves survive. Calendar history remains local-day
+based. Catch-up must finish before current operations are admitted.
+
+Fresh confirmed step increases and safely scoped native movement can trigger
+brief happy facial expressions. Clear present outing intent, through buttons or
+English/Arabic chat, triggers anticipation and a gentle return acknowledgement.
+These expressions never rewrite the engine mood or claim outdoor location.
+
+An authenticated away event schedules a server alarm at ten minutes. A bounded
+procedural generator creates a new ASCII object and authored note in the
+background, once per pinned local day, with twelve retained server gifts. Early
+return cancels unstarted work. Old browser keepsakes remain. Show generated
+objects in the world and open their drawing and note beneath it or in Pocket.
+Details identify procedural creation; no model use or imaginary food cost is
+claimed. Rest days qualify and no extra notification stream is introduced.
+
+## Legacy energy engine (exact v1 migration and golden-test reference)
 
 All numbers are constants in one config file. Tune them with a decision record.
 

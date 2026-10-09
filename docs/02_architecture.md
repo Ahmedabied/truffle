@@ -1,5 +1,32 @@
 # 02 - Architecture
 
+## Companion v2 override (decision 0023)
+
+The v1 mechanics described below remain migration reference. Version 2 uses
+continuous fixed-point food settlement, larger bounded storage, absolute effort
+thresholds and a 96-hour non-heat empty clock. The fixed cutover is
+2026-10-09T07:30:00Z. Preserve legacy golden behavior for pre-cutover state, add
+v2 goldens, and finish catch-up before accepting a current-day operation.
+
+The Durable Object persists the economy cursor and generation-fenced chat food
+reservations. Settle at calendar/heat boundaries and before feed, admission and
+completion. Preserve weather needed by unfinished catch-up. An unused expired
+reservation is returned exactly once; reset/death cannot revive old completions.
+
+An owner-authenticated companion endpoint records away/return intent. A single
+pending gift job shares the existing DO alarm by scheduling the earliest pending
+deadline. At ten minutes, bounded procedural code creates and stores new ASCII
+geometry plus an authored note. It uses no paid inference, stores at most twelve
+gifts and fences day, generation, early returns and retries. Expose gifts through
+the owner summary; phrase-only feeding cannot read gifts or initiate a job.
+
+Web companion state is a pure presentation reducer alongside server health.
+Validated step deltas and explicit English/Arabic intent drive transient face
+and posture states. A credential-free native movement event is accepted only in
+the document whose native owner import succeeded. Existing identity verification
+and source accounting stay authoritative. Phone-only validation is unavailable
+during this implementation and must remain separately listed.
+
 Status: **settled 2026-10-07**. Ahmed's instruction: all app infrastructure on Cloudflare for speed and future features (country detection, weather switching). The model does **not** run on Cloudflare; it runs on a serverless GPU.
 
 ## Diagram
