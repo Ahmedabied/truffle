@@ -12,11 +12,11 @@ const en = {
   pocket: "Pocket",
   backToWorld: "Back to world",
   connection: "Connection",
-  energyDetails: "How energy works",
-  replyEnergyUsed: "A little energy spent on our conversation.",
+  energyDetails: "How food works",
+  replyEnergyUsed: "A little food spent on our conversation.",
   demoMode: "demo",
-  demoStart: "Open Pocket to try a walk, then come back for a chat.",
-  replyNoEnergy: "A sleepy hello. No energy spent.",
+  demoStart: "Try a pretend walk to wake Truffle, then say hello.",
+  replyNoEnergy: "A sleepy hello. No food spent.",
   shareSaved: "Saved a picture of your world.",
   giftOpen: "Open a little keepsake",
 
@@ -33,12 +33,25 @@ const en = {
   outingErrandNote: "Even groceries? Excellent. I will be your very small shopping companion. Tell me about it when you are back.",
   keepsakes: "Your little keepsakes",
   keepsakesEmpty: "Truffle likes making small things while you are away. Come back later. Rest days count too.",
-  keepsakesNote: "Little fictional gifts, kept on this device. A new one can wait after ten minutes away, once a day. No steps required.",
+  keepsakesNote: "A little drawing may be waiting after ten minutes away. One a day, including rest days. Your older keepsakes stay in the archive.",
   giftWaiting: "I made a little something for you.",
   giftFrom: "Made by Truffle",
   previewGift: "Preview a return gift",
-  energyStore: "Energy for company",
-  energyNote: "Steps fill the energy store. Each reply spends a little.",
+  energyStore: "Food for the days ahead",
+  foodChatNote: "Food carries into tomorrow. It also pays for our conversations.",
+  energyNote: "Stored food lasts across midnight. This trial uses 1,000 food points per elapsed day at every age. Heat shelter pauses that use. Actual AI replies spend 20, 60 or 200 points for small, everyday or deeper replies, capped by available effort.",
+  foodReserveNote: "A rough reserve at the trial rate, before chats or future steps. Heat shelter pauses daily use.",
+  effortEveryday: "Everyday · up to 60 food",
+  effortSmall: "Small · up to 20 food",
+  effortDeep: "Think deeper · up to 200 food",
+  effortAsleep: "Sleepy hello · 0 food",
+  effortNote: "Everyday chooses medium effort, or low for a short hello. Available food can lower the effort and price. Only a reply with visible text uses food.",
+  nextDayNote: "This demo advances 24 hours. Ordinary midnight resets the step diary, with no extra food charge.",
+  giftPending: "Your away plan is saved. Truffle can make a little drawing after ten minutes away. Come back whenever you like.",
+  giftScheduleFailed: "We could not confirm your away plan was saved, so no drawing is promised this time. Take your time.",
+  giftArchive: "Saved on this device",
+  giftPreview: "Drawing preview",
+  giftPreviewNote: "Try the same drawing maker used for away gifts. This preview is not added to your collection.",
   pause: "Take a moment",
   back: "I'm back",
   pauseNotice: "Wherever you are, notice one small thing: a sound, a shadow, a change in the air. No need to keep this screen open.",
@@ -69,7 +82,7 @@ const en = {
   networkError: "Could not reach Truffle. Try again shortly. If this keeps happening, check the API address in Settings.",
   sporeButton: "Plant a new spore",
   memoryPrefix: "It remembered:",
-  energy: "Energy",
+  energy: "Food",
   stepsToday: "steps today",
   effort: "effort",
   apiBase: "API address",
@@ -84,14 +97,14 @@ const en = {
   motionSystem: "Your system asks for less motion, so the sky stays still.",
   forget: "Forget this Truffle on this browser",
   judgeTitle: "Judge mode",
-  judgeIntro: "A demo Truffle for trying steps, midnight and heat. Online demos last 24 hours.",
+  judgeIntro: "A demo Truffle for trying steps, a passing day and heat. Online demos last 24 hours.",
   sliderLabel: "Steps today",
-  midnight: "Next midnight",
+  midnight: "Next day (+24 hours)",
   heatOn: "Heat day: on",
   heatOff: "Heat day: off",
   reset: "Reset",
-  askFor: "Ask for effort",
-  auto: "auto",
+  askFor: "Reply effort",
+  auto: "Everyday · up to 60 food",
   working: "Working...",
   loading: "Waking the world...",
   pairing: "Planting your spore...",
@@ -132,11 +145,11 @@ const ar: Record<CopyKey, string> = {
   pocket: "الجيب",
   backToWorld: "ارجع للعالم",
   connection: "الاتصال",
-  energyDetails: "كيف تشتغل الطاقة",
-  replyEnergyUsed: "صرفنا شوي طاقة على سوالفنا.",
+  energyDetails: "كيف يشتغل الطعام",
+  replyEnergyUsed: "صرفنا شوي طعام على سوالفنا.",
   demoMode: "تجربة",
-  demoStart: "افتح الجيب وجرّب مشية، ثم ارجع للسوالف.",
-  replyNoEnergy: "سلام نعسان. ما صرفنا طاقة.",
+  demoStart: "جرّب مشية تجريبية تصحّي ترافل، وبعدين سلّم عليه.",
+  replyNoEnergy: "سلام نعسان. ما صرفنا طعام.",
   shareSaved: "حفظنا صورة من عالمك.",
   giftOpen: "افتح تذكار صغير",
 
@@ -153,12 +166,25 @@ const ar: Record<CopyKey, string> = {
   outingErrandNote: "حتى لو للبقالة؟ حلو. بكون رفيق تسوّق صغير مرّة. سولف لي يوم ترجع.",
   keepsakes: "تذكاراتك الصغيرة",
   keepsakesEmpty: "ترافل يحب يسوي لك أشياء صغيرة وأنت غايب. ارجع بعدين. حتى أيام الراحة لها هدايا.",
-  keepsakesNote: "هدايا خيالية صغيرة محفوظة على هالجهاز. ممكن تنتظرك وحدة بعد عشر دقايق غياب، مرة باليوم. ما تحتاج خطوات.",
+  keepsakesNote: "ممكن تنتظرك رسمة صغيرة بعد عشر دقايق من الغياب. وحدة باليوم، حتى في أيام الراحة. تذكاراتك القديمة تبقى في الأرشيف.",
   giftWaiting: "سويت لك شي صغير.",
   giftFrom: "من صنع ترافل",
   previewGift: "جرّب هدية الرجعة",
-  energyStore: "طاقة للسوالف",
-  energyNote: "الخطوات تعبي مخزون الطاقة. وكل رد ياخذ منه شوي.",
+  energyStore: "طعام للأيام الجاية",
+  foodChatNote: "الطعام يبقى لبكرة. ومنه تكلفة سوالفنا بعد.",
+  energyNote: "الطعام المخزّن يبقى بعد منتصف الليل. في هالتجربة، ترافل يستخدم ١٬٠٠٠ نقطة طعام لكل يوم يمر، في كل الأعمار. الاحتماء من الحر يوقف هالاستخدام. ردود الذكاء الاصطناعي الفعلية تستخدم ٢٠ أو ٦٠ أو ٢٠٠ نقطة للرد القصير أو اليومي أو الأعمق، بحد الجهد المتاح.",
+  foodReserveNote: "مخزون تقريبي حسب معدل التجربة، قبل السوالف والخطوات الجاية. الاحتماء من الحر يوقف الاستخدام اليومي.",
+  effortEveryday: "يومي · لحد ٦٠ طعام",
+  effortSmall: "قصير · لحد ٢٠ طعام",
+  effortDeep: "تفكير أعمق · لحد ٢٠٠ طعام",
+  effortAsleep: "سلام نعسان · ٠ طعام",
+  effortNote: "اليومي يختار جهد متوسط، أو منخفض للتحية القصيرة. الطعام المتاح ممكن يقلّل الجهد والتكلفة. الطعام ينصرف بس إذا ظهر نص الرد.",
+  nextDayNote: "هالتجربة تقدّم الوقت ٢٤ ساعة. منتصف الليل العادي يبدأ يوم خطوات جديد بدون خصم طعام إضافي.",
+  giftPending: "حفظنا خطة غيابك. يقدر ترافل يسوي رسمة صغيرة بعد عشر دقايق غياب. ارجع على راحتك.",
+  giftScheduleFailed: "ما قدرنا نتأكد إن خطة غيابك انحفظت، فما نقدر نوعدك برسمة هالمرة. خذ راحتك.",
+  giftArchive: "محفوظ على هالجهاز",
+  giftPreview: "معاينة رسمة",
+  giftPreviewNote: "جرّب نفس صانع رسومات هدايا الغياب. هالمعاينة ما تنضاف لمجموعتك.",
   pause: "خذ لك لحظة",
   back: "رجعت",
   pauseNotice: "وين ما كنت، لاحظ شي صغير: صوت، ظل، أو تغيّر في الهوا. ما تحتاج تخلي الشاشة مفتوحة.",
@@ -189,7 +215,7 @@ const ar: Record<CopyKey, string> = {
   networkError: "ما قدرنا نوصل لترافل. جرّب بعد شوي. إذا استمر هالشي، شيّك على عنوان الخادم في الإعدادات.",
   sporeButton: "ازرع بذرة جديدة",
   memoryPrefix: "كان يتذكر:",
-  energy: "الطاقة",
+  energy: "الطعام",
   stepsToday: "خطوة اليوم",
   effort: "الجهد",
   apiBase: "عنوان الخادم",
@@ -204,14 +230,14 @@ const ar: Record<CopyKey, string> = {
   motionSystem: "جهازك يطلب حركة أقل، فالسماء ثابتة.",
   forget: "انسَ ترافل هذا على هذا المتصفح",
   judgeTitle: "وضع الحكّام",
-  judgeIntro: "ترافل تجريبي عشان تجرّب الخطوات ومنتصف الليل والحر. نسخة التجربة على الخادم تنتهي بعد 24 ساعة.",
+  judgeIntro: "ترافل تجريبي عشان تجرّب الخطوات ومرور يوم والحر. نسخة التجربة على الخادم تنتهي بعد ٢٤ ساعة.",
   sliderLabel: "خطوات اليوم",
-  midnight: "منتصف الليل التالي",
+  midnight: "اليوم التالي (+٢٤ ساعة)",
   heatOn: "يوم حر: شغّال",
   heatOff: "يوم حر: طافي",
   reset: "ابدأ من جديد",
-  askFor: "اطلب جهد",
-  auto: "تلقائي",
+  askFor: "جهد الرد",
+  auto: "يومي · لحد ٦٠ طعام",
   working: "لحظة...",
   loading: "العالم يصحى...",
   pairing: "نزرع بذرتك...",
@@ -285,16 +311,18 @@ export function explainChat(
   lang: Lang,
   o: { pct: number; tier: Tier; spent: number; thinking: boolean; requested?: Tier; brain: string }
 ): string {
-  const t = TIER_WORD[lang][o.tier];
-  const asked = o.requested && o.requested !== o.tier ? o.requested : undefined;
-  if (lang === "ar") {
-    const pre = asked ? `طلبت جهد ${TIER_WORD.ar[asked]}. ` : "";
-    if (o.tier === "asleep") return `${pre}الطاقة ${num(lang, o.pct)}٪ فترافل نايم. ما فيه نداء للنموذج. التكلفة 0.`;
-    return `${pre}الطاقة ${num(lang, o.pct)}٪ لذلك جهد ${t}. التفكير ${o.thinking ? "شغّال" : "طافي"}. التكلفة ${num(lang, o.spent)}.`;
+  const tier = TIER_WORD[lang][o.tier];
+  if (o.brain === "sample") {
+    return lang === "ar"
+      ? `رد تجريبي بمحاكاة، بدون نداء لنموذج ذكاء اصطناعي. تكلفة الطعام في المحاكاة: ${momentNum(lang, o.spent)} نقطة في العالم التجريبي فقط.`
+      : `Simulated sample reply. No AI model call. Simulated cost: ${o.spent} food points in this sample world only.`;
   }
-  const pre = asked ? `You asked for ${asked}. ` : "";
-  if (o.tier === "asleep") return `${pre}Energy ${o.pct}% so Truffle is asleep. No model call. Cost 0.`;
-  return `${pre}Energy ${o.pct}% so ${t} effort. Thinking ${o.thinking ? "on" : "off"}. Cost ${o.spent}.`;
+  if (lang === "ar") {
+    if (o.tier === "asleep") return "سلام نعسان. ما فيه نداء للنموذج. التكلفة ٠ طعام.";
+    return `جهد الرد ${tier}. التفكير ${o.thinking ? "شغّال" : "طافي"}. التكلفة الفعلية ${momentNum(lang, o.spent)} طعام. نسبة امتلاء المخزون ما تحدد جهد الرد وحدها.`;
+  }
+  if (o.tier === "asleep") return "A sleepy hello. No model call. Cost 0 food.";
+  return `${tier[0].toUpperCase() + tier.slice(1)} effort. Thinking ${o.thinking ? "on" : "off"}. Actual cost ${o.spent} food. Store fullness alone does not determine reply effort.`;
 }
 
 export function explainSteps(lang: Lang, steps: number, pct: number, tier: Tier, burrowed: boolean): string {
@@ -304,9 +332,17 @@ export function explainSteps(lang: Lang, steps: number, pct: number, tier: Tier,
 
 export function explainMidnight(
   lang: Lang,
-  o: { burned: number; pct: number; zero_days: number; dead: boolean; wasBurrowed: boolean; affectionUp: boolean; grew?: Stage }
+  o: { burned: number; pct: number; zero_days: number; dead: boolean; wasBurrowed: boolean; affectionUp: boolean; grew?: Stage; continuous?: boolean }
 ): string {
   const ar = lang === "ar";
+  if (o.continuous) {
+    if (o.dead) return ar
+      ? "مرّ يوم في التجربة. ترافل رجع للتراب بعد ٩٦ ساعة بدون طعام خارج فترة الاحتماء من الحر. تقدر تزرع بذرة جديدة."
+      : "A demo day passed. Truffle returned to the soil after 96 hours without food outside heat shelter. You can plant a new spore.";
+    return ar
+      ? `مرّ يوم في التجربة. استخدام الطعام خلال الوقت اللي مرّ: ${momentNum(lang, o.burned)}. ${o.wasBurrowed ? "الاحتماء من الحر وقف الاستخدام. " : ""}بدأ يوم خطوات جديد. ما فيه خصم إضافي عند منتصف الليل.`
+      : `A demo day passed. Food used over that time: ${num(lang, o.burned)}. ${o.wasBurrowed ? "Heat shelter paused that use. " : ""}A fresh step diary begins. Midnight adds no extra charge.`;
+  }
   if (o.dead) {
     return ar
       ? "أربع ليالٍ والطاقة صفر. ترافل رجع للتراب. صار له حجر صغير."
@@ -380,4 +416,29 @@ export function momentLine(lang: Lang, kind: MomentKind, value: number): string 
     case "heat_day_indoor":
       return `your steps arrived. ${n} today. no rescue needed.`;
   }
+}
+
+/** Reserve is an estimate for food use, never a survival countdown. */
+export function foodSummary(lang: Lang, food: number, capacity: number): { amount: string; reserve: string } {
+  const safeFood = Math.max(0, Math.floor(food));
+  const amount = lang === "ar"
+    ? `${momentNum(lang, safeFood)} من ${momentNum(lang, capacity)} نقطة طعام`
+    : `${momentNum(lang, safeFood)} of ${momentNum(lang, capacity)} food points`;
+  const days = safeFood / 1_000;
+  const rounded = new Intl.NumberFormat(lang === "ar" ? "ar-u-nu-arab" : "en-US", { maximumFractionDigits: 1 }).format(days);
+  const reserve = safeFood === 0
+    ? lang === "ar" ? "المخزون فاضي حاليًا. الخطوات الجاية تقدر تعبيه." : "The store is empty for now. Future steps can refill it."
+    : days < 0.1
+      ? lang === "ar" ? "مخزون صغير لوقت هادي." : "A little food in reserve."
+      : lang === "ar" ? `حوالي ${rounded} يوم من الاستخدام الهادي.` : `About ${rounded} days of quiet use.`;
+  return { amount, reserve };
+}
+
+/** The upper bound visible before send. The Worker still admits the actual tier. */
+export function replyFoodEstimate(lang: Lang, available: Tier, requested?: Tier): string {
+  const costs: Record<Tier, number> = { asleep: 0, low: 20, medium: 60, high: 200 };
+  const maximum = Math.min(costs[available], costs[requested ?? "medium"]);
+  return lang === "ar"
+    ? `بالمخزون الحالي: لحد ${momentNum(lang, maximum)} نقطة طعام للرد.`
+    : `With this food: up to ${maximum} points per reply.`;
 }

@@ -32,11 +32,22 @@
       <section class="chat" aria-labelledby="conversationTitle">
         <h2 id="conversationTitle" class="section-label" data-c="conversation"></h2>
         <p id="chatHint" class="hint" data-c="chatHint"></p>
+        <button id="firstWalk" type="button" class="small first-walk" data-c="tryWalk" hidden></button>
         <span id="half" class="pill warn brain-note" data-c="halfAwake" hidden></span>
         <article id="chatGift" class="gift-card chat-gift" tabindex="-1" aria-live="polite" hidden></article>
+        <p id="sentMessage" class="sent-message" dir="auto" hidden></p>
         <p id="reply" class="reply" dir="auto" aria-hidden="true"></p>
         <p id="replySr" class="sr-only" role="status" aria-atomic="true" dir="auto"></p>
         <form id="chatForm" class="chatline" autocomplete="off">
+          <div class="effort-control">
+            <label for="ask" data-c="askFor"></label>
+            <select id="ask" aria-describedby="effortPrice">
+              <option value="" data-c="effortEveryday"></option>
+              <option value="low" data-c="effortSmall"></option>
+              <option value="high" data-c="effortDeep"></option>
+            </select>
+            <p id="effortPrice" class="effort-price" aria-live="polite"></p>
+          </div>
           <input id="msg" type="text" dir="auto" maxlength="1000" enterkeyhint="send" aria-label="Message" />
           <button type="submit" class="primary" data-c="send"></button>
         </form>
@@ -76,13 +87,15 @@
       <details id="keepsakes" class="keepsakes">
         <summary><span data-c="keepsakes"></span><span id="giftCount" class="count" aria-hidden="true">0</span></summary>
         <p id="giftWaiting" class="gift-waiting" data-c="giftWaiting" role="status" hidden></p>
+        <p id="giftPending" class="hint" data-c="giftPending" role="status" hidden></p>
         <p id="giftsEmpty" class="hint" data-c="keepsakesEmpty"></p>
         <article id="giftCard" class="gift-card" hidden>
           <pre id="giftArt" dir="ltr" aria-hidden="true"></pre>
-          <div><span class="gift-from" data-c="giftFrom"></span><h3 id="giftName"></h3><p id="giftNote"></p><time id="giftDate"></time></div>
+          <div><span class="gift-from" data-c="giftFrom"></span><h3 id="giftName"></h3><p id="giftNote" dir="auto"></p><p id="giftProvenance" class="gift-provenance"></p><time id="giftDate"></time></div>
         </article>
         <div id="giftList" class="gift-list"></div>
-        <p class="hint keepsakes-note" data-c="keepsakesNote"></p>
+        <p id="keepsakesNote" class="hint keepsakes-note" data-c="keepsakesNote"></p>
+        <p id="giftPreviewNote" class="hint keepsakes-note" data-c="giftPreviewNote" hidden></p>
         <button id="previewGift" type="button" class="small" data-c="previewGift" hidden></button>
       </details>
 
@@ -97,14 +110,7 @@
           <button id="heatBtn" type="button" aria-pressed="false"></button>
           <button id="resetBtn" type="button" class="ghost" data-c="reset"></button>
         </div>
-        <label class="row" for="ask"><span data-c="askFor"></span>
-          <select id="ask">
-            <option value="" data-c="auto"></option>
-            <option value="low"></option>
-            <option value="medium"></option>
-            <option value="high"></option>
-          </select>
-        </label>
+        <p class="hint" data-c="nextDayNote"></p>
       </section>
 
       <details id="settings" class="settings">
@@ -134,7 +140,13 @@
         </details>
       </details>
 
-        <details class="connection"><summary data-c="energyDetails"></summary><p class="hint" data-c="energyNote"></p><p id="chatDetails" class="hint"></p></details>
+        <section class="food-store" aria-labelledby="foodTitle">
+          <h2 id="foodTitle" data-c="energyStore"></h2>
+          <p id="foodAmount" class="food-amount"></p>
+          <p id="foodReserve" class="food-reserve"></p>
+          <p class="hint" data-c="foodReserveNote"></p>
+          <details class="connection"><summary data-c="energyDetails"></summary><p class="hint" data-c="energyNote"></p><p id="effortNote" class="hint" data-c="effortNote"></p><p id="chatDetails" class="hint"></p></details>
+        </section>
         <footer class="footer"><a href="https://github.com/Ahmedabied/truffle" target="_blank" rel="noopener" data-c="sourceCode"></a></footer>
       </div>
     </dialog>

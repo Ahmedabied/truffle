@@ -63,7 +63,7 @@ export interface Backend {
   spawn(lang?: Lang): Promise<PairResult>;
   state(c: Creds): Promise<StateSummary>;
   /** Additive capability: older APIs/offline clients may not schedule server work. */
-  companion?(c: Creds, action: "away" | "return" | "cancel", intent?: "walk" | "errand" | "rest", requestId?: string, keepalive?: boolean): Promise<StateSummary>;
+  companion?(c: Creds, action: "away" | "return" | "cancel", intent?: "walk" | "errand" | "rest", requestId?: string, keepalive?: boolean, generation?: number, jobId?: string): Promise<StateSummary>;
   chat(c: Creds, message: string, lang: Lang, requested?: Tier, signal?: AbortSignal): AsyncGenerator<ChatEvent>;
   spore(c: Creds): Promise<StateSummary>;
   slider(c: Creds, steps: number): Promise<StateSummary>;

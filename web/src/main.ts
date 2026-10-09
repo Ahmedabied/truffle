@@ -4,16 +4,18 @@ import "./style.css";
 import { ApiError, DEFAULT_API, apiBase, connect, setApiBase } from "./api";
 import { credentialKey, normalizeApiOrigin, verifyImportedPet } from "./credentials";
 import { Chat } from "./chat";
+import { CompanionController } from "./companion/controller";
+import { companionText, type CompanionNote } from "./companion/copy";
 import { MockBackend } from "./mock";
 import { Cooldown, describeError, waitText, type ErrorCtx } from "./errors";
 import { FpsMeter, fpsEnabled, fpsText } from "./fps";
-import { COPY, MOOD_WORD, STAGE_WORD, TIER_WORD, explainGrew, explainMidnight, explainSteps, momentLine, type CopyKey, type Lang } from "./copy";
+import { COPY, MOOD_WORD, STAGE_WORD, TIER_WORD, explainGrew, explainMidnight, explainSteps, foodSummary, replyFoodEstimate, momentLine, type CopyKey, type Lang } from "./copy";
 import { appLink, inApp, offerApp, takeCredsFromHash } from "./handoff";
 import { MOMENT_SHOW_MS, lastIdKey, momentsOf, pickNew, recent, type Moment, type MomentKind } from "./moments";
 import { cardHost, deliver, drawCard, fileName, readWorld, toBlob } from "./share";
 import { makeFitter } from "./scene/grid";
 import { World } from "./scene/world";
-import { AWAY_MS, giftText, readShelf, returnToShelf, shelfKey, type Keepsake } from "./keepsakes";
+import { activeGifts, giftProvenance, mergeGifts, previewGift, readGiftDisplayState, readShelf, returnToShelf, shelfKey, updateGiftDisplayState, type DisplayGift } from "./keepsakes";
 import type { Backend, Creds, StateSummary, Tier } from "./types";
 
 const POLL_MS = 30_000;
@@ -59,7 +61,13 @@ const store = {
 // Credentials from the Truffle app arrive once as #creds=<phrase>.<secret>.
 // Strip immediately; adoption happens only after consent and server validation.
 const receivedImport = /^#?creds=/.test(location.hash);
-let importedCreds = takeCredsFromHash(location, history, () => {});
+// Only this exact envelope can carry a native document nonce. Duplicate or
+// malformed parameters fall through to the existing fail-closed parser.
+const nativeFragment = /^#?creds=([^&]*)&native_scope=([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.exec(location.hash);
+let importedNativeScope: string | null = nativeFragment?.[2] ?? null;
+let importedCreds = takeCredsFromHash(nativeFragment
+  ? { hash: `#creds=${nativeFragment[1]}`, pathname: location.pathname, search: location.search }
+  : location, history, () => {});
 const petKey = () => credentialKey(apiBase(), DEFAULT_API, DEMO);
 const importMarkerKey = `${petKey()}.pending-import`;
 // Only a boolean survives reload. The one-time secret stays in memory until
@@ -84,6 +92,8 @@ let langChosen = savedLang === "ar" || savedLang === "en";
 let halfAwake = false;
 let lastWhy = "";
 let importRecovery: CopyKey | null = null;
+let nativeImport: { nonce: string; origin: string; pet: string; generation: number } | null = null;
+let renderedOwner = "";
 
 const world = new World($("world"));
 const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -97,6 +107,79 @@ const moonParam = new URLSearchParams(location.search).get("moon");
 world.set({ moonOverride: moonParam !== null && Number.isFinite(Number(moonParam)) ? Number(moonParam) % 1 : null });
 
 makeFitter($("scene"), $("world"), $("probe"), () => world.draw());
+
+const companionNote = document.createElement("div");
+companionNote.id = "companionNote";
+companionNote.className = "companion-note";
+companionNote.hidden = true;
+const companionWords = document.createElement("p");
+companionWords.setAttribute("role", "status");
+companionWords.setAttribute("aria-live", "polite");
+const companionDismiss = document.createElement("button");
+companionDismiss.type = "button";
+companionDismiss.className = "small";
+companionNote.append(companionWords, companionDismiss);
+$("chatForm").insertAdjacentElement("afterend", companionNote);
+let currentCompanionNote: CompanionNote | null = null;
+function showCompanionNote(note: CompanionNote | null): void {
+  currentCompanionNote = note;
+  companionNote.hidden = !note;
+  companionWords.textContent = note ? companionText(note, lang) : "";
+  companionWords.lang = lang;
+  companionDismiss.textContent = lang === "ar" ? "إخفاء" : "Dismiss";
+}
+companionDismiss.addEventListener("click", () => showCompanionNote(null));
+const companion = new CompanionController({
+  visible: !document.hidden,
+  load: key => store.get(key), save: (key, value) => store.set(key, value),
+  setReaction: reaction => { world.set({ reaction }); world.draw(); },
+  showNote: showCompanionNote,
+  requestState: () => void poll(),
+  onServerSummary: s => render(s),
+});
+function clearCompanion(): void {
+  nativeImport = null;
+  importedNativeScope = null;
+  companion.clear();
+}
+function syncCompanion(s: StateSummary, fresh: boolean): void {
+  if (!creds || importPending || authLost || importRecovery) { companion.clear(); return; }
+  const origin = apiBase();
+  if (nativeImport && (nativeImport.origin !== origin || nativeImport.pet !== creds.phrase
+    || nativeImport.generation !== s.generation || s.state.dead || backend.mock || DEMO)) nativeImport = null;
+  const b = backend, c = creds, epoch = stateEpoch;
+  const current = () => backend === b && creds === c && apiBase() === origin && stateEpoch === epoch && !importPending && !authLost;
+  companion.snapshot({ origin, pet: c.phrase, demo: DEMO || b.mock,
+    nativeScope: nativeImport?.nonce,
+    request: !b.mock && s.companion !== undefined && b.companion ? async (action, intent, requestId, keepalive, generation, jobId) => {
+      if (!current()) throw new Error("Companion owner changed");
+      try {
+        const result = await b.companion!(c, action, intent, requestId, keepalive, generation, jobId);
+        if (!current()) throw new Error("Companion owner changed");
+        if (action === "away" && summary?.generation === generation) giftScheduleFailed = false;
+        return result;
+      } catch (e) {
+        if (current() && action === "away" && summary?.generation === generation && !isAuthLoss(e)) {
+          giftScheduleFailed = true;
+          refreshKeepsakes();
+          explain(t("giftScheduleFailed"));
+        }
+        if (current() && isAuthLoss(e)) {
+          authLost = true;
+          clearCompanion();
+          failed(e, "state");
+          $("syncNote").textContent = t("syncPaused");
+          $("recovery").hidden = false;
+          chat.refresh();
+        }
+        throw e;
+      }
+    } : undefined,
+  }, s, fresh);
+}
+addEventListener("truffle:native-movement", event => {
+  if (!importPending && !importRecovery && !authLost && nativeImport && !document.hidden) companion.movement((event as CustomEvent).detail);
+});
 
 const chat = new Chat(
   $<HTMLFormElement>("chatForm"),
@@ -117,18 +200,35 @@ const chat = new Chat(
       $("half").hidden = !on;
     },
     onSummary: (s) => render(s),
+    onAcceptedMessage: message => companion.acceptedMessage(message),
+    onMessage: message => {
+      $("sentMessage").textContent = message ?? "";
+      $("sentMessage").hidden = !message;
+    },
     onExplain: (t) => explain(t),
     onDetails: (text) => { $("chatDetails").textContent = text; },
     afterChat: () => void poll(),
     demo: DEMO,
     openSettings: () => openSettings(),
-    blocked: () => actionBusy || sliderPending,
+    blocked: () => actionBusy || sliderPending || authLost || importPending || !!importRecovery,
     onBusy: (busy) => {
       chatBusy = busy;
+      if (busy) {
+        stateEpoch++; // A pre-chat refresh cannot overwrite the charged result.
+        if (summary) syncCompanion(summary, false);
+      }
+      $<HTMLSelectElement>("ask").disabled = busy;
       setActDisabled(actCooldown.active());
     }
   }
 );
+
+$("ask").addEventListener("change", () => {
+  if (summary) refreshReplyPrice(summary);
+});
+function refreshReplyPrice(s: StateSummary): void {
+  $("effortPrice").textContent = replyFoodEstimate(lang, s.state.dead ? "asleep" : s.tier, ($<HTMLSelectElement>("ask").value || undefined) as Tier | undefined);
+}
 
 // ---------- language ----------
 
@@ -148,9 +248,8 @@ function applyLang(): void {
   });
   $("langBtn").lang = lang === "ar" ? "en" : "ar";
   $("msg").setAttribute("aria-label", c.placeholder);
-  const ask = $<HTMLSelectElement>("ask");
-  for (const o of Array.from(ask.options)) if (o.value) o.textContent = TIER_WORD[lang][o.value as Tier];
   document.title = DEMO ? `${c.title} | ${c.judgeTitle}` : c.title;
+  showCompanionNote(currentCompanionNote);
   if (summary) render(summary, false);
   chat.refresh();
   if (backend?.mock) $("judgeIntro").textContent = c.offlineIntro;
@@ -164,7 +263,7 @@ $("langBtn").addEventListener("click", () => {
   langChosen = true;
   store.set(K.lang, lang);
   applyLang();
-  if (summary) explain(t("energyNote"));
+  if (summary) explain(t("foodChatNote"));
 });
 
 // Pocket keeps secondary controls out of the living world.
@@ -185,9 +284,14 @@ function explain(text: string): void {
 }
 
 function render(s: StateSummary, fresh = true): void {
+  const owner = `${apiBase()}/${creds?.phrase ?? ""}/${DEMO || !!backend?.mock}`;
+  if (owner === renderedOwner && summary?.generation !== undefined && s.generation !== undefined && s.generation < summary.generation) return;
+  if (owner !== renderedOwner || (summary?.generation !== undefined && s.generation !== undefined && summary.generation !== s.generation)) chat.clear();
+  if (owner !== renderedOwner) { clearCompanion(); renderedOwner = owner; }
   if (fresh) awaitingFreshReturn = false;
   summary = s;
   const st = s.state;
+  $("firstWalk").hidden = !DEMO || st.steps_today > 0 || st.dead;
   world.set({
     stage: st.stage,
     mood: s.mood,
@@ -206,10 +310,11 @@ function render(s: StateSummary, fresh = true): void {
     apparentC: s.weather?.apparent_c ?? 30
   });
   world.draw(); // show a state change at once, not on the next tick
+  syncCompanion(s, fresh);
 
   const sep = " · ";
   const hud = [
-    `${t("energy")} ${s.energy_pct}%`,
+    foodSummary(lang, st.energy, s.energy_max).amount,
     STAGE_WORD[lang][st.stage],
     `${st.steps_today.toLocaleString("en-US")} ${t("stepsToday")}`,
     `${t("effort")} ${TIER_WORD[lang][s.tier]}`,
@@ -224,14 +329,18 @@ function render(s: StateSummary, fresh = true): void {
   $("hudText").textContent = `${st.steps_today.toLocaleString("en-US")} ${t("stepsToday")}`;
   $("hud").setAttribute("aria-label", `${$("hudText").textContent}. ${t("momentsShow")}`);
   $("worldDetails").textContent = hud.join(sep);
-  $("energyValue").textContent = `${s.energy_pct}%`;
+  $("energyValue").textContent = st.energy.toLocaleString(lang === "ar" ? "ar-u-nu-arab" : "en-US");
+  const food = foodSummary(lang, st.energy, s.energy_max);
+  $("foodAmount").textContent = food.amount;
+  $("foodReserve").textContent = food.reserve;
+  refreshReplyPrice(s);
   $("energyTrack").setAttribute("aria-valuenow", String(s.energy_pct));
+  $("energyTrack").setAttribute("aria-valuetext", food.amount);
   $("energyFill").style.width = `${s.energy_pct}%`;
   $("worldTime").textContent = backend?.mock ? t("sampleWorld") : new Intl.DateTimeFormat(lang === "ar" ? "ar-OM" : "en-GB", { timeZone: s.tz, hour: "2-digit", minute: "2-digit" }).format(new Date());
   $("outingBtn").hidden = st.dead;
   $("outingBtn").classList.toggle("primary", !DEMO);
   refreshKeepsakes();
-  resumeOuting();
   onMoments(s);
   $("world").setAttribute(
     "aria-label",
@@ -259,45 +368,52 @@ function render(s: StateSummary, fresh = true): void {
   $("chatHint").textContent = st.dead ? t("placeholderDead") : st.burrowed ? t("heatRest") : s.tier === "asleep" ? t(DEMO ? "demoStart" : "chatHint") : t("chatReady");
 }
 
-// A small local shelf. API and pet boundaries are also collection boundaries.
+// Server gifts belong to one life. Older device shelves stay readable as an archive.
 const collectionKey = () => creds ? shelfKey(apiBase(), creds.phrase, DEMO || !!backend?.mock) : null;
-const outingKey = () => { const key = collectionKey(); return key ? `${key}/outing` : null; };
-function finishOuting(): void { const key = outingKey(); if (key) store.del(key); }
-function resumeOuting(): void {
-  const key = outingKey();
-  if (!key || document.hidden || $<HTMLDialogElement>("pauseDialog").open) return;
-  const saved = store.get<{ version?: number; kind?: string; at?: number }>(key);
-  if (!saved) return;
-  finishOuting();
-  if (saved.version === 1 && ["outingWalk", "outingErrand"].includes(saved.kind ?? "") && Number.isFinite(saved.at)) explain(t("returnNotice"));
-}
-let selectedGift: Keepsake | null = null;
+let selectedGift: DisplayGift | null = null;
+let displayedGifts: DisplayGift[] = [];
+let demoGift: DisplayGift | null = null;
 let selectedCollection = "";
 let giftListSignature = "";
 let sceneGiftSignature = "uninitialized";
+let chatGiftSignature = "";
+let giftScheduleFailed = false;
 const giftWorld = world as unknown as { setKeepsakes?: (items: Array<{ id: string; art: string }>) => void; hitGift?: (x: number, y: number) => string | null };
-function markGiftSeen(gift: Keepsake): void {
-  const key = collectionKey();
-  if (key) store.set(`${key}/read`, Math.max(store.get<number>(`${key}/read`) ?? 0, gift.at));
+function giftReadKey(): string { return `${selectedCollection}/read-ids`; }
+function readGiftIds(): string[] {
+  const ids = store.get<unknown>(giftReadKey());
+  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string").slice(-48) : [];
 }
-function showGift(gift: Keepsake): void {
+function markGiftSeen(gift: DisplayGift): void {
+  if (gift.source === "preview") return;
+  store.set(giftReadKey(), [...new Set([...readGiftIds(), gift.id])].slice(-48));
+}
+function renderChatGift(gift: DisplayGift): void {
+  const signature = JSON.stringify([gift.id, lang, gift.art, gift.text[lang], gift.archived]);
+  if (signature === chatGiftSignature) return;
+  chatGiftSignature = signature;
+  const card = $("chatGift");
+  const g = gift.text[lang];
+  const art = document.createElement("pre"); art.dir = "ltr"; art.setAttribute("aria-hidden", "true"); art.textContent = gift.art;
+  const words = document.createElement("div"); words.lang = lang; words.dir = lang === "ar" ? "rtl" : "ltr";
+  const from = document.createElement("span"); from.className = "gift-from";
+  from.textContent = gift.source === "preview" ? t("giftPreview") : gift.archived ? t("giftArchive") : t("giftFrom");
+  const name = document.createElement("h3"); name.textContent = g.name;
+  const note = document.createElement("p"); note.textContent = g.note;
+  const provenance = document.createElement("p"); provenance.className = "gift-provenance"; provenance.textContent = giftProvenance(gift, lang);
+  words.append(from, name, note, provenance); card.replaceChildren(art, words);
+}
+function showGift(gift: DisplayGift): void {
   selectedGift = gift;
   markGiftSeen(gift);
   refreshKeepsakes();
   const card = $("chatGift");
-  const g = giftText(gift, lang);
-  const art = document.createElement("pre"); art.dir = "ltr"; art.setAttribute("aria-hidden", "true"); art.textContent = g.art;
-  const words = document.createElement("div");
-  const from = document.createElement("span"); from.className = "gift-from"; from.textContent = t("giftFrom");
-  const name = document.createElement("h3"); name.textContent = g.name;
-  const note = document.createElement("p"); note.textContent = g.note;
-  words.append(from, name, note); card.replaceChildren(art, words); card.hidden = false;
+  renderChatGift(gift); card.hidden = false;
   closePocket(); card.focus({ preventScroll: true }); card.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
 }
 $("scene").addEventListener("click", (event) => {
   const id = giftWorld.hitGift?.(event.clientX, event.clientY);
-  const key = collectionKey();
-  const gift = key && id ? readShelf(store.get(key)).gifts.find(g => String(g.at) === id) : null;
+  const gift = displayedGifts.find(g => g.id === id);
   if (gift) showGift(gift);
 });
 $("scene").addEventListener("pointermove", (event) => {
@@ -308,50 +424,73 @@ $("chatForm").addEventListener("submit", () => { $("chatGift").hidden = true; })
 function refreshKeepsakes(): void {
   const key = collectionKey();
   if (!key || !summary) return;
-  if (key !== selectedCollection) { selectedGift = null; selectedCollection = key; giftListSignature = ""; sceneGiftSignature = "uninitialized"; $("chatGift").hidden = true; }
+  const generation = summary.generation;
   const stored = readShelf(store.get(key));
-  const result = awaitingFreshReturn || document.hidden || $<HTMLDialogElement>("pauseDialog").open
+  const archiveThrough = Math.max(Date.now(), ...stored.gifts.map(gift => gift.at));
+  const display = updateGiftDisplayState(store.get(`${key}/display`), generation, summary.companion !== undefined, archiveThrough);
+  store.set(`${key}/display`, display);
+  const scope = `${key}/life:${generation ?? "legacy"}`;
+  if (scope !== selectedCollection) {
+    selectedGift = null; demoGift = null; displayedGifts = []; selectedCollection = scope;
+    giftListSignature = ""; sceneGiftSignature = "uninitialized"; giftScheduleFailed = false;
+    $("chatGift").hidden = true;
+  }
+  const result = display.serverCapable || awaitingFreshReturn || document.hidden || $<HTMLDialogElement>("pauseDialog").open
     ? { shelf: stored, gift: undefined }
     : returnToShelf(stored, Date.now(), summary.local_day, key, !summary.state.dead);
   store.set(key, result.shelf);
-  if (result.gift) selectedGift = result.gift;
-  const gifts = result.shelf.gifts;
-  const unread = (gifts.at(-1)?.at ?? 0) > (store.get<number>(`${key}/read`) ?? 0);
+  const gifts = mergeGifts(result.shelf, summary.companion?.gifts ?? [], display);
+  const previousIds = new Set(displayedGifts.map(gift => gift.id));
+  displayedGifts = demoGift ? [...gifts, demoGift] : gifts;
+  const newest = gifts.filter(gift => !gift.archived).at(-1);
+  if (newest && !previousIds.has(newest.id) && $("chatGift").hidden) selectedGift = newest;
+  selectedGift = displayedGifts.find(gift => gift.id === selectedGift?.id) ?? newest ?? null;
+  if (!selectedGift) $("chatGift").hidden = true;
+  const readIds = new Set(readGiftIds());
+  const legacyReadAt = store.get<number>(`${key}/read`) ?? 0;
+  const unread = gifts.some(gift => !gift.archived && !readIds.has(gift.id) && (gift.source !== "legacy" || gift.at > legacyReadAt));
   $("giftWaiting").hidden = !unread;
+  $("giftPending").hidden = !summary.companion?.pending && !giftScheduleFailed;
+  $("giftPending").textContent = t(summary.companion?.pending ? "giftPending" : "giftScheduleFailed");
   $("keepsakes").classList.toggle("has-new", unread);
   $("pocketBtn").classList.toggle("has-new", unread);
   $("pocketBtn").setAttribute("aria-label", unread ? `${t("pocket")}. ${t("giftWaiting")}` : t("pocket"));
-  const sceneSignature = gifts.slice(-3).map(g => `${g.at}:${g.kind}`).join(",");
+  const sceneGifts = activeGifts(displayedGifts);
+  const sceneSignature = sceneGifts.map(gift => `${gift.id}:${gift.art}`).join("|");
   if (sceneSignature !== sceneGiftSignature && giftWorld.setKeepsakes) {
-    giftWorld.setKeepsakes(gifts.slice(-3).map(g => ({ id: String(g.at), art: giftText(g, lang).art })));
+    giftWorld.setKeepsakes(sceneGifts.map(gift => ({ id: gift.id, art: gift.art })));
     sceneGiftSignature = sceneSignature;
   }
-  if (!selectedGift || !gifts.some(g => g.at === selectedGift!.at)) selectedGift = gifts.at(-1) ?? null;
   $("giftCount").textContent = String(gifts.length);
-  $("giftsEmpty").hidden = gifts.length > 0;
+  $("giftsEmpty").hidden = gifts.length > 0 || !!demoGift;
   $("giftCard").hidden = !selectedGift;
   $("previewGift").hidden = !DEMO;
-  $<HTMLButtonElement>("previewGift").disabled = summary.state.dead || gifts.some(g => g.day >= summary!.local_day);
+  $("giftPreviewNote").hidden = !DEMO;
+  $<HTMLButtonElement>("previewGift").disabled = summary.state.dead;
   if (selectedGift) {
-    const g = giftText(selectedGift, lang);
-    $("giftArt").textContent = g.art;
+    const g = selectedGift.text[lang];
+    $("giftArt").textContent = selectedGift.art;
     $("giftName").textContent = g.name;
     $("giftNote").textContent = g.note;
+    $("giftProvenance").textContent = giftProvenance(selectedGift, lang);
+    $("giftCard").querySelector<HTMLElement>(".gift-from")!.textContent = selectedGift.source === "preview" ? t("giftPreview") : selectedGift.archived ? t("giftArchive") : t("giftFrom");
     $("giftDate").textContent = selectedGift.day;
     $("giftDate").setAttribute("datetime", selectedGift.day);
+    if (!$("chatGift").hidden) renderChatGift(selectedGift);
   }
-  const signature = `${lang}:${gifts.map(g => g.at + ":" + g.kind).join(",")}`;
+  const signature = `${lang}:${displayedGifts.map(g => `${g.id}:${g.archived}`).join(",")}`;
   if (signature !== giftListSignature) {
-    $("giftList").replaceChildren(...gifts.slice().reverse().map(g => {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "gift-choice small"; b.dataset.gift = String(g.at);
-      b.textContent = giftText(g, lang).name;
-      b.addEventListener("click", () => showGift(g));
-      return b;
+    $("giftList").replaceChildren(...displayedGifts.slice().reverse().map(gift => {
+      const button = document.createElement("button");
+      button.type = "button"; button.className = "gift-choice small"; button.dataset.gift = gift.id;
+      button.textContent = gift.text[lang].name;
+      button.setAttribute("aria-label", `${gift.text[lang].name}. ${gift.day}. ${gift.source === "preview" ? t("giftPreview") : gift.archived ? t("giftArchive") : t("giftOpen")}`);
+      button.addEventListener("click", () => showGift(gift));
+      return button;
     }));
     giftListSignature = signature;
   }
-  $("giftList").querySelectorAll<HTMLButtonElement>("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.gift === String(selectedGift?.at))));
+  $("giftList").querySelectorAll<HTMLButtonElement>("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.gift === selectedGift?.id)));
 }
 
 function markVisit(): void {
@@ -366,14 +505,13 @@ $("keepsakes").addEventListener("toggle", () => {
   if ($<HTMLDetailsElement>("keepsakes").open && selectedGift) { markGiftSeen(selectedGift); refreshKeepsakes(); }
 });
 $("previewGift").addEventListener("click", () => {
-  const key = collectionKey();
-  if (!DEMO || !key || !summary) return;
-  const shelf = readShelf(store.get(key));
-  shelf.seen = Date.now() - AWAY_MS;
-  store.set(key, shelf);
+  if (!DEMO || !collectionKey() || !summary || summary.state.dead) return;
+  demoGift = previewGift(crypto.randomUUID(), summary.local_day, summary.generation ?? 0, summary.state.stage, Date.now());
+  selectedGift = demoGift;
   refreshKeepsakes();
 });
-addEventListener("pagehide", markVisit);
+addEventListener("pagehide", () => { markVisit(); companion.hidden(true); });
+addEventListener("pageshow", event => { if (event.persisted && !document.hidden) void companion.returned(); });
 setInterval(() => { if (!document.hidden) markVisit(); }, 60_000);
 
 // ---------- proud moments (decision 0017) ----------
@@ -514,7 +652,7 @@ function openSettings(): void {
 }
 
 // Judge controls and the spore buttons share one countdown after a 429 or a 400 with retry_after_s.
-const ACT_BUTTONS = "#judge button, #judge input, #walkBtn, #sporeBtn, #sporeBtn2";
+const ACT_BUTTONS = "#judge button, #judge input, #walkBtn, #firstWalk, #sporeBtn, #sporeBtn2";
 let actFailText = "";
 const actCooldown = new Cooldown(
   (left) => explain(`${actFailText} ${waitText(lang, left)}`),
@@ -549,6 +687,7 @@ class PairingPaused extends Error {
 }
 
 function showImportRecovery(reason: CopyKey): void {
+  clearCompanion();
   importRecovery = reason;
   $("scene").hidden = true;
   $("offline").hidden = true;
@@ -563,22 +702,28 @@ function showImportRecovery(reason: CopyKey): void {
 async function poll(): Promise<void> {
   if (!creds || document.hidden || authLost || actionBusy || sliderPending || chatBusy) return;
   const epoch = stateEpoch;
+  const sequence = ++pollSequence;
+  const b = backend, c = creds, origin = apiBase();
+  const current = () => sequence === pollSequence && epoch === stateEpoch && b === backend && c === creds && origin === apiBase();
   try {
-    const next = await backend.state(creds);
-    if (epoch === stateEpoch && !actionBusy && !sliderPending && !chatBusy) {
+    const next = await b.state(c);
+    if (current() && !actionBusy && !sliderPending && !chatBusy) {
       render(next);
       $("recovery").hidden = true;
     }
   } catch (e) {
+    if (!current()) return;
     if (isAuthLoss(e) && !backend.mock) {
       if (DEMO) {
         // Demo Truffles expire after 24 hours. Plant a fresh one.
         store.del(petKey());
+        clearCompanion();
         creds = null;
         await ensurePaired();
       } else {
         // A real Truffle is never replaced behind your back. Say so and show Settings.
         authLost = true;
+        clearCompanion();
         failed(e, "state");
         $("syncNote").textContent = t("syncPaused");
         $("recovery").hidden = false;
@@ -600,8 +745,11 @@ async function ensurePaired(): Promise<void> {
     const alreadySaved = importedCreds.phrase === saved?.phrase && importedCreds.secret === saved?.secret;
     if (!alreadySaved && !confirm(`${t("importPet")}\n${importedCreds.phrase}`)) throw new PairingPaused("importDeclined");
     let s: StateSummary;
+    const candidate = importedCreds, candidateBackend = backend, candidateOrigin = apiBase();
+    const candidateNonce = importedNativeScope;
     try {
-      s = await verifyImportedPet(importedCreds, c => backend.state(c));
+      s = await verifyImportedPet(candidate, c => candidateBackend.state(c));
+      if (candidate !== importedCreds || candidateBackend !== backend || candidateOrigin !== apiBase()) throw new Error("Import changed");
     } catch {
       throw new PairingPaused("importFailed");
     }
@@ -612,6 +760,14 @@ async function ensurePaired(): Promise<void> {
     importedCreds = null;
     document.documentElement.classList.add("returning");
     if (!langChosen) lang = s.lang;
+    // Clear prior document authority before granting the exact verified import.
+    clearCompanion();
+    renderedOwner = `${apiBase()}/${creds.phrase}/${DEMO || backend.mock}`;
+    if (IN_APP && !DEMO && candidateNonce && Number.isSafeInteger(s.generation) && s.generation! >= 0 && !s.state.dead) {
+      nativeImport = { nonce: candidateNonce, origin: candidateOrigin, pet: creds.phrase, generation: s.generation! };
+    }
+    importRecovery = null;
+    authLost = false;
     render(s);
     return;
   }
@@ -662,7 +818,7 @@ async function act(
   sliderPending = false;
   stateEpoch++;
   actionBusy = true;
-  if (resetConversation) chat.clear();
+  if (resetConversation) { chat.clear(); clearCompanion(); }
   chat.refresh();
   const before = summary;
   const buttons = document.querySelectorAll<HTMLInputElement | HTMLButtonElement>(ACT_BUTTONS);
@@ -676,7 +832,18 @@ async function act(
       $("moment").hidden = true;
       store.del(lastIdKey(creds.phrase));
       const key = collectionKey();
-      if (key) { store.del(key); store.del(`${key}/read`); store.del(`${key}/outing`); }
+      if (key) {
+        const display = readGiftDisplayState(store.get(`${key}/display`));
+        const shelf = readShelf(store.get(key));
+        display.legacyAfter = Math.max(display.legacyAfter, Date.now(), ...shelf.gifts.map(gift => gift.at));
+        store.set(`${key}/display`, display);
+        shelf.seen = Math.max(shelf.seen, Date.now());
+        store.set(key, shelf);
+        store.del(`${key}/outing`);
+      }
+      demoGift = null;
+      displayedGifts = [];
+      sceneGiftSignature = "uninitialized";
       $("chatGift").hidden = true;
       selectedGift = null;
       $("giftWaiting").hidden = true;
@@ -752,7 +919,7 @@ motionBox.addEventListener("change", () => {
 });
 media.addEventListener?.("change", syncMotion);
 
-// A brief invitation to leave the screen. No target, timer, location or note is recorded.
+// A brief invitation to leave the screen.
 const pauseDialog = $<HTMLDialogElement>("pauseDialog");
 $("pauseBtn").addEventListener("click", () => {
   closePocket();
@@ -772,23 +939,15 @@ for (const kind of ["outingWalk", "outingErrand"] as const) {
   $(kind).addEventListener("click", () => {
     closePocket();
     markVisit();
-    const key = outingKey();
-    if (key) store.set(key, { version: 1, kind, at: Date.now() });
-    $("pauseTitle").textContent = t("outingTitle");
-    $("pauseText").textContent = summary?.state.burrowed ? t("pauseHeat") : t(kind === "outingWalk" ? "outingWalkNote" : "outingErrandNote");
-    pauseDialog.dir = lang === "ar" ? "rtl" : "ltr";
+    companion.intent({ type: "plan", kind: kind === "outingWalk" ? "walk" : "errand" });
     $("outing").hidden = true;
     $("outingBtn").setAttribute("aria-expanded", "false");
-    pauseDialog.showModal();
-    syncMotion();
   });
 }
 $("backBtn").addEventListener("click", () => pauseDialog.close());
 pauseDialog.addEventListener("close", () => {
   syncMotion();
-  finishOuting();
-  explain(t("returnNotice"));
-  void poll();
+  void companion.returned();
   if (!$<HTMLInputElement>("msg").disabled) $("msg").focus();
 });
 
@@ -799,12 +958,14 @@ $("apiSave").addEventListener("click", () => {
   if (!next) { explain(t("apiInvalid")); return; }
   if (next !== apiBase() && !confirm(t("apiChange"))) return;
   if (!setApiBase(value)) return;
+  clearCompanion();
   location.reload();
 });
 $("forgetBtn").addEventListener("click", () => {
   if (!confirm(t("forgetConfirm"))) return;
+  clearCompanion();
   const key = collectionKey();
-  if (key) { store.del(key); store.del(`${key}/read`); store.del(`${key}/outing`); }
+  if (key) { store.del(key); store.del(`${key}/display`); store.del(`${key}/read`); store.del(giftReadKey()); store.del(`${key}/outing`); }
   store.del(importMarkerKey);
   store.del(petKey());
   location.reload();
@@ -817,15 +978,18 @@ let sliderTimer = 0;
 let actionBusy = false;
 let chatBusy = false;
 let stateEpoch = 0;
+let pollSequence = 0;
 
 function setupJudge(): void {
   const judge = $("judge");
   judge.hidden = false;
   $("walkBtn").hidden = false;
-  $("walkBtn").addEventListener("click", () => void act(
+  const tryDemoWalk = () => void act(
     () => backend.slider(creds!, Math.max(4000, summary?.state.steps_today ?? 0)),
     (_b, a) => explainSteps(lang, a.state.steps_today, a.energy_pct, a.tier, a.state.burrowed)
-  ));
+  );
+  $("walkBtn").addEventListener("click", tryDemoWalk);
+  $("firstWalk").addEventListener("click", tryDemoWalk);
   const slider = $<HTMLInputElement>("steps");
   slider.addEventListener("input", () => {
     const steps = Number(slider.value);
@@ -854,7 +1018,8 @@ function setupJudge(): void {
           zero_days: a.state.zero_days,
           dead: a.state.dead && !b.state.dead,
           wasBurrowed: b.state.burrowed,
-          affectionUp: a.state.affection > b.state.affection
+          affectionUp: a.state.affection > b.state.affection,
+          continuous: a.state.energy_version === 2
         })
     )
   );
@@ -952,15 +1117,17 @@ async function startSession(): Promise<void> {
     $("phrase").textContent = creds?.phrase ?? "";
     setupHandoff();
     applyLang();
-    if (!lastWhy && summary) explain(t("energyNote"));
+    if (!lastWhy && summary) explain(t("foodChatNote"));
     $("half").hidden = !halfAwake;
+    if (document.hidden) companion.hidden();
+    else void companion.returned();
 
     if (!pollingStarted) {
       pollingStarted = true;
       setInterval(() => void poll(), POLL_MS);
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) { awaitingFreshReturn = true; void poll(); }
-        else markVisit();
+        if (!document.hidden) { awaitingFreshReturn = true; void companion.returned(); }
+        else { markVisit(); companion.hidden(); }
       });
     }
   } finally {

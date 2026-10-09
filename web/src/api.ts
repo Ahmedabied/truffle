@@ -202,9 +202,10 @@ export class RealBackend implements Backend {
   state(c: Creds) {
     return this.call<StateSummary>("GET", `/state?phrase=${encodeURIComponent(c.phrase)}`, c);
   }
-  companion(c: Creds, action: "away" | "return" | "cancel", intent?: "walk" | "errand" | "rest", requestId?: string, keepalive = false) {
+  companion(c: Creds, action: "away" | "return" | "cancel", intent?: "walk" | "errand" | "rest", requestId?: string, keepalive = false, generation?: number, jobId?: string) {
     return this.call<StateSummary>("POST", "/companion", c, {
-      phrase: c.phrase, action, ...(intent ? { intent } : {}),
+      phrase: c.phrase, action, generation, ...(intent ? { intent } : {}),
+      ...(jobId ? { job_id: jobId } : {}),
       ...(requestId ? { client_request_id: requestId } : {})
     }, keepalive);
   }

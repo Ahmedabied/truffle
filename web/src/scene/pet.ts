@@ -7,7 +7,7 @@ import type { Stage, Tier } from "../../../worker/src/config";
 import type { Mood } from "../../../worker/src/engine";
 import { ASPECT, clamp, disc, hash, hitEllipsoids, Layer, noise, shade, W, H, type Ellipsoid, type Hit, type Vec3 } from "./raster";
 
-export type Face = Mood | "yawn";
+export type Face = Mood | "yawn" | "anticipating";
 
 export const enum M {
   CAP = 1,
@@ -81,7 +81,7 @@ interface Model {
   dim: number;
   capRx: number;
   eyeY: number;
-  features?: { cx: number; ey: number; dx: number; er: number; brx: number; closure: number; happy: number; asleep: number; tired: number; wilting: number; yawn: number; gaze: number };
+  features?: { cx: number; ey: number; dx: number; er: number; brx: number; closure: number; happy: number; anticipating: number; asleep: number; tired: number; wilting: number; yawn: number; gaze: number };
 }
 
 const SIZES: Record<Stage, { body: [number, number]; cap: [number, number]; eye: number; feet: number }> = {
@@ -123,11 +123,13 @@ function build(o: PetOpts): Model {
   const eased = transition * transition * (3 - 2 * transition);
   const weight = (m: Face) => (face === m ? eased : 0) + ((o.fromFace ?? face) === m ? 1 - eased : 0);
   const asleep = weight("asleep"), tired = weight("tired"), wilting = weight("wilting"), happy = weight("affectionate"), yawn = weight("yawn");
+  const anticipating = weight("anticipating");
   const tier = ({ asleep: 0, low: 1, medium: 2, high: 3 } as const)[o.tier ?? "asleep"];
   const growth = 1 + tier * 0.025;
   const amp = 0.022 - asleep * 0.012 - wilting * 0.006;
   const breath = o.reduced ? 0 : breathOf(sec, face) * amp;
-  // Poses: a slow sway when content, small hops when affectionate.
+  // Anticipation is a quiet, attentive lift, with both feet still on the ground.
+  // Only affection uses a small hop; sleep and anticipation never bounce.
   const sway = o.reduced ? 0 : Math.sin(sec * 0.9) * 0.2 * weight("content") + Math.sin(sec * 1.6) * 0.3 * happy;
   const hop = o.reduced ? 0 : Math.pow(Math.max(0, Math.sin(sec * Math.PI * 1.25)), 2) * 0.5 * happy;
   const cx = o.centre * ASPECT + sway;
@@ -139,7 +141,7 @@ function build(o: PetOpts): Model {
   // Body.
   let [brx, bry] = S.body;
   brx *= growth * (1 + asleep * 0.06 + tired * 0.04 + wilting * 0.06);
-  bry *= growth * (1 - asleep * 0.055 - tired * 0.07 - wilting * 0.12 + yawn * 0.05);
+  bry *= growth * (1 - asleep * 0.055 - tired * 0.07 - wilting * 0.12 + yawn * 0.05 + anticipating * 0.025);
   bry *= 1 + breath;
   brx *= 1 - breath * 0.6;
   const bcy = g - bry;
@@ -157,7 +159,7 @@ function build(o: PetOpts): Model {
     // Little hands give the larger creature an affectionate, toy-like posture.
     if (o.stage !== "Sprout") {
       for (const side of [-1, 1]) shapes.push({
-        cx: cx + side * brx * 0.94, cy: g - bry * (0.72 + happy * 0.38),
+        cx: cx + side * brx * 0.94, cy: g - bry * (0.72 + happy * 0.38 + anticipating * 0.16),
         rx: 0.95, ry: 1.2 + happy * 0.4, rz: 0.55, z: 0.7, m: M.BODY
       });
     }
@@ -169,7 +171,7 @@ function build(o: PetOpts): Model {
     let capRy = S.cap[1] * growth;
     let capCx = cx;
     let capCy = g - bry * 2 - capRy * 0.35 + 0.8;
-    capCx -= 2.2 * wilting + 0.35 * asleep;
+    capCx += anticipating * 0.25 - 2.2 * wilting - 0.35 * asleep;
     capRy *= 1 - 0.26 * wilting;
     capCy += 1.3 * wilting + 0.45 * (tired + asleep);
     dim = 1 - 0.15 * wilting;
@@ -194,7 +196,7 @@ function build(o: PetOpts): Model {
   }
 
   // Face.
-  const ey = bcy - bry * 0.18;
+  const ey = bcy - bry * 0.18 - anticipating * S.eye * 0.18;
   const eyeDx = brx * 0.42;
   const er = S.eye;
   // Face features sit in front of the belly at every stage. A fixed z=3
@@ -218,7 +220,7 @@ function build(o: PetOpts): Model {
     }
     const small = 1 - wilting * 0.2;
     shapes.push({ cx: ex, cy: ey, rx: er * small, ry: er * 1.15 * small * (1 - closure * 0.92 - happy * 0.4), z: faceZ, m: M.EYE, flat: 0.96 });
-    const look = wilting * 0.25 + tired * 0.1;
+    const look = wilting * 0.25 + tired * 0.1 - anticipating * 0.22;
     const px = ex + gaze + (o.light[0] > 0 ? 0.12 : -0.12) * er;
     shapes.push({ cx: px, cy: ey + look * er + er * 0.1, rx: er * 0.52 * small, ry: er * 0.7 * small * (1 - closure * 0.92 - happy * 0.4), z: faceZ + 1.4, m: M.PUPIL, flat: 0 });
     shapes.push({ cx: px - er * 0.22, cy: ey - er * 0.18, rx: er * 0.2, ry: er * 0.22, z: faceZ + 2.5, m: M.GLINT, flat: 1 });
@@ -234,7 +236,7 @@ function build(o: PetOpts): Model {
   shapes.push({ cx, cy: my, rx: r, ry: Math.max(0.28, r * (0.68 - tired * 0.4 + yawn * 0.55)), z: faceZ, m: M.MOUTH, flat: 0.04 });
   if (yawn < 0.95) shapes.push({ cx, cy: my - curve * 0.6, rx: r * 1.1, ry: r * 0.6 * (1 - yawn), z: faceZ + 1.2, m: M.BODY, flat: 0.85 });
 
-  return { shapes, marks, dim, capRx: capRx || brx, eyeY: ey, features: { cx, ey, dx: eyeDx, er, brx, closure, happy, asleep, tired, wilting, yawn, gaze } };
+  return { shapes, marks, dim, capRx: capRx || brx, eyeY: ey, features: { cx, ey, dx: eyeDx, er, brx, closure, happy, anticipating, asleep, tired, wilting, yawn, gaze } };
 }
 
 function mound(o: PetOpts): Model {
@@ -437,7 +439,7 @@ export function drawPet(L: PetLayers, o: PetOpts): PetInfo {
       }
     };
     const ey = Math.round(f.ey);
-    const eye = f.closure > 0.82 ? "___" : f.closure > 0.45 ? "(-)" : f.happy > 0.75 ? "^" : "(o)";
+    const eye = f.closure > 0.82 ? "___" : f.closure > 0.45 ? "(-)" : f.happy > 0.75 ? "^" : f.anticipating > 0.65 ? "(O)" : "(o)";
     for (const side of [-1, 1]) mark((f.cx + side * f.dx + f.gaze) / ASPECT, ey, eye);
     const mouthY = Math.round(f.ey + f.er * 2.05);
     const mouth = f.yawn > 0.5 ? "O" : f.asleep > 0.8 ? "~" : f.wilting > 0.65 ? "/^\\" : f.tired > 0.65 ? "___" : f.happy > 0.65 ? "\\___/" : "\\_/";

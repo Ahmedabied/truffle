@@ -7,7 +7,7 @@ export const OUTING_MS = 6 * 3_600_000;
 export const RETURN_MS = 30_000;
 export const GENERIC_RETURN_MS = 10 * 60_000;
 export type ReactionKind = "happy" | "anticipating";
-type Cursor = { day: string; acceptedTotal: number; lifetimeTotal: number };
+type Cursor = { day: string; acceptedTotal: number; lifetimeTotal: number; sheltered?: boolean };
 type Outing = { kind: OutingKind; declaredAt: number; expiresAt: number; leftAt?: number; source: "button" | "chat" };
 export interface CompanionState {
   version: 1;
@@ -73,7 +73,8 @@ function day(value: unknown): value is string {
 }
 function cursor(value: unknown): value is Cursor {
   const c = value as Partial<Cursor> | null;
-  return !!c && day(c.day) && count(c.acceptedTotal) && count(c.lifetimeTotal) && c.lifetimeTotal >= c.acceptedTotal;
+  return !!c && day(c.day) && count(c.acceptedTotal) && count(c.lifetimeTotal)
+    && (c.sheltered === undefined || typeof c.sheltered === "boolean");
 }
 
 export function companionScope(origin: string, pet: string, demo: boolean, generation: number): string {
@@ -139,6 +140,12 @@ export function reduceCompanion(previous: CompanionState, event: CompanionEvent,
   if (state.outing && state.outing.expiresAt <= event.at) delete state.outing;
   const pulse = (reaction: ReactionKind, explicit = false) => {
     if (!context.visible || context.burrowed) return;
+    // Confirmed movement can turn an existing anticipation into a smile without
+    // starting another pulse or extending the expression's original deadline.
+    if (!explicit && reaction === "happy" && state.reaction?.kind === "anticipating") {
+      state.reaction = { ...state.reaction, kind: "happy" };
+      return;
+    }
     if (!explicit && state.lastPulseAt !== undefined && event.at - state.lastPulseAt < PULSE_GAP_MS) return;
     const startedAt = state.reaction?.startedAt ?? event.at;
     const until = Math.min(event.at + REACTION_MS, startedAt + 12_000);
@@ -162,14 +169,14 @@ export function reduceCompanion(previous: CompanionState, event: CompanionEvent,
   } else if (event.type === "snapshot") {
     const s = event.summary;
     if (!event.fresh || event.scope !== context.scope || s.generation !== context.generation || !day(s.local_day)
-      || !count(s.state.steps_today) || !count(s.state.lifetime_steps) || s.state.lifetime_steps < s.state.steps_today) return finish();
+      || !count(s.state.steps_today) || !count(s.state.lifetime_steps)) return finish();
     if (s.state.dead || s.mood === "dead") { clear(); return finish(); }
     if (s.mood === "burrowed") delete state.reaction;
-    const next = { day: s.local_day, acceptedTotal: s.state.steps_today, lifetimeTotal: s.state.lifetime_steps };
+    const next = { day: s.local_day, acceptedTotal: s.state.steps_today, lifetimeTotal: s.state.lifetime_steps, sheltered: s.mood === "burrowed" };
     const old = state.cursor;
     if (old && (next.day < old.day || next.lifetimeTotal < old.lifetimeTotal
       || (next.day === old.day && (next.acceptedTotal < old.acceptedTotal
-        || next.acceptedTotal - old.acceptedTotal > next.lifetimeTotal - old.lifetimeTotal)))) return finish();
+        || (!old.sheltered && !next.sheltered && next.acceptedTotal - old.acceptedTotal > next.lifetimeTotal - old.lifetimeTotal))))) return finish();
     state.cursor = next;
     if (old && next.day === old.day && next.acceptedTotal > old.acceptedTotal && s.mood !== "burrowed") pulse("happy");
     if (state.pendingReturn && context.visible && event.at >= state.pendingReturn.cameBackAt) {

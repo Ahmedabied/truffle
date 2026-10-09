@@ -2,6 +2,7 @@
 // The tier for the speed comes from the same engine rule the Worker uses.
 
 import { decideTier } from "../../worker/src/engine";
+import { conversationEffort } from "../../worker/src/effort";
 import { TIERS, type Tier } from "../../worker/src/config";
 import { COPY, explainChat, type Lang } from "./copy";
 import { Cooldown, describeError, waitText, type ErrorView } from "./errors";
@@ -31,6 +32,10 @@ export interface ChatDeps {
   openSettings: () => void;
   blocked?: () => boolean;
   onBusy?: (busy: boolean) => void;
+  /** Accepted user text, once, after all local admission guards. Never sends a second chat. */
+  onAcceptedMessage?: (message: string) => void;
+  /** Current user text stays visible with its answer and clears with its life. */
+  onMessage?: (message: string | null) => void;
 }
 
 function graphemes(text: string, lang: Lang): string[] {
@@ -171,6 +176,7 @@ export class Chat {
     this.d.onBusy?.(false);
     this.reply.textContent = "";
     this.replySr.textContent = "";
+    this.d.onMessage?.(null);
     this.reply.classList.remove("asleep", "error");
     this.status.textContent = "";
     this.d.onYawn(false);
@@ -181,20 +187,23 @@ export class Chat {
   async send(message: string): Promise<void> {
     const creds = this.d.creds();
     const pre = this.d.summary();
-    if (!creds || !pre) return;
+    message = message.trim();
+    if (!message || message.length > 2000 || !creds || !pre || pre.state.dead || this.busy || this.cooldown.active() || this.d.blocked?.()) return;
     const generation = ++this.generation;
     const request = new AbortController();
     this.request = request;
     const current = () => generation === this.generation;
     const lang = this.d.lang();
     const c = COPY[lang];
-    const requested = this.d.requested();
+    const requested = conversationEffort(pre.state, message, this.d.requested());
     // Same rule as the Worker: this is the tier that will answer.
     const tier = decideTier(pre.state, requested).tier;
     const slow = pre.mood === "tired" || pre.mood === "wilting" ? 1.5 : 1;
 
     this.busy = true;
     this.d.onBusy?.(true);
+    this.d.onAcceptedMessage?.(message);
+    this.d.onMessage?.(message);
     this.refresh();
     this.input.value = "";
     this.reply.classList.remove("asleep", "error");

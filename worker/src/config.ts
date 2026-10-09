@@ -50,7 +50,7 @@ export const MAX_MEMORY_FACTS = 60;
 export const HISTORY_DAYS = 7;
 
 // Continuous food v2. Decision 0023 leaves every v1 constant above unchanged.
-export const ENERGY_V2_CUTOVER_MS = Date.parse("2026-10-09T07:30:00Z");
+export const ENERGY_V2_CUTOVER_MS = Date.parse("2026-10-09T08:43:00Z");
 export const ENERGY_V2_UNITS_PER_POINT = 86_400_000;
 export const ENERGY_V2_UNITS_PER_MS = 1_000;
 export const ENERGY_V2_EMPTY_DEATH_MS = 96 * 60 * 60 * 1_000;

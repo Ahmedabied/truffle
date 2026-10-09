@@ -46,7 +46,7 @@ charge or failure returns the reservation. Maintenance cannot spend a reservatio
 
 Empty survival is measured in actual non-sheltered milliseconds, not midnights.
 Positive food resets it immediately. Existing dead pets stay dead. The cutover
-is 2026-10-09T07:30:00Z: v1 closes only its earlier midnights, then v2 settles
+is 2026-10-09T08:43:00Z: v1 closes only its earlier midnights, then v2 settles
 elapsed time. Living migrated pets start a new measurable empty clock. Owner,
 energy, history, memory and graves survive. Calendar history remains local-day
 based. Catch-up must finish before current operations are admitted.

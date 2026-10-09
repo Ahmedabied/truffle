@@ -5,7 +5,7 @@
 The v1 mechanics described below remain migration reference. Version 2 uses
 continuous fixed-point food settlement, larger bounded storage, absolute effort
 thresholds and a 96-hour non-heat empty clock. The fixed cutover is
-2026-10-09T07:30:00Z. Preserve legacy golden behavior for pre-cutover state, add
+2026-10-09T08:43:00Z. Preserve legacy golden behavior for pre-cutover state, add
 v2 goldens, and finish catch-up before accepting a current-day operation.
 
 The Durable Object persists the economy cursor and generation-fenced chat food

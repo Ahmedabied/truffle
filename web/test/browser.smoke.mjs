@@ -301,7 +301,7 @@ try {
     assert.equal(await real.evaluate(() => !!JSON.parse(localStorage.getItem("truffle.creds") || "null")?.secret), true);
     assert.equal(await real.locator("#chatForm button").isDisabled(), true);
   });
-  const importHarness = async ({ saved = false, native = true } = {}) => {
+  const importHarness = async ({ saved = false, native = true, companion = true } = {}) => {
     const ic = await context({ ...(native ? { userAgent: "Android TruffleApp/0.3" } : {}) });
     const oldPet = { phrase: "synthetic-retained-pet", secret: "fake-retained-secret" };
     const nextPet = { phrase: "synthetic-import-pet", secret: "fake-import-secret" };
@@ -311,7 +311,7 @@ try {
         sessionStorage.setItem("test-seeded", "1");
       }
     }, oldPet);
-    const transport = { status: 200, health: true, paired: 0, oldReads: 0, importedReads: 0 };
+    const transport = { status: 200, health: true, paired: 0, oldReads: 0, importedReads: 0, companionCalls: 0 };
     await ic.route("http://localhost:8787/**", route => {
       const req = route.request(), url = new URL(req.url());
       if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
@@ -323,7 +323,12 @@ try {
       if (url.pathname === "/state") {
         const importing = url.searchParams.get("phrase") === nextPet.phrase;
         if (importing) transport.importedReads++; else transport.oldReads++;
-        return route.fulfill({ status: importing ? transport.status : 200, json: importing && transport.status !== 200 ? { error: "synthetic import failure" } : { ...fixture, demo: false, state: { ...fixture.state, steps_today: importing ? 81 : 0 } }, headers });
+        return route.fulfill({ status: importing ? transport.status : 200, json: importing && transport.status !== 200 ? { error: "synthetic import failure" } : { ...fixture, demo: false, ...(companion ? { companion: { pending: null, gifts: [] } } : {}), state: { ...fixture.state, steps_today: importing ? 81 : 0 } }, headers });
+      }
+      if (url.pathname === "/companion") {
+        transport.companionCalls++;
+        if (!companion) return route.fulfill({ status: 404, json: { error: "older API has no companion endpoint" }, headers });
+        return route.fulfill({ status: transport.status, json: transport.status === 200 ? { ...fixture, demo: false, companion: { pending: null, gifts: [] }, state: { ...fixture.state, steps_today: 81 } } : { error: "synthetic temporary outage" }, headers });
       }
       return route.fulfill({ status: 404, headers });
     });
@@ -435,6 +440,25 @@ try {
     await h.page.locator("#recovery").waitFor({ state: "hidden" });
     assert.equal(h.transport.paired, 0);
   });
+  await check("a generation-bearing legacy API without companion capability retains native identity and Retry", async () => {
+    const h = await importHarness({ companion: false });
+    h.page.on("dialog", dialog => dialog.accept());
+    await h.page.goto(h.target); await h.settled();
+    await h.page.waitForTimeout(150);
+    assert.equal(Number.isSafeInteger((await summary(h.page)).generation), true);
+    assert.equal(h.transport.companionCalls, 0);
+    assert.equal(await h.page.locator("#chatForm button").isEnabled(), true);
+    h.transport.status = 503; h.transport.health = false;
+    await h.page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await h.page.locator("#recovery").waitFor({ state: "visible" });
+    h.transport.status = 200;
+    await homeAction(h.page, "#retryBtn");
+    await h.page.locator("#recovery").waitFor({ state: "hidden" });
+    assert.equal(await h.page.evaluate(() => window.truffle.mock()), false);
+    assert.equal(h.transport.companionCalls, 0);
+    assert.equal(h.transport.paired, 0);
+    assert.equal(await h.savedIs(h.nextPet), true);
+  });
   await check("explicit Forget clears an unfinished browser import", async () => {
     const h = await importHarness({ native: false });
     let accept = false;
@@ -450,7 +474,7 @@ try {
   await check("Arabic world description follows the UI language", async () => {
     await pocketAction(p, "#langBtn", "click");
     assert.equal(await p.locator("html").getAttribute("lang"), "ar");
-    assert.match(await p.locator("#world").getAttribute("aria-label"), /الطاقة/);
+    assert.match(await p.locator("#world").getAttribute("aria-label"), /طعام/);
     assert.match(await p.locator("#why").innerText(), /[\u0600-\u06ff]/);
   });
   await check("pause ritual freezes the world and returns without sending a message", async () => {
@@ -467,7 +491,7 @@ try {
     assert.equal(await pp.locator("#pauseDialog").evaluate(e => e.open), false);
     assert.equal(await pp.locator("#msg").inputValue(), "");
     assert.equal(chats, 0);
-    await pp.waitForFunction(() => document.getElementById("why").textContent.includes("notice"));
+    assert.equal(await pp.locator("#companionNote").isHidden(), true, "A brief pause is not a genuine absence");
   });
   await check("heat pause invites comfort indoors without asking for a walk", async () => {
     const hp = await open(await context(), "/?mock=1&scene=burrowed&temp=44");
@@ -486,19 +510,21 @@ try {
     assert.equal(await ip.locator("html").getAttribute("lang"), "en");
     assert.equal(await ip.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   });
-  await check("return gifts persist without changing energy, and Reset clears them", async () => {
+  await check("gift previews are temporary, labelled, and never enter the earned count", async () => {
     const gp = await open(await context());
     const before = (await summary(gp)).state.energy;
     await pocketAction(gp, "#keepsakes summary", "click");
     await pocketAction(gp, "#previewGift", "click");
-    assert.equal(await gp.locator("#giftCount").innerText(), "1");
+    assert.equal(await gp.locator("#giftCount").innerText(), "0");
     assert.equal(await gp.locator("#giftCard").isVisible(), true);
     assert.equal((await summary(gp)).state.energy, before);
-    const name = await gp.locator("#giftName").innerText();
+    assert.match(await gp.locator("#giftProvenance").innerText(), /Demo preview.*No AI model or food cost/);
     await gp.reload(); await gp.waitForFunction(() => !!window.truffle?.summary());
     await pocketAction(gp, "#keepsakes summary", "click");
-    assert.equal(await gp.locator("#giftName").innerText(), name);
-    assert.equal(await gp.locator("#previewGift").isDisabled(), true);
+    assert.equal(await gp.locator("#giftCard").isHidden(), true);
+    assert.equal(await gp.locator("#giftCount").innerText(), "0");
+    assert.equal(await gp.locator("#previewGift").isEnabled(), true);
+    await pocketAction(gp, "#previewGift", "click");
     await reset(gp);
     assert.equal(await gp.locator("#giftCount").innerText(), "0");
     assert.equal(await gp.locator("#giftCard").isHidden(), true);
@@ -511,6 +537,11 @@ try {
     });
     await rp.reload(); await rp.waitForFunction(() => !!window.truffle?.summary());
     assert.equal(await rp.locator("#giftCount").innerText(), "1");
+    await reset(rp);
+    assert.equal(await rp.locator("#giftCount").innerText(), "1", "Reset preserves the readable device archive");
+    await pocketAction(rp, "#keepsakes summary");
+    await rp.locator(".gift-choice").click();
+    assert.match(await rp.locator("#chatGift").innerText(), /archive/i);
     assert.equal((await summary(rp)).state.steps_today, 0);
     assert.equal((await summary(rp)).state.energy, 0);
     await rp.reload(); await rp.waitForFunction(() => !!window.truffle?.summary());
@@ -521,15 +552,15 @@ try {
     const before = (await summary(op)).state.energy;
     await pocketAction(op, "#outingBtn", "click");
     await pocketAction(op, "#outingErrand", "click");
-    assert.match(await op.locator("#pauseText").innerText(), /groceries/);
-    await op.locator("#backBtn").click();
+    assert.match(await op.locator("#companionNote").innerText(), /errand/);
+    assert.doesNotMatch(await op.locator("#companionNote").innerText(), /groceries/);
+    assert.equal(await op.locator("#pauseDialog").evaluate(e => e.open), false);
     assert.equal((await summary(op)).state.energy, before);
     assert.equal(await op.locator("#reply").innerText(), "");
     await pocketAction(op, "#heatBtn", "click");
     await pocketAction(op, "#outingBtn", "click");
     await pocketAction(op, "#outingWalk", "click");
-    assert.match(await op.locator("#pauseText").innerText(), /indoors/);
-    await op.keyboard.press("Escape");
+    assert.match(await op.locator("#companionNote").innerText(), /sheltered from the heat/);
   });
   await check("mobile world fills the width and chat follows it with secondary controls in Pocket", async () => {
     const hp = await open(await context({ viewport: { width: 412, height: 915 } }));
@@ -545,17 +576,23 @@ try {
     await closePocket(hp);
     assert.equal(await hp.locator("#msg").isVisible(), true);
   });
-  await check("outing survives reload, welcomes once and never charges or sends", async () => {
+  await check("outing survives a quick reload without claiming an absence, then welcomes once after time away", async () => {
     const op = await open(await context());
     const before = (await summary(op)).state.energy;
     await pocketAction(op, "#outingBtn"); await pocketAction(op, "#outingWalk");
-    assert.equal(await op.locator("#pauseDialog").evaluate(e => e.open), true);
+    assert.equal(await op.locator("#pauseDialog").evaluate(e => e.open), false);
     await op.reload(); await op.waitForFunction(() => !!window.truffle?.summary());
-    assert.match(await op.locator("#why").innerText(), /Welcome back/);
+    assert.equal(await op.locator("#companionNote").isHidden(), true);
+    await op.context().addInitScript(() => {
+      const realNow = Date.now;
+      Date.now = () => realNow() + 35_000;
+    });
+    await op.reload(); await op.waitForFunction(() => !!window.truffle?.summary());
+    await op.waitForFunction(() => document.querySelector("#companionNote").textContent.includes("Welcome back"));
     assert.equal(await op.locator("#reply").innerText(), "");
     assert.equal((await summary(op)).state.energy, before);
     await op.reload(); await op.waitForFunction(() => !!window.truffle?.summary());
-    assert.doesNotMatch(await op.locator("#why").innerText(), /Welcome back/);
+    assert.equal(await op.locator("#companionNote").isHidden(), true);
   });
   await check("world gift and its keyboard alternative open the same keepsake in chat", async () => {
     const gp = await open(await context({ reducedMotion: "reduce", viewport: { width: 412, height: 915 } }));
@@ -573,14 +610,14 @@ try {
     assert.equal(await gp.evaluate(() => document.activeElement.id), "chatGift");
     assert.equal((await summary(gp)).state.energy, before);
   });
-  await check("normal chat uses plain energy feedback while Pocket keeps exact reply details", async () => {
+  await check("normal chat uses plain food feedback while Pocket discloses simulated effort and cost", async () => {
     const cp = await open(await context({ reducedMotion: "reduce" }));
     await pocketAction(cp, "#walkBtn");
     await homeAction(cp, "#msg", "fill", "I noticed a bird in the shade.");
     await homeAction(cp, "#chatForm button");
     await cp.waitForFunction(() => document.querySelector("#why").textContent.includes("conversation"));
     assert.doesNotMatch(await cp.locator("#why").innerText(), /Thinking|Cost|effort/);
-    assert.match(await cp.locator("#chatDetails").textContent(), /Cost 200/);
+    assert.match(await cp.locator("#chatDetails").textContent(), /Simulated sample reply.*No AI model call.*Simulated cost: 60 food points/);
     await pocketAction(cp, "#langBtn");
     assert.doesNotMatch(await cp.locator("#why").textContent(), /التكلفة|الجهد/);
   });

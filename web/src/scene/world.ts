@@ -73,10 +73,13 @@ export const EMPTY_VIEW: View = {
 
 const mod = (n: number, d: number) => ((n % d) + d) % d;
 
+const healthFace = (face: Face): boolean => ["asleep", "tired", "wilting", "dead", "burrowed"].includes(face);
+
 export function presentationFace(v: View): Face {
-  if (v.mood === "dead" || v.mood === "burrowed") return v.mood;
+  // A companion response cannot wake, feed or heal the authoritative pet.
+  if (healthFace(v.mood)) return v.mood;
   if (v.yawn) return "yawn";
-  return v.reaction ? "affectionate" : v.mood;
+  return v.reaction === "anticipating" ? "anticipating" : v.reaction === "happy" ? "affectionate" : v.mood;
 }
 
 /** Weather code families from Open-Meteo. */
@@ -593,7 +596,7 @@ function fxLayer(L: Layer, v: View, e: Env, t: number, pet: PetInfo, reduced: bo
     const k = t % cycle;
     if (k < 22) stamp(L, pet.x1 - 8 + Math.floor(k / 4) + Math.round(Math.sin(k / 3)), top + k, BITMAPS.leaf, 0.8);
   }
-  if (v.yawn && !reduced) {
+  if (presentationFace(v) === "yawn" && !reduced) {
     const k = Math.floor(t / 4) % 3;
     stamp(L, pet.x0 - 5, pet.eyeRow + 3 - k, ["~"], 0.7);
     stamp(L, pet.x0 - 7, pet.eyeRow + 5 - k, ["~~"], 0.5);
@@ -828,7 +831,11 @@ export class World {
     const before = presentationFace(this.view);
     const next = { ...this.view, ...v };
     const after = presentationFace(next);
-    if (before !== after && ![before, after].some(m => m === "dead" || m === "burrowed")) this.expression = { from: before, at: this.seconds };
+    if (before !== after) {
+      // Never retain an old happy hop when health or heat requires rest.
+      this.expression = healthFace(after) || before === "dead" || before === "burrowed"
+        ? null : { from: before, at: this.seconds };
+    }
     this.view = next;
     this.dirty = true;
   }

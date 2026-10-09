@@ -122,7 +122,7 @@ describe("durable procedural outing jobs", () => {
     advance(GIFT_WAIT_MS);
     await f.obj.alarm();
     expect(value(await away(f)).companion.gifts).toHaveLength(1);
-    expect(await away(f, { client_request_id: "second-gift" })).toMatchObject({ ok: false, status: 409 });
+    expect(value(await away(f, { client_request_id: "second-gift" })).companion).toMatchObject({ pending: null, gifts: f.meta().companion!.gifts });
     expect(f.meta().companion?.gifts).toHaveLength(1);
   });
 
@@ -141,7 +141,7 @@ describe("durable procedural outing jobs", () => {
     await f.obj.alarm();
     expect(f.meta().companion?.gifts[0].day).toBe("2026-10-11");
     expect(f.alarms.at(-1)).toBe(Date.parse("2026-10-11T20:00:00Z"));
-    expect(await away(f, { client_request_id: "new-local-day" })).toMatchObject({ ok: false, status: 409 });
+    expect(value(await away(f, { client_request_id: "new-local-day" })).companion).toMatchObject({ pending: null, gifts: f.meta().companion!.gifts });
   });
 
   it("keeps a new pending deadline when a midnight alarm resumes after weather", async () => {
@@ -231,7 +231,7 @@ describe("gift life and privacy fences", () => {
     await f.obj.alarm();
     expect(f.meta().companion?.gifts[0].day).toBe("2026-10-10");
     expect(f.alarms.at(-1)).toBe(f.meta().created_ms + DAY);
-    expect(await away(f, { client_request_id: "simulated-tomorrow" })).toMatchObject({ ok: false, status: 409 });
+    expect(value(await away(f, { client_request_id: "simulated-tomorrow" })).companion).toMatchObject({ pending: null, gifts: f.meta().companion!.gifts });
   });
 
   it("demo expiry wins over a later pending deadline and deletes storage", async () => {
@@ -255,7 +255,8 @@ describe("gift life and privacy fences", () => {
     expect(f.meta().companion?.last_gift_day).toBe("2026-10-10");
     expect(await away(f, { generation: 0 })).toMatchObject({ ok: false, status: 409 });
     expect(await back(f, { generation: 0 })).toMatchObject({ ok: false, status: 409 });
-    expect(await away(f, { client_request_id: "reset-bypass" })).toMatchObject({ ok: false, status: 409 });
+    expect(value(await away(f, { client_request_id: "reset-bypass" })).companion).toEqual({ pending: null, gifts: [] });
+    expect(f.meta().companion?.last_gift_day).toBe("2026-10-10");
   });
 
   it.each(["away", "return", "cancel"] as const)("fences a %s already in authentication when reset starts a new life", async (action) => {

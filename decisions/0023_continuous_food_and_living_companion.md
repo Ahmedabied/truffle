@@ -43,7 +43,7 @@ does not consume, duplicate or refund food. There is no debt while empty.
 
 ## Migration and in-flight work
 
-The one global cutover is `2026-10-09T07:30:00Z`. Existing v1 state first closes
+The one global cutover is `2026-10-09T08:43:00Z`. Existing v1 state first closes
 only the v1 midnights at or before that instant, preserving its rules and records.
 It then adopts v2 at the cutover, or its creation time if later. Living pets start
 a fresh measured empty clock because v1 midnight counts cannot reconstruct exact

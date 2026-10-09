@@ -545,8 +545,10 @@ export class TruffleDO extends DurableObject<Env> {
         ...(input.client_request_id !== undefined ? { client_request_id: input.client_request_id } : {})
       });
       if (!admission.ok) {
+        // A daily craft is optional. Repeated absences after it completes are
+        // ordinary no-ops, not failed saves that should trouble the owner.
+        if (admission.reason === "daily_limit") return ok(this.summary(s, m, now));
         return err(admission.reason === "rate_limited" ? 429 : 409,
-          admission.reason === "daily_limit" ? "A gift has already been made today." :
           admission.reason === "dead" ? "A new spore can make gifts after it is planted." :
           admission.reason === "clock_rollback" ? "The outing clock has not caught up yet." :
           "Too many new outings. Please try again later.", admission.retry_after_s);

@@ -77,6 +77,23 @@ describe("verified step reactions", () => {
       state = result.state;
     }
   });
+  it("accepts shelter steps without lifetime growth and resolves a heat-safe return", () => {
+    const heatContext = { ...context, burrowed: true };
+    const heatSnapshot = (at: number, steps: number): CompanionEvent => ({
+      type: "snapshot", scope, at, fresh: true,
+      summary: { ...summary(steps, "2026-10-09", 0), mood: "burrowed" }
+    });
+    let state = reduce(initialCompanion(scope, now), heatSnapshot(now, 4000), heatContext).state;
+    expect(state.cursor?.acceptedTotal).toBe(4000);
+    state = reduce(state, { type: "hidden", at: now + 1 }, { ...heatContext, visible: false }).state;
+    state = reduce(state, { type: "visible", at: now + 600_001 }, heatContext).state;
+    const result = reduce(state, heatSnapshot(now + 600_002, 4500), heatContext);
+    expect(result.state.cursor?.acceptedTotal).toBe(4500);
+    expect(result.state.pendingReturn).toBeUndefined();
+    expect(result.state.reaction).toBeUndefined();
+    expect(result.effects).toContainEqual({ type: "note", note: { type: "heat" } });
+    expect(readCompanion(persistCompanion(result.state), scope, now + 600_003).cursor?.acceptedTotal).toBe(4500);
+  });
   it("establishes midnight baseline and rejects invalid or backwards days", () => {
     let state = base();
     const midnight = reduce(state, snapshot(10, now + 86400_000, "2026-10-10", 4010));

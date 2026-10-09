@@ -1,4 +1,5 @@
-// Fit the complete ASCII world inside both container dimensions without stretching glyphs.
+// Fill the available width without stretching glyphs. Grow the scene vertically
+// when its natural text aspect needs more room, instead of adding blank side gutters.
 
 export const COLS = 100;
 export const ROWS = 68;
@@ -28,9 +29,9 @@ export function makeFitter(container: HTMLElement, pre: HTMLElement, probe: HTML
     const glyphs = [" ", "─", "█", "░", "^", "~"];
     const mono = glyphs.every((g) => Math.abs(measure(g.repeat(COLS)) - base) / COLS < 0.1);
     const widthFont = (available * 100) / base;
-    // Before the fixed-height scene CSS loads, the width remains a valid fallback.
-    const hasFixedHeight = getComputedStyle(container).height !== "auto" && bounds.height > 100;
-    const fontSize = Math.min(widthFont, hasFixedHeight ? bounds.height / (ROWS * LINE_HEIGHT) : widthFont);
+    const fontSize = widthFont;
+    const minimumHeight = `${fontSize * ROWS * LINE_HEIGHT}px`;
+    if (container.style.minHeight !== minimumHeight) container.style.minHeight = minimumHeight;
     const renderedWidth = base * fontSize / 100;
     probe.style.fontSize = fontSize + "px";
     // Tiny spacing correction absorbs fractional font-size rounding.
