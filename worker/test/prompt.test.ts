@@ -39,6 +39,12 @@ describe("buildSystemPrompt", () => {
   it("tells the model the status line is private", () => {
     expect(p).toContain("The bracketed status line is private. Never quote it or its field names.");
   });
+  it("explains storage fullness separately from capability, reply effort and upkeep", () => {
+    expect(p).toContain("storage fullness");
+    expect(p).toContain("absolute food balance");
+    expect(p).toContain("Growth does not increase upkeep");
+    expect(p).toContain("A low tier does not by itself mean you are hungry or sleepy");
+  });
   it("starts with the canonical header, state block and language line (finetune/data/schema.md)", () => {
     const lines = p.split("\n");
     expect(lines[0]).toBe("You are Truffle, a desert truffle (faqa) that lives as a small creature in a phone.");

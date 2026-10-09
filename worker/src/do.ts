@@ -3,12 +3,14 @@
 // fetches weather and calls the brain.
 
 import { DurableObject } from "cloudflare:workers";
-import { MAX_MEMORY_FACTS, TIERS, type Tier } from "./config";
+import { ENERGY_V2_CUTOVER_MS, ENERGY_V2_UNITS_PER_POINT, MAX_MEMORY_FACTS, TIERS, type Tier } from "./config";
 import * as engine from "./engine";
+import { conversationEffort } from "./effort";
+import { admitGift, cancelGift, giftSummary, resetGifts, settleGift } from "./gifts";
 import type { TruffleState } from "./engine";
 import { askBrain, extractFacts, hasVisibleText, type BrainName, type ChatMessage } from "./brain";
 import { isInstructionLike, roomForFacts } from "./facts";
-import { BlockGuard, heatLine, heatTemp, voiceHits } from "./guards";
+import { BlockGuard, heatLine, heatTemp, PRIVATE_LINE, voiceHits } from "./guards";
 import { buildSystemPrompt, sleepyLine, type Fact } from "./prompt";
 import {
   CHAT_LIMIT_PER_HOUR,
@@ -26,7 +28,7 @@ import {
 import { markToday, momentsFor, nextStreak, pushMoments, trailingStreak } from "./moments";
 import { AUTH_FAILED, ownerMatches } from "./pairing";
 import { daysBetween, isValidTimeZone, localDayKey, missedMidnights, nextLocalMidnight } from "./time";
-import type { ChatTicket, Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
+import type { ChatTicket, CompanionInput, Env, FeedSummary, Lang, Meta, PairInput, Result, StateSummary } from "./types";
 import { isCalendarDay } from "./validate";
 import { daytimeMax, fetchForecast, forecastDays, parseForecast, stateWeather } from "./weather";
 
@@ -156,6 +158,7 @@ export class TruffleDO extends DurableObject<Env> {
     this.sql.exec("DELETE FROM facts");
     this.sql.exec("DELETE FROM turns");
     m.generation = (m.generation ?? 0) + 1;
+    if (m.companion) m.companion = resetGifts(m.companion);
   }
 
   /** Demo Truffles stop existing after 24 h, even before the alarm runs. */
@@ -205,37 +208,125 @@ export class TruffleDO extends DurableObject<Env> {
 
   // ---------- time and weather ----------
 
-  /** Run every local midnight missed since the last tick. Idempotent per day key. */
-  private catchUp(s: TruffleState, m: Meta, now: number): { s: TruffleState; ticks: number } {
-    if (m.demo) return { s, ticks: 0 };
-    let ticks = 0;
-    for (const mid of missedMidnights(m.last_tick_ms, now, m.tz, 14)) {
-      m.last_tick_ms = mid;
-      const key = localDayKey(mid, m.tz);
-      if (key <= m.last_midnight_key) {
-        // Day already processed. With tz pinned at /pair this should not
-        // happen; if it does, never burn twice, but restart today's steps.
-        if (s.steps_today !== 0) s = { ...s, steps_today: 0 };
-        this.log("midnight_skipped", { day: key, tz: m.tz });
-        continue;
-      }
-      // The new day uses its forecast. An outage preserves the previous heat protection (0019).
-      const max = m.weather_days[key];
-      const burrowTomorrow = typeof max === "number" ? engine.shouldBurrow(max) : s.burrowed;
-      if (typeof max !== "number") this.log("catchup_weather_missing", { day: key, tz: m.tz });
-      const wasDead = s.dead;
-      const before = s;
-      s = engine.midnight(s, burrowTomorrow, this.favouriteMemory());
-      this.midnightMoments(m, before, s, mid);
-      if (!wasDead && s.dead) this.wipeMemory(m);
-      m.last_midnight_key = key;
-      ticks++;
-      this.log("midnight", { day: key, burrowed: burrowTomorrow, energy: s.energy, zero_days: s.zero_days, dead: s.dead });
+  private effectiveNow(m: Meta, now: number): number {
+    return now + (m.demo ? m.demo_time_offset_ms ?? 0 : 0);
+  }
+
+  private authorityNow(s: TruffleState, m: Meta, now: number): number {
+    return Math.max(this.effectiveNow(m, now), s.energy_settled_ms ?? m.last_tick_ms, m.last_tick_ms);
+  }
+
+  private heldCost(m: Meta): number {
+    return m.chat && !m.chat.charged ? m.chat.cost ?? 0 : 0;
+  }
+
+  /** Release only the named ticket. A committed visible reply is never refunded. */
+  private releaseTicket(row: Row, id: string): void {
+    const ticket = row.m.chat;
+    if (!ticket || ticket.id !== id) return;
+    if (!ticket.charged && ticket.demo_window !== undefined) {
+      row.m.demo_replies = unreserve(row.m.demo_replies, ticket.demo_window);
     }
-    // Keep only recent weather days.
-    const today = localDayKey(now, m.tz);
-    for (const d of Object.keys(m.weather_days)) if (daysBetween(d, today) > 2) delete m.weather_days[d];
-    return { s, ticks };
+    delete row.m.chat;
+    if (row.s.energy_version === 2) {
+      row.s = engine.settleV2(row.s, row.s.energy_settled_ms!, 0);
+    }
+  }
+
+  /** Fence the old generation once, at the actual death transition. */
+  private recordDeath(row: Row, wasDead: boolean): void {
+    if (wasDead || !row.s.dead) return;
+    this.wipeMemory(row.m);
+    const ticket = row.m.chat;
+    if (ticket) {
+      this.releaseTicket(row, ticket.id);
+      this.inflight.get(ticket.id)?.abort(new Error("truffle died"));
+    }
+    this.log("death", { at: row.s.died_ms ?? row.m.last_tick_ms });
+  }
+
+  /** One constant-weather interval, split at reservation expiry as well. */
+  private settleInterval(row: Row, to: number): void {
+    if (row.s.energy_version !== 2) return;
+    const ticket = row.m.chat;
+    const deadline = ticket ? this.effectiveNow(row.m, ticket.until) : Infinity;
+    const wasDead = row.s.dead;
+    if (ticket && deadline <= to) {
+      row.s = engine.settleV2(row.s, Math.max(row.s.energy_settled_ms!, deadline), this.heldCost(row.m), this.favouriteMemory());
+      this.recordDeath(row, wasDead);
+      this.releaseTicket(row, ticket.id);
+      this.inflight.get(ticket.id)?.abort(new Error("chat deadline"));
+      this.log("chat_deadline", { charged: ticket.charged === true });
+    }
+    const deadBeforeRemainder = row.s.dead;
+    row.s = engine.settleV2(row.s, to, this.heldCost(row.m), this.favouriteMemory());
+    this.recordDeath(row, deadBeforeRemainder);
+  }
+
+  /** Persist complete 14-boundary batches, but never admit an operation behind time. */
+  private catchUp(s: TruffleState, m: Meta, now: number): { s: TruffleState; ticks: number } {
+    const row = { s, m };
+    let ticks = 0;
+    const closeThrough = (end: number) => {
+      if (m.demo) return;
+      for (;;) {
+        const batch = missedMidnights(m.last_tick_ms, end, m.tz, 14);
+        if (!batch.length) break;
+        for (const mid of batch) {
+          this.settleInterval(row, mid);
+          m.last_tick_ms = mid;
+          const key = localDayKey(mid, m.tz);
+          if (key <= m.last_midnight_key) continue;
+          const max = m.weather_days[key];
+          const burrow = typeof max === "number" ? engine.shouldBurrow(max) : row.s.burrowed;
+          if (typeof max !== "number") this.log("catchup_weather_missing", { day: key, tz: m.tz });
+          const before = row.s;
+          row.s = engine.midnight(row.s, burrow, this.favouriteMemory());
+          this.midnightMoments(m, before, row.s, mid);
+          this.recordDeath(row, before.dead);
+          m.last_midnight_key = key;
+          ticks++;
+          this.log("midnight", { day: key, burrowed: burrow, energy: row.s.energy, zero_days: row.s.zero_days, dead: row.s.dead });
+        }
+        this.save(row.s, m);
+        if (batch.length < 14) break;
+      }
+    };
+    if (row.s.energy_version !== 2) {
+      if (now < ENERGY_V2_CUTOVER_MS) {
+        closeThrough(now);
+        return { s: row.s, ticks };
+      }
+      const start = Math.max(ENERGY_V2_CUTOVER_MS, m.created_ms);
+      // An old deployed worker may have already applied post-cutover v1 burns.
+      // No resulting balance can tell us which intervals it charged.
+      if (m.last_tick_ms > start) throw new Error("energy migration requires a prospective cutover; legacy cursor is already past cutover");
+      closeThrough(start);
+      if (m.chat) {
+        const ticket = m.chat;
+        this.releaseTicket(row, ticket.id);
+        this.inflight.get(ticket.id)?.abort(new Error("energy migration"));
+        this.log("chat_migration_cancelled", { legacy: true });
+      }
+      row.s = engine.initializeV2(row.s, start);
+      m.last_tick_ms = Math.max(m.last_tick_ms, start);
+      this.save(row.s, m);
+    }
+    const target = Math.max(row.s.energy_settled_ms!, this.effectiveNow(m, now));
+    closeThrough(target);
+    this.settleInterval(row, target);
+    // Only discard forecasts after the accounting cursor has used their day.
+    const passedDay = localDayKey(row.s.energy_settled_ms!, m.tz);
+    for (const d of Object.keys(m.weather_days)) if (daysBetween(d, passedDay) > 2) delete m.weather_days[d];
+    this.save(row.s, m);
+    return { s: row.s, ticks };
+  }
+
+  private currentRow(now = Date.now()): Row | null {
+    const row = this.load();
+    if (!row || this.expired(row.m, now)) return null;
+    row.s = this.catchUp(row.s, row.m, now).s;
+    return row;
   }
 
   /**
@@ -266,7 +357,8 @@ export class TruffleDO extends DurableObject<Env> {
 
   private async fetchWeather(lat: number, lon: number, rev: number, now: number): Promise<Row | null> {
     const json = await fetchForecast(lat, lon);
-    const row = this.load();
+    now = Date.now();
+    const row = this.currentRow(now);
     if (!row) return null;
     if ((row.m.coords_rev ?? 0) !== rev) {
       // The point moved while we waited. This forecast is for the old one.
@@ -284,8 +376,12 @@ export class TruffleDO extends DurableObject<Env> {
       const max = daytimeMax(json, day);
       if (max !== null) row.m.weather_days[day] = max;
     }
-    row.m.weather_now = { ...parseForecast(json, localDayKey(now, row.m.tz)), fetched_ms: now };
+    row.m.weather_now = { ...parseForecast(json, localDayKey(this.authorityNow(row.s, row.m, now), row.m.tz)), fetched_ms: now };
     delete row.m.weather_fail;
+    if (row.s.energy_version === 2 && !row.m.demo && !row.s.dead) {
+      const burrow = this.burrowToday(row.m, this.authorityNow(row.s, row.m, now));
+      if (burrow !== null) row.s = { ...row.s, burrowed: burrow };
+    }
     this.save(row.s, row.m);
     return row;
   }
@@ -301,18 +397,30 @@ export class TruffleDO extends DurableObject<Env> {
     return typeof max === "number" ? engine.shouldBurrow(max) : null;
   }
 
-  private async schedule(m: Meta, now: number): Promise<void> {
-    await this.ctx.storage.setAlarm(m.demo ? m.created_ms + DEMO_TTL_MS : nextLocalMidnight(now, m.tz));
+  private async schedule(m: Meta, now: number, retryAt = Infinity): Promise<void> {
+    // Re-read before choosing the one alarm: a caller may have awaited weather
+    // while an outing changed. Actual wall time governs gifts, including demos.
+    m = this.load()?.m ?? m;
+    const calendar = m.demo ? m.created_ms + DEMO_TTL_MS : nextLocalMidnight(now, m.tz);
+    const job = m.companion?.job;
+    const due = job?.state === "scheduled" && job.generation === (m.generation ?? 0)
+      ? job.due_ms <= now && Number.isFinite(retryAt) ? retryAt : job.due_ms : Infinity;
+    await this.ctx.storage.setAlarm(Math.min(calendar, due, retryAt));
   }
 
   private summary(s: TruffleState, m: Meta, now: number): StateSummary {
-    const { energy_max } = engine.stageConfig(s.stage);
+    const calendarNow = this.authorityNow(s, m, now);
+    const energy_max = engine.energyCapacity(s);
     const w = m.weather_now;
     const weatherShown = w ? stateWeather(w, m.city, "en") : null; // decision 0012: English in the block
+    const { pending, gifts } = giftSummary(m.companion ?? { gifts: [] }, m.generation ?? 0);
     return {
       state: s,
+      generation: m.generation ?? 0,
+      companion: { pending, gifts },
+      ...(s.energy_version === 2 ? { reserved_energy: this.heldCost(m) } : {}),
       mood: engine.moodOf(s),
-      tier: engine.decideTier(s).tier,
+      tier: engine.decideTier(s, undefined, this.heldCost(m)).tier,
       energy_max,
       energy_pct: Math.round((100 * s.energy) / energy_max),
       tz: m.tz,
@@ -320,14 +428,14 @@ export class TruffleDO extends DurableObject<Env> {
       lang: m.lang,
       city: m.city,
       demo: m.demo,
-      local_day: localDayKey(now, m.tz),
-      next_midnight_ms: m.demo ? null : nextLocalMidnight(now, m.tz),
+      local_day: localDayKey(calendarNow, m.tz),
+      next_midnight_ms: m.demo ? null : nextLocalMidnight(calendarNow, m.tz),
       weather: w
         ? {
             text: weatherShown!,
             fetched_ms: w.fetched_ms,
             apparent_c: w.current_apparent_c,
-            daytime_max_c: m.weather_days[localDayKey(now, m.tz)] ?? w.daytime_max_c,
+            daytime_max_c: m.weather_days[localDayKey(calendarNow, m.tz)] ?? w.daytime_max_c,
             precipitation_mm: w.precipitation_mm,
             wind_kmh: w.wind_kmh,
             is_day: w.is_day,
@@ -354,8 +462,21 @@ export class TruffleDO extends DurableObject<Env> {
     } else if (!row) {
       return err(404, "no truffle with that phrase");
     }
-    const { s } = this.catchUp(row.s, row.m, now);
-    return ok({ s, m: row.m });
+    // Authentication may cross a feed, deadline or midnight. Settle at admission,
+    // never at the time the request started.
+    now = Date.now();
+    const fresh = this.load();
+    if (!fresh || this.expired(fresh.m, now) || fresh.m.secret_hash !== row.m.secret_hash) {
+      return secret === null ? err(404, "no truffle with that phrase") : err(401, AUTH_FAILED);
+    }
+    try {
+      const { s } = this.catchUp(fresh.s, fresh.m, now);
+      this.save(s, fresh.m);
+      return ok({ s, m: fresh.m });
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("energy migration requires")) return err(409, e.message);
+      throw e;
+    }
   }
 
   // ---------- RPC methods ----------
@@ -373,33 +494,87 @@ export class TruffleDO extends DurableObject<Env> {
       weather_now: null,
       feed_window: { start_ms: now, count: 0 }
     };
-    this.save(structuredClone(engine.DEFAULT_STATE), m);
+    const initial = structuredClone(engine.DEFAULT_STATE);
+    this.save(input.demo || now >= ENERGY_V2_CUTOVER_MS ? engine.initializeV2(initial, now) : initial, m);
     await this.schedule(m, now);
     await this.refreshWeather(now, true);
-    const row = this.load()!;
-    if (!row.m.demo) row.s = { ...row.s, burrowed: this.burrowToday(row.m, now) ?? false };
+    const row = this.currentRow(Date.now())!;
+    if (!row.m.demo) row.s = { ...row.s, burrowed: this.burrowToday(row.m, this.authorityNow(row.s, row.m, Date.now())) ?? row.s.burrowed };
     this.save(row.s, row.m);
     this.log("pair", { demo: row.m.demo, tz: row.m.tz, country: row.m.country, burrowed: row.s.burrowed });
     return ok(this.summary(row.s, row.m, now));
   }
 
   async getState(secret: string): Promise<Result<StateSummary>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.open(secret, now);
     if (!o.ok) return o;
-    this.save(o.value.s, o.value.m); // persist any catch-up before awaiting the network
-    const row = (await this.refreshWeather(now)) ?? this.load()!;
-    return ok(this.summary(row.s, row.m, now));
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    this.save(fresh.s, fresh.m); // persist any catch-up before awaiting the network
+    await this.refreshWeather(now);
+    const row = this.currentRow(Date.now());
+    if (!row) return err(401, AUTH_FAILED);
+    return ok(this.summary(row.s, row.m, Date.now()));
+  }
+
+  /** Owner-only best-effort absence or explicit outing. Creation is alarm-only. */
+  async companion(secret: string, input: CompanionInput): Promise<Result<StateSummary>> {
+    const validId = (id: unknown) => typeof id === "string" && /^[a-zA-Z0-9._:-]{1,128}$/.test(id);
+    if (!input || !["away", "return", "cancel"].includes(input.action) ||
+        !Number.isSafeInteger(input.generation) || input.generation < 0 ||
+        (input.intent !== undefined && !["walk", "errand", "rest"].includes(input.intent)) ||
+        (input.client_request_id !== undefined && !validId(input.client_request_id)) ||
+        (input.job_id !== undefined && !validId(input.job_id))) return err(400, "Invalid companion request.");
+    const opened = await this.open(secret, Date.now());
+    if (!opened.ok) return opened;
+    const now = Date.now();
+    const row = this.currentRow(now);
+    if (!row) return err(401, AUTH_FAILED);
+    const { s, m } = row;
+    // Check after async authentication and time settlement. An old packet can
+    // neither schedule nor cancel work for a reset, dead or newly planted life.
+    if (input.generation !== (m.generation ?? 0)) return err(409, "This Truffle's life changed. Refresh and try again.");
+    const ledger = m.companion ?? { gifts: [] };
+    if (input.action === "away") {
+      const admission = admitGift(ledger, {
+        now_ms: now, day: localDayKey(now, m.tz), generation: m.generation ?? 0, pet: s
+      }, {
+        id: crypto.randomUUID(), seed: crypto.randomUUID(), intent: input.intent ?? "rest",
+        ...(input.client_request_id !== undefined ? { client_request_id: input.client_request_id } : {})
+      });
+      if (!admission.ok) {
+        return err(admission.reason === "rate_limited" ? 429 : 409,
+          admission.reason === "daily_limit" ? "A gift has already been made today." :
+          admission.reason === "dead" ? "A new spore can make gifts after it is planted." :
+          admission.reason === "clock_rollback" ? "The outing clock has not caught up yet." :
+          "Too many new outings. Please try again later.", admission.retry_after_s);
+      }
+      m.companion = admission.ledger;
+    } else if (input.job_id !== undefined
+      ? input.job_id === ledger.job?.id
+      : input.client_request_id !== undefined && input.client_request_id === ledger.job?.client_request_id) {
+      // A lost receipt can use its original request identity. An unscoped or
+      // stale return must never cancel a newer outing in the same life.
+      // Even overdue work is cancelled if the alarm has not created it yet.
+      m.companion = cancelGift(ledger);
+    }
+    this.save(s, m);
+    await this.schedule(m, now);
+    const fresh = this.currentRow(Date.now());
+    if (!fresh) return err(401, AUTH_FAILED);
+    return ok(this.summary(fresh.s, fresh.m, Date.now()));
   }
 
   /** Reduced view for the phrase-only /feed: no facts, gravestones, history or meta. */
-  private feedSummary(s: TruffleState): FeedSummary {
+  private feedSummary(s: TruffleState, m: Meta): FeedSummary {
     return {
       energy: s.energy,
-      energy_max: engine.stageConfig(s.stage).energy_max,
+      energy_max: engine.energyCapacity(s),
       stage: s.stage,
       mood: engine.moodOf(s),
-      tier: engine.decideTier(s).tier,
+      tier: engine.decideTier(s, undefined, this.heldCost(m)).tier,
       steps_today: s.steps_today,
       burrowed: s.burrowed
     };
@@ -411,11 +586,14 @@ export class TruffleDO extends DurableObject<Env> {
     if (!isCalendarDay(input.day) || !isValidTimeZone(input.day_tz)) {
       return err(400, "A valid day and day_tz are required. Read steps again for the Truffle's day.");
     }
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.open(null, now);
     if (!o.ok) return o;
-    let { s } = o.value;
-    const { m } = o.value;
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    let { s } = fresh;
+    const { m } = fresh;
     const rate = checkRate(m.feed_window, now);
     m.feed_window = rate.window;
     if (!rate.allowed) {
@@ -436,12 +614,12 @@ export class TruffleDO extends DurableObject<Env> {
       m.device_tz = input.device_tz;
     }
     // S10-02: a total only counts for the Truffle's current local day.
-    const today = localDayKey(now, m.tz);
+    const today = localDayKey(this.authorityNow(s, m, now), m.tz);
     const envelope = { expected_day: today, active_tz: m.tz };
     const ignore = (why: string) => {
       this.save(s, m);
       this.log("feed_ignored", { why, day: input.day ?? null, total: input.total });
-      return ok({ ...this.feedSummary(s), ...envelope, ignored: why });
+      return ok({ ...this.feedSummary(s, m), ...envelope, ignored: why });
     };
     if (input.day_tz !== m.tz) {
       return ignore("day_tz does not match the Truffle's active zone; read steps again in active_tz");
@@ -474,8 +652,13 @@ export class TruffleDO extends DurableObject<Env> {
     if (s.steps_today > before) m.feed_accept = { day: today, ms: now };
     this.feedMoments(m, prev, s, now);
     this.save(s, m);
-    this.log("feed", { total: input.total, delta: Math.max(0, s.steps_today - before), energy: s.energy });
-    return ok({ ...this.feedSummary(s), ...envelope });
+    this.log("feed", {
+      total: input.total, delta: Math.max(0, s.steps_today - before), energy: s.energy,
+      ...(s.energy_version === 2 ? {
+        discarded_overflow: Math.max(0, s.steps_today - before - (s.energy_units! - prev.energy_units!) / ENERGY_V2_UNITS_PER_POINT)
+      } : {})
+    });
+    return ok({ ...this.feedSummary(s, m), ...envelope });
   }
 
   /**
@@ -510,15 +693,21 @@ export class TruffleDO extends DurableObject<Env> {
   }
 
   async spore(secret: string): Promise<Result<StateSummary>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.open(secret, now);
     if (!o.ok) return o;
-    const { s, m } = o.value;
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    const { s, m } = fresh;
     // S10-11: a living Truffle cannot be replaced. Only death opens the way.
     if (!s.dead) return err(409, "This Truffle is still alive. A new spore can only be planted after it dies.");
-    let next = engine.newSpore(s);
-    if (!m.demo) next = { ...next, burrowed: this.burrowToday(m, now) ?? false };
+    let next = engine.newSpore(s, this.authorityNow(s, m, now));
+    if (!m.demo) next = { ...next, burrowed: this.burrowToday(m, this.authorityNow(next, m, now)) ?? false };
     this.wipeMemory(m);
+    delete m.chat;
+    m.last_tick_ms = this.authorityNow(next, m, now);
+    m.last_midnight_key = localDayKey(m.last_tick_ms, m.tz);
     this.resetMomentDay(m); // a new spore emits nothing
     this.save(next, m);
     this.log("spore", { gravestones: next.gravestones.length });
@@ -545,10 +734,13 @@ export class TruffleDO extends DurableObject<Env> {
     requested: Tier | undefined,
     langIn: Lang | undefined
   ): Promise<Result<ReadableStream<Uint8Array>>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.open(secret, now);
     if (!o.ok) return o;
-    const { s, m } = o.value;
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    const { s, m } = fresh;
     if (s.dead) return err(409, "truffle is dead; POST /spore to plant a new one");
     // S10-04: one chat in flight per Truffle, and a per-Truffle hourly cap
     // (real and demo alike). Both are checked before any model call.
@@ -569,7 +761,7 @@ export class TruffleDO extends DurableObject<Env> {
       delete m.chat;
       this.log("chat_deadline", {});
     }
-    const decision = engine.decideTier(s, requested);
+    const decision = engine.decideTier(s, conversationEffort(s, message, requested), this.heldCost(m));
     // S10-05: a demo Truffle gets at most 30 model replies a day. The slot is
     // reserved here, before the model call, and given back only if no visible
     // text comes out (S11-01, S11-06).
@@ -597,6 +789,7 @@ export class TruffleDO extends DurableObject<Env> {
       id: crypto.randomUUID(),
       generation: m.generation ?? 0,
       until: now + CHAT_LOCK_MS,
+      ...(s.energy_version === 2 ? { cost: decision.cost, charged: false } : {}),
       ...(quota ? { demo_window: quota.window.start_ms } : {})
     };
     m.chat = ticket;
@@ -612,13 +805,20 @@ export class TruffleDO extends DurableObject<Env> {
     const today = localDayKey(now, m.tz);
     const enc = new TextEncoder();
     let output: ReadableStreamDefaultController<Uint8Array> | null = null;
+    let clientCancelled = false;
     const readable = new ReadableStream<Uint8Array>({
       start(controller) { output = controller; },
-      cancel() { output = null; }
+      cancel() {
+        output = null;
+        if (s.energy_version === 2) {
+          clientCancelled = true;
+          ctrl.abort(new Error("chat cancelled by owner"));
+        }
+      }
     });
-    // A client that hangs up must not stop the charge for a reply that was
-    // produced. Queue this finite, token-capped reply without awaiting client
-    // reads: TransformStream backpressure can otherwise trap even the deadline
+    // V2 cancellation stops inference and preserves only delivered words.
+    // Queue without awaiting client reads: TransformStream backpressure can
+    // otherwise trap even the deadline
     // cleanup in writer.write/close when a tab stops reading but stays open.
     const send = async (event: string, data: unknown) => {
       try {
@@ -636,16 +836,36 @@ export class TruffleDO extends DurableObject<Env> {
       return null;
     };
 
-    /** Give back the demo reply slot. Only for a chat that showed no visible text. */
+    /** Empty completion can release only its own reservation and quota. */
     let unreserved = false;
     const giveBackSlot = () => {
-      if (unreserved || ticket.demo_window === undefined) return;
+      if (unreserved) return;
       unreserved = true;
-      const cur = this.load();
-      if (cur) this.save(cur.s, { ...cur.m, demo_replies: unreserve(cur.m.demo_replies, ticket.demo_window) });
+      const cur = this.currentRow();
+      if (!cur) return;
+      if (s.energy_version === 2 && cur.m.chat?.id !== ticket.id) return;
+      if (cur.s.energy_version === 2) {
+        if (cur.m.chat?.id === ticket.id && !cur.m.chat.charged) this.releaseTicket(cur, ticket.id);
+      } else if (ticket.demo_window !== undefined) {
+        cur.m.demo_replies = unreserve(cur.m.demo_replies, ticket.demo_window);
+      }
+      this.save(cur.s, cur.m);
     };
 
-    // The only place a chat is charged. Runs at most once per chat. True if charged.
+    /** Atomic, durable food commit immediately before guarded visible output. */
+    const commitVisible = (): boolean => {
+      if (s.energy_version !== 2) return true; // v1 keeps its historical finish semantics
+      const cur = this.currentRow();
+      if (!cur || fenced(cur) !== null) return false;
+      if (!cur.m.chat!.charged) {
+        cur.s = engine.commitReservedChatV2(cur.s, cur.m.chat!.cost!);
+        cur.m.chat!.charged = true;
+        this.save(cur.s, cur.m);
+      }
+      return true;
+    };
+
+    // Finish stores the transcript. V2 visibility already committed its cost.
     let settled = false;
     const finish = async (
       reply: string,
@@ -657,7 +877,7 @@ export class TruffleDO extends DurableObject<Env> {
       if (settled) return false;
       settled = true;
       // Re-read: a /feed may have landed while the brain was talking.
-      const cur = this.load();
+      const cur = this.currentRow();
       const why = fenced(cur);
       if (why !== null || !cur) {
         // S11-02: not this chat's slot or not this life any more. Nothing is
@@ -665,10 +885,10 @@ export class TruffleDO extends DurableObject<Env> {
         // demo slot: the words did reach the client.
         if (!hasVisibleText(reply)) giveBackSlot();
         this.log("chat_stale", { tier: decision.tier, why, chars: reply.length });
-        await send("error", { error: FENCED });
+        await send("error", { error: s.energy_version === 2 && hasVisibleText(reply) ? "This reply ended after its conversation changed. Visible words kept their original charge." : FENCED });
         return false;
       }
-      const after = engine.chargeChat(cur.s, decision);
+      const after = cur.s.energy_version === 2 ? cur.s : engine.chargeChat(cur.s, decision);
       this.save(after, cur.m); // the demo reply was counted at admission
       this.sql.exec("INSERT INTO turns (ts, day, role, content) VALUES (?, ?, 'user', ?)", now, today, message);
       this.sql.exec("INSERT INTO turns (ts, day, role, content) VALUES (?, ?, 'assistant', ?)", Date.now(), today, reply);
@@ -705,19 +925,27 @@ export class TruffleDO extends DurableObject<Env> {
     // what the client saw (minus the heat line), and that is what is charged for
     // and stored, so a leaked block never re-enters the context either.
     const guard = new BlockGuard(lang);
+    let paidVisible = false;
+    const visibleProvider = (text: string) => hasVisibleText(text.split(PRIVATE_LINE[lang]).join(""));
+    const hasReply = () => s.energy_version === 2 ? paidVisible : hasVisibleText(reply);
     let lead = ""; // whitespace held until the heat line is out
     const show = async (text: string) => {
-      if (!text) return;
-      reply += text;
+      if (!text || clientCancelled) return;
       if (heat && !heatShown) {
         if (!hasVisibleText(text)) {
           lead += text;
           return;
         }
         await showHeat();
+        if (clientCancelled) return;
         text = lead + text;
         lead = "";
       }
+      if (s.energy_version === 2 ? visibleProvider(text) : hasVisibleText(text)) {
+        if (!commitVisible()) throw new Error("chat generation or deadline changed");
+        paidVisible = true;
+      }
+      reply += text;
       await send("token", { t: text });
     };
     /** End of the model stream: release held text, then count leaks and voice slips. */
@@ -790,7 +1018,7 @@ export class TruffleDO extends DurableObject<Env> {
         }
         ctrl.signal.throwIfAborted();
         await endStream(res.brain);
-        if (!hasVisibleText(reply)) {
+        if (!hasReply()) {
           // Empty even after the one retry: nothing to charge for (S11-06).
           giveBackSlot();
           this.log("chat_empty", { tier: decision.tier, brain: res.brain, retried: retry.retried });
@@ -802,9 +1030,9 @@ export class TruffleDO extends DurableObject<Env> {
           this.ctx.waitUntil(this.rememberFrom(message, reply, today, ticket.generation));
         }
       } catch (e) {
-        await endStream(brainUsed);
+        await endStream(brainUsed).catch(() => {});
         this.log("chat_error", { error: e instanceof Error ? e.message : String(e), chars: reply.length });
-        if (hasVisibleText(reply)) {
+        if (hasReply()) {
           // Failed mid-reply: the words were produced, so charge once and say it was cut short.
           await finish(reply, brainUsed, halfAwake, true, retry.retried).catch(() => {});
         } else {
@@ -815,9 +1043,10 @@ export class TruffleDO extends DurableObject<Env> {
         clearTimeout(deadline);
         this.inflight.delete(ticket.id);
         // Release only our own slot. A newer chat's ticket is left alone.
-        const cur = this.load();
+        const cur = this.currentRow();
         if (cur && cur.m.chat?.id === ticket.id) {
-          delete cur.m.chat;
+          if (cur.s.energy_version === 2) this.releaseTicket(cur, ticket.id);
+          else delete cur.m.chat;
           this.save(cur.s, cur.m);
         }
         output?.close();
@@ -847,7 +1076,7 @@ export class TruffleDO extends DurableObject<Env> {
       this.log("facts_failed", { error })
     );
     if (!facts.length) return;
-    const row = this.load();
+    const row = this.currentRow();
     // Generation fence (S10-11, S11-02): a Truffle that died, was replanted or
     // reset while this ran must not get the old life's facts back.
     if (!row || row.s.dead || (row.m.generation ?? 0) !== generation) {
@@ -872,51 +1101,74 @@ export class TruffleDO extends DurableObject<Env> {
 
   /** Steps slider: feeds the absolute total for today. */
   async setSteps(secret: string, total: number): Promise<Result<StateSummary>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.openDemo(secret, now);
     if (!o.ok) return o;
-    const s = engine.feed(o.value.s, total);
-    this.feedMoments(o.value.m, o.value.s, s, now);
-    this.save(s, o.value.m);
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    const s = engine.feed(fresh.s, total);
+    this.feedMoments(fresh.m, fresh.s, s, now);
+    this.save(s, fresh.m);
     this.log("demo_steps", { total });
-    return ok(this.summary(s, o.value.m, now));
+    return ok(this.summary(s, fresh.m, now));
   }
 
-  /** Time travel: one midnight now. The new day is not burrowed unless heat is toggled. */
+  /** Time travel: advance a full day. V2 keeps the explicit demo heat toggle. */
   async forceMidnight(secret: string): Promise<Result<StateSummary>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.openDemo(secret, now);
     if (!o.ok) return o;
-    const wasDead = o.value.s.dead;
-    const s = engine.midnight(o.value.s, false, this.favouriteMemory());
-    this.midnightMoments(o.value.m, o.value.s, s, now);
-    if (!wasDead && s.dead) this.wipeMemory(o.value.m);
-    this.save(s, o.value.m);
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    const { m } = fresh;
+    const before = fresh.s;
+    const row = { s: before, m };
+    if (before.energy_version === 2) {
+      m.demo_time_offset_ms = (m.demo_time_offset_ms ?? 0) + DAY_MS;
+      this.settleInterval(row, Math.max(before.energy_settled_ms!, this.effectiveNow(m, now)));
+    }
+    const s = engine.midnight(row.s, before.energy_version === 2 ? before.burrowed : false, this.favouriteMemory());
+    this.midnightMoments(m, row.s, s, this.effectiveNow(m, now));
+    this.recordDeath({ s, m }, row.s.dead);
+    this.save(s, m);
     this.log("demo_midnight", { energy: s.energy, zero_days: s.zero_days, dead: s.dead });
-    return ok(this.summary(s, o.value.m, now));
+    return ok(this.summary(s, fresh.m, now));
   }
 
   /** Heat toggle: today is (or is not) a burrowed day. */
   async setHeat(secret: string, on: boolean): Promise<Result<StateSummary>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.openDemo(secret, now);
     if (!o.ok) return o;
-    const s = { ...o.value.s, burrowed: on };
-    this.save(s, o.value.m);
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    const s = { ...fresh.s, burrowed: on };
+    this.save(s, fresh.m);
     this.log("demo_heat", { on });
-    return ok(this.summary(s, o.value.m, now));
+    return ok(this.summary(s, fresh.m, now));
   }
 
   async reset(secret: string): Promise<Result<StateSummary>> {
-    const now = Date.now();
+    let now = Date.now();
     const o = await this.openDemo(secret, now);
     if (!o.ok) return o;
-    const s = structuredClone(engine.DEFAULT_STATE);
-    this.wipeMemory(o.value.m);
-    this.resetMomentDay(o.value.m);
-    this.save(s, o.value.m);
+    now = Date.now();
+    const fresh = this.currentRow(now);
+    if (!fresh) return err(401, AUTH_FAILED);
+    const initial = structuredClone(engine.DEFAULT_STATE);
+    const s = fresh.s.energy_version === 2 || now >= ENERGY_V2_CUTOVER_MS ? engine.initializeV2(initial, now) : initial;
+    delete fresh.m.demo_time_offset_ms;
+    delete fresh.m.chat;
+    fresh.m.last_tick_ms = now;
+    fresh.m.last_midnight_key = localDayKey(now, fresh.m.tz);
+    this.wipeMemory(fresh.m);
+    this.resetMomentDay(fresh.m);
+    this.save(s, fresh.m);
     this.log("demo_reset", {});
-    return ok(this.summary(s, o.value.m, now));
+    return ok(this.summary(s, fresh.m, now));
   }
 
   // ---------- alarm ----------
@@ -927,39 +1179,38 @@ export class TruffleDO extends DurableObject<Env> {
     if (!row) return;
     let { s } = row;
     const { m } = row;
-    if (m.demo) {
-      if (now >= m.created_ms + DEMO_TTL_MS) {
-        await this.ctx.storage.deleteAlarm();
-        await this.ctx.storage.deleteAll();
-        this.hasSchema = false; // a chat still running must not write to the deleted Truffle
-      } else {
-        await this.schedule(m, now);
-      }
+    if (m.demo && now >= m.created_ms + DEMO_TTL_MS) {
+      await this.ctx.storage.deleteAlarm();
+      await this.ctx.storage.deleteAll();
+      this.hasSchema = false; // a chat still running must not write to the deleted Truffle
       return;
     }
     try {
       const r = this.catchUp(s, m, now);
       s = r.s;
-      this.save(s, m); // ticks are committed before any network await
-      // More than 14 midnights missed: keep the debt, come back in a second.
-      if (nextLocalMidnight(m.last_tick_ms, m.tz) <= now) {
-        await this.ctx.storage.setAlarm(now + 1000);
-        return;
+      if (m.companion) {
+        m.companion = settleGift(m.companion, {
+          now_ms: now, day: localDayKey(now, m.tz), generation: m.generation ?? 0, pet: s
+        });
       }
-      if (r.ticks > 0) {
-        const fresh = await this.refreshWeather(now, true);
+      this.save(s, m); // ticks and gift completion commit before any network await
+      if (r.ticks > 0 && !m.demo) {
+        await this.refreshWeather(now, true);
+        const fresh = this.currentRow(Date.now());
         if (fresh) {
           // Fresh forecast for the new day overrides the cached guess.
-          const b = this.burrowToday(fresh.m, now);
+          const b = this.burrowToday(fresh.m, this.authorityNow(fresh.s, fresh.m, Date.now()));
           if (b !== null && !fresh.s.dead && b !== fresh.s.burrowed) {
             this.save({ ...fresh.s, burrowed: b }, fresh.m);
           }
         }
       }
-      await this.schedule(this.load()!.m, Date.now());
+      const latest = this.load();
+      if (latest) await this.schedule(latest.m, Date.now());
     } catch (e) {
       console.error("midnight_alarm_failed", e);
-      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      const latest = this.load();
+      if (latest) await this.schedule(latest.m, Date.now(), Date.now() + 60_000);
     }
   }
 }

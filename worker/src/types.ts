@@ -2,6 +2,7 @@
 import type { Tier } from "./config";
 import type { Mood, TruffleState } from "./engine";
 import type { ParsedForecast } from "./weather";
+import type { GiftIntent, GiftLedger, GiftSummary } from "./gifts";
 
 export interface Env {
   TRUFFLE: DurableObjectNamespace<import("./do").TruffleDO>;
@@ -34,6 +35,8 @@ export interface Meta {
   created_ms: number;
   /** Instant of the last processed local midnight (or created_ms). */
   last_tick_ms: number;
+  /** Demo elapsed-time cursor is real time plus this explicit simulation offset. */
+  demo_time_offset_ms?: number;
   /** Local day key that the last processed midnight opened. Idempotency guard. */
   last_midnight_key: string;
   /** Daytime max apparent temperature per local day, from the last forecast. */
@@ -55,6 +58,8 @@ export interface Meta {
   demo_replies?: RateWindow;
   /** Bumped at death, new spore and demo reset. Late completions and fact extraction from an older life are dropped. */
   generation?: number;
+  /** Bounded procedural jobs and collection. No model calls or food charge. */
+  companion?: GiftLedger;
   /** Bumped whenever the stored point moves. A forecast for an older point is discarded (S11-11). */
   coords_rev?: number;
   /** Forecast failure backoff (S11-11). Unset after a good fetch. */
@@ -75,6 +80,10 @@ export interface ChatTicket {
   generation: number;
   /** Deadline. After it, the next chat request aborts this one and takes the slot. */
   until: number;
+  /** V2 food held inside the canonical total until visible output commits it. */
+  cost?: number;
+  /** Durable exactly-once visibility/charge marker; absent identifies a legacy ticket. */
+  charged?: boolean;
   /** Demo Truffles: start of the reply window this chat reserved a slot in. */
   demo_window?: number;
 }
@@ -90,8 +99,21 @@ export interface PairInput {
   demo: boolean;
 }
 
+export interface CompanionInput {
+  action: "away" | "return" | "cancel";
+  generation: number;
+  intent?: GiftIntent;
+  client_request_id?: string;
+  /** A delayed return may only cancel the job it observed. */
+  job_id?: string;
+}
+
 /** What /state, /feed and the chat done event return. */
 export interface StateSummary {
+  generation: number;
+  companion: Pick<GiftSummary, "pending" | "gifts">;
+  /** Pending uncharged food included in state.energy, unavailable for other spending. */
+  reserved_energy?: number;
   state: TruffleState;
   mood: Mood;
   tier: Tier;

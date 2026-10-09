@@ -7,7 +7,7 @@ import type { Tier } from "./config";
 import { AUTH_FAILED, generatePhrase, generateSecret, hashPhrase, hashSecret, isPlausibleSecret, parsePhrase } from "./pairing";
 import { AUTH_FAILS_PER_MINUTE, DAY_MS, DEMO_SPAWNS_PER_DAY, DEMO_SPAWNS_PER_HOUR, HOUR_MS, MINUTE_MS } from "./ratelimit";
 import { isValidTimeZone } from "./time";
-import type { Env, Lang, PairInput, Result } from "./types";
+import type { CompanionInput, Env, Lang, PairInput, Result } from "./types";
 import { BodyTooLarge, MAX_BODY_BYTES, parseBodyText, parseCoords, isCalendarDay, parseMessage, readBounded, stepTotalError } from "./validate";
 import { sanitizeText } from "./weather";
 
@@ -234,6 +234,35 @@ app.get("/state", async (c) => {
   const o = await owned(c, {});
   if ("error" in o) return o.error;
   return ownerReply(c, await o.stub.getState(o.secret), o.limiter);
+});
+
+app.post("/companion", async (c) => {
+  const p = await body(c);
+  if ("error" in p) return p.error;
+  const b = p.b;
+  if (b.action !== "away" && b.action !== "return" && b.action !== "cancel") {
+    return bad(c, "action must be away, return or cancel");
+  }
+  if (!Number.isSafeInteger(b.generation) || (b.generation as number) < 0) {
+    return bad(c, "generation must be a non-negative whole number");
+  }
+  if (b.intent !== undefined && b.intent !== "walk" && b.intent !== "errand" && b.intent !== "rest") {
+    return bad(c, "intent must be walk, errand or rest");
+  }
+  for (const field of ["client_request_id", "job_id"] as const) {
+    if (b[field] !== undefined && (typeof b[field] !== "string" || !/^[a-zA-Z0-9._:-]{1,128}$/.test(b[field]))) {
+      return bad(c, `${field} must be 1 to 128 letters, numbers, dots, underscores, colons or hyphens`);
+    }
+  }
+  const o = await owned(c, b);
+  if ("error" in o) return o.error;
+  const input: CompanionInput = {
+    action: b.action, generation: b.generation as number,
+    intent: b.intent as CompanionInput["intent"],
+    client_request_id: b.client_request_id as string | undefined,
+    job_id: b.job_id as string | undefined
+  };
+  return ownerReply(c, await o.stub.companion(o.secret, input), o.limiter);
 });
 
 app.post("/chat", async (c) => {
