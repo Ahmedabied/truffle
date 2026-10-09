@@ -106,5 +106,7 @@ model evaluation and human Arabic preference limits remain explicit.
 README, native guide, draft and checklist reflect the actual release. The DEV
 article stays `published: false`; no article or external message was sent.
 Raw/private U01 through U08 output, QA credentials and emulator profiles were
-not staged. MemPalace KG query and final promotion both failed with
-`Transport closed`; no lock was bypassed. Repository evidence retains provenance.
+not staged. MemPalace initially returned `Transport closed`, then recovered at final handoff.
+Its query was empty. Eight concise facts covering release, cutover, checks,
+APK, fleet, limits and live acceptance were promoted with repository provenance.
+No lock was bypassed.

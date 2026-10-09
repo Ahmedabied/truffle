@@ -86,8 +86,9 @@ Only finished APKs and sanitized evidence move between machines. The Tamlik
 website's deploy guard concerns the unrelated website. Preserve the selected
 pet and never clear private data to simplify an upgrade.
 
-MemPalace query and final fact promotion returned `Transport closed`; repository reports and fresh
-observations provide this session's evidence. Do not bypass a peer lock or
-claim an unavailable KG result. Private `fleet/outbox/U01` through `U08` and raw
-QA credentials remain excluded from Git. The session record is
+MemPalace initially returned `Transport closed`, then recovered during final
+handoff. Its query was empty; release, cutover, validation, fleet, APK checksum
+and live acceptance facts were promoted with repository provenance. No peer
+lock was bypassed. Private `fleet/outbox/U01` through `U08` and raw QA credentials
+remain excluded from Git. The session record is
 [session 06](sessions/2026-10-09_session-06_companion_v2.md).

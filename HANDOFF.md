@@ -63,8 +63,9 @@ Keep dated/zone-matched feeding and the migration cursor guard intact.
 
 Private U01 through U08 outputs, raw QA owner credentials and raw emulator
 profiles are not approved for publication. Only reviewed report/capture paths
-were staged. The unavailable MemPalace transport must not be bypassed.
-Current facts and provenance are retained in repository records.
+were staged. MemPalace recovered at final handoff and release facts were promoted with
+repository provenance. Do not bypass a peer lock if it becomes unavailable.
+Current facts and provenance are also retained in repository records.
 
 Final live migration/alarm observations and public artifact/link checks belong
 in docs/reviews/fleet25-live-release/README.md. Continue from the measured
