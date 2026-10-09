@@ -135,7 +135,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
             }
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
-                replaceWebView()
+                if (view === web) replaceWebView()
                 return true
             }
         }
@@ -149,16 +149,24 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
         }
     }
 
-    private fun replaceWebView() {
+    private fun replaceWebView(clearStorage: Boolean = false) {
         invalidateDocument()
         pageDialog?.cancel()
         pageDialog = null
         val index = root.indexOfChild(web)
+        web.stopLoading()
         root.removeView(web)
         web.destroy()
+        if (clearStorage) {
+            WebStorage.getInstance().deleteAllData()
+            CookieManager.getInstance().removeAllCookies(null)
+        }
         web = newWebView()
+        if (clearStorage) web.clearCache(true)
         root.addView(web, index, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         loaded = false
+        renderPairing()
+        if (foreground) web.onResume() else web.onPause()
         ensureLoaded()
     }
 
@@ -188,11 +196,11 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     /** New credentials or a new web origin: load fresh with the fragment. */
     fun reloadFresh() {
-        invalidateDocument()
-        web.stopLoading()
-        loaded = false
-        renderPairing()
-        ensureLoaded()
+        // Loading another #creds fragment on the same root is only an in-page
+        // navigation: boot/import and onPageStarted would not run again.
+        // A new WebView gives the new nonce a new document while preserving
+        // the profile's saved pet and preferences on ordinary refreshes.
+        replaceWebView()
     }
 
     fun refresh() {
@@ -250,21 +258,10 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     /** Forget: the page's stored credentials go too, then the plain world loads. */
     fun clearData() {
-        invalidateDocument()
         cancelPendingPair()
         // Stop the old document before clearing its storage so it cannot write
         // old credentials back while the new pet is loading.
-        pageDialog?.cancel()
-        pageDialog = null
-        web.stopLoading()
-        root.removeView(web)
-        web.destroy()
-        WebStorage.getInstance().deleteAllData()
-        CookieManager.getInstance().removeAllCookies(null)
-        web = newWebView()
-        web.clearCache(true)
-        root.addView(web, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        reloadFresh()
+        replaceWebView(clearStorage = true)
     }
 
     private fun invalidateDocument() {
