@@ -10,6 +10,12 @@ import {
   ASLEEP_BELOW_ENERGY,
   BURROW_APPARENT_C,
   DEATH_ZERO_DAYS,
+  ENERGY_V2_CAPACITIES,
+  ENERGY_V2_EMPTY_DEATH_MS,
+  ENERGY_V2_HIGH_MIN,
+  ENERGY_V2_MEDIUM_MIN,
+  ENERGY_V2_UNITS_PER_MS,
+  ENERGY_V2_UNITS_PER_POINT,
   HISTORY_DAYS,
   MAX_GRAVESTONES,
   STAGES,
@@ -37,6 +43,17 @@ export interface Gravestone {
 }
 
 export interface TruffleState {
+  /** Absent means the unchanged v1 engine. These fields are persisted together. */
+  energy_version?: 2;
+  /** Canonical food, INCLUDING any uncharged chat reservation. */
+  energy_units?: number;
+  /** Authoritative elapsed-time cursor. The DO splits weather/day transitions. */
+  energy_settled_ms?: number;
+  /** Continuous non-sheltered milliseconds with no unreserved food. */
+  empty_ms?: number;
+  /** Exact v2 death instant; absent for living pets and migrated legacy deaths. */
+  died_ms?: number;
+  /** Whole-point display of total food, including a pending reservation. */
   energy: number;
   lifetime_steps: number;
   stage: Stage;
@@ -113,6 +130,132 @@ function pushGravestone(list: Gravestone[], g: Gravestone): Gravestone[] {
   return next.length > MAX_GRAVESTONES ? next.slice(next.length - MAX_GRAVESTONES) : next;
 }
 
+export type V2TruffleState = TruffleState & {
+  energy_version: 2;
+  energy_units: number;
+  energy_settled_ms: number;
+  empty_ms: number;
+};
+
+function requireV2(state: TruffleState): V2TruffleState {
+  if (
+    state.energy_version !== 2 ||
+    !Number.isSafeInteger(state.energy_units) || (state.energy_units ?? -1) < 0 ||
+    !Number.isSafeInteger(state.energy_settled_ms) ||
+    !Number.isSafeInteger(state.empty_ms) || (state.empty_ms ?? -1) < 0 ||
+    (state.empty_ms ?? Infinity) > ENERGY_V2_EMPTY_DEATH_MS
+  ) throw new RangeError("Invalid v2 energy state");
+  return state as V2TruffleState;
+}
+
+function checkedPointUnits(points: number): number {
+  const units = points * ENERGY_V2_UNITS_PER_POINT;
+  if (!Number.isSafeInteger(points) || points < 0 || !Number.isSafeInteger(units)) {
+    throw new RangeError("Food points must be a non-negative safe integer");
+  }
+  return units;
+}
+
+function unreservedUnits(state: V2TruffleState, heldCost: number): number {
+  const units = state.energy_units - checkedPointUnits(heldCost);
+  if (units < 0) throw new RangeError("Food reservation exceeds canonical balance");
+  return units;
+}
+
+/** V2 capacity for a stage; a state argument selects its version's capacity. */
+export function energyCapacity(state: TruffleState | Stage): number {
+  if (typeof state === "string") return ENERGY_V2_CAPACITIES[state];
+  return state.energy_version === 2
+    ? ENERGY_V2_CAPACITIES[state.stage]
+    : stageConfig(state.stage).energy_max;
+}
+
+/** Whole points eligible to spend. Displayed state.energy includes the hold. */
+export function availableEnergy(state: TruffleState, heldCost = 0): number {
+  return state.energy_version === 2
+    ? Math.floor(unreservedUnits(requireV2(state), heldCost) / ENERGY_V2_UNITS_PER_POINT)
+    : Math.max(0, state.energy - heldCost);
+}
+
+/** Adopt v2 after the caller has closed every applicable v1 midnight. */
+export function initializeV2(state: TruffleState, at: number): V2TruffleState {
+  if (state.energy_version === 2) return requireV2(cloneState(state));
+  if (!Number.isSafeInteger(at)) throw new RangeError("Invalid v2 initialization time");
+  return {
+    ...cloneState(state),
+    energy_version: 2,
+    energy_units: checkedPointUnits(state.energy),
+    energy_settled_ms: at,
+    empty_ms: 0,
+    zero_days: state.dead ? state.zero_days : 0
+  };
+}
+
+/**
+ * Settle one interval under the state's existing heat protection. The caller
+ * settles to each local midnight / actual heat transition BEFORE changing it.
+ * The held chat cost stays inside total food but cannot fund maintenance.
+ */
+export function settleV2(
+  state: TruffleState,
+  to: number,
+  heldCost = 0,
+  memory: string | null = null
+): V2TruffleState {
+  const next = requireV2(cloneState(state));
+  if (!Number.isSafeInteger(to)) throw new RangeError("Invalid v2 settlement time");
+  const from = next.energy_settled_ms;
+  const end = Math.max(from, to);
+  next.energy_settled_ms = end;
+  // A terminal pet keeps its food and grave. Moving its cursor permits bounded
+  // catch-up to finish without creating another death transition.
+  if (next.dead) return next;
+  const available = unreservedUnits(next, heldCost);
+  if (available > 0) next.empty_ms = 0;
+  if (!next.burrowed && end > from) {
+    // All engine-created balances are multiples of 1,000 units, so exhaustion
+    // is exact at millisecond precision. ceil also safely handles imported
+    // integer units smaller than one millisecond of maintenance.
+    const fundedMs = Math.ceil(available / ENERGY_V2_UNITS_PER_MS);
+    const elapsed = end - from;
+    const consumedMs = Math.min(elapsed, fundedMs);
+    // Bound time BEFORE multiplication; even a MAX_SAFE_INTEGER gap is safe.
+    next.energy_units -= Math.min(available, consumedMs * ENERGY_V2_UNITS_PER_MS);
+    const emptyElapsed = elapsed - consumedMs;
+    const remainingMs = ENERGY_V2_EMPTY_DEATH_MS - next.empty_ms;
+    if (emptyElapsed >= remainingMs) {
+      next.empty_ms = ENERGY_V2_EMPTY_DEATH_MS;
+      next.dead = true;
+      next.died_ms = from + consumedMs + remainingMs;
+      next.gravestones = pushGravestone(next.gravestones, gravestoneOf(next, memory));
+    } else {
+      next.empty_ms += emptyElapsed;
+    }
+  }
+  next.zero_days = Math.floor(next.empty_ms / ENERGY_V2_UNITS_PER_POINT);
+  next.energy = Math.floor(next.energy_units / ENERGY_V2_UNITS_PER_POINT);
+  return next;
+}
+
+/**
+ * Debit a generation-fenced reservation exactly once, immediately before its
+ * first visible output. Ticket ownership/idempotency belongs to the DO. After
+ * this call, its committed ticket must no longer be passed as an active hold.
+ */
+export function commitReservedChatV2(state: TruffleState, cost: number, remainingHeldCost = 0): V2TruffleState {
+  const next = requireV2(cloneState(state));
+  if (next.dead) throw new RangeError("Cannot charge a dead pet");
+  const units = checkedPointUnits(cost);
+  if (units > next.energy_units) throw new RangeError("Reply cost exceeds canonical balance");
+  next.energy_units -= units;
+  next.energy = Math.floor(next.energy_units / ENERGY_V2_UNITS_PER_POINT);
+  if (unreservedUnits(next, remainingHeldCost) > 0) {
+    next.empty_ms = 0;
+    next.zero_days = 0;
+  }
+  return next;
+}
+
 /** Stage from lifetime_steps. */
 export function deriveStage(lifetime_steps: number): Stage {
   let stage: Stage = STAGES[0].name;
@@ -140,7 +283,14 @@ export function moodOf(state: TruffleState): Mood {
 }
 
 /** Tier the current energy allows, before any request cap or cost check. */
-export function allowedTier(state: TruffleState): Tier {
+export function allowedTier(state: TruffleState, heldCost = 0): Tier {
+  if (state.energy_version === 2) {
+    const available = availableEnergy(state, heldCost);
+    if (state.dead || available < ASLEEP_BELOW_ENERGY) return "asleep";
+    if (available >= ENERGY_V2_HIGH_MIN) return "high";
+    if (available >= ENERGY_V2_MEDIUM_MIN) return "medium";
+    return "low";
+  }
   if (state.dead || state.energy <= 0) return "asleep";
   const ratio = state.energy / stageConfig(state.stage).energy_max;
   if (ratio >= TIER_HIGH_MIN_RATIO) return "high";
@@ -152,19 +302,24 @@ export function allowedTier(state: TruffleState): Tier {
  * Tier for the next message. requested is capped by what energy allows.
  * Does not spend. energy < cost -> drop one tier; energy < 20 -> asleep.
  */
-export function decideTier(state: TruffleState, requested?: Tier): TierDecision {
-  let tier = allowedTier(state);
+export function decideTier(state: TruffleState, requested?: Tier, heldCost = 0): TierDecision {
+  let tier = allowedTier(state, heldCost);
+  const energy = state.energy_version === 2 ? availableEnergy(state, heldCost) : state.energy;
   // Unknown strings from clients are ignored, never looked up in TIERS.
   if (requested !== undefined && TIER_ORDER.includes(requested)) tier = lowerTier(tier, requested);
-  if (tier !== "asleep" && state.energy < TIERS[tier].cost) {
+  if (tier !== "asleep" && energy < TIERS[tier].cost) {
     tier = TIER_ORDER[TIER_ORDER.indexOf(tier) - 1];
   }
-  if (state.energy < ASLEEP_BELOW_ENERGY) tier = "asleep";
+  if (energy < ASLEEP_BELOW_ENERGY) tier = "asleep";
   return decisionFor(tier);
 }
 
 /** Deduct the tier cost after a reply was produced. */
 export function chargeChat(state: TruffleState, decision: TierDecision): TruffleState {
+  if (state.energy_version === 2) {
+    if (state.dead || decision.cost === 0) return cloneState(state);
+    return commitReservedChatV2(state, decision.cost);
+  }
   const next = cloneState(state);
   next.energy = Math.max(0, state.energy - decision.cost);
   return next;
@@ -184,7 +339,19 @@ export function feed(state: TruffleState, steps_today_total: number): TruffleSta
     next.stage = deriveStage(next.lifetime_steps);
   }
   // Cap against the stage after growth: growth happens the moment the threshold is crossed.
-  next.energy = Math.min(stageConfig(next.stage).energy_max, state.energy + delta);
+  if (state.energy_version === 2) {
+    const v2 = requireV2(next);
+    const capUnits = energyCapacity(next) * ENERGY_V2_UNITS_PER_POINT;
+    // Bound the credit before multiplying a potentially huge accepted total.
+    const room = Math.max(0, capUnits - v2.energy_units);
+    v2.energy_units += Math.min(delta, Math.ceil(room / ENERGY_V2_UNITS_PER_POINT)) * ENERGY_V2_UNITS_PER_POINT;
+    v2.energy_units = Math.min(capUnits, v2.energy_units);
+    v2.energy = Math.floor(v2.energy_units / ENERGY_V2_UNITS_PER_POINT);
+    v2.empty_ms = 0;
+    v2.zero_days = 0;
+  } else {
+    next.energy = Math.min(stageConfig(next.stage).energy_max, state.energy + delta);
+  }
   return next;
 }
 
@@ -215,7 +382,7 @@ export function midnight(
     : Math.max(0, state.affection - 1);
 
   // 3. Burn, and 4. zero days. Both paused on a burrowed day.
-  if (!state.burrowed) {
+  if (state.energy_version !== 2 && !state.burrowed) {
     next.energy = Math.max(0, state.energy - stageConfig(state.stage).burn);
     next.zero_days = next.energy === 0 ? state.zero_days + 1 : 0;
   }
@@ -226,7 +393,7 @@ export function midnight(
   next.burrowed = burrowed_tomorrow;
 
   // 5. Death. Never on a burrowed day.
-  if (!state.burrowed && next.zero_days >= DEATH_ZERO_DAYS) {
+  if (state.energy_version !== 2 && !state.burrowed && next.zero_days >= DEATH_ZERO_DAYS) {
     next.dead = true;
     next.gravestones = pushGravestone(next.gravestones, gravestoneOf(next, favourite_memory));
   }
@@ -249,7 +416,7 @@ export function shouldBurrow(apparent_temperature_daytime_max_c: number): boolea
 }
 
 /** After death: fresh Spore, gravestones kept (max 20). */
-export function newSpore(state: TruffleState): TruffleState {
+export function newSpore(state: TruffleState, at?: number): TruffleState {
   // A living Truffle cannot be replaced. Only death opens the way to a new spore (S10-11).
   if (!state.dead) return cloneState(state);
   let gravestones = state.gravestones.map((g) => ({ ...g }));
@@ -259,7 +426,12 @@ export function newSpore(state: TruffleState): TruffleState {
     const last = gravestones[gravestones.length - 1];
     if (!last || !sameGravestone(last, g)) gravestones = pushGravestone(gravestones, g);
   }
-  return { ...cloneState(DEFAULT_STATE), gravestones };
+  const fresh = { ...cloneState(DEFAULT_STATE), gravestones };
+  // Production callers pass the actual planting time; the old cursor is a
+  // deterministic fallback for pure callers that use the legacy signature.
+  return state.energy_version === 2
+    ? initializeV2(fresh, at ?? requireV2(state).energy_settled_ms)
+    : fresh;
 }
 
 /**
@@ -272,7 +444,7 @@ export function stateBlock(
   state: TruffleState,
   opts: { lang: "ar" | "en"; weather_text: string; tier?: Tier }
 ): string {
-  const pct = Math.round((100 * state.energy) / stageConfig(state.stage).energy_max);
+  const pct = Math.round((100 * state.energy) / energyCapacity(state));
   const tier = decideTier(state, opts.tier).tier;
   const weather = opts.weather_text.replace(/[\]\r\n]/g, " ").replace(/"/g, "'").trim();
   return (

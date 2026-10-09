@@ -7,7 +7,8 @@ import { cleanFacts } from "./facts";
 import type { Env, Lang } from "./types";
 
 export const FALLBACK_MODEL = "@cf/google/gemma-4-26b-a4b-it";
-export const DEFAULT_BRAIN_TIMEOUT_MS = 25_000;
+export const DEFAULT_BRAIN_TIMEOUT_MS = 8_000;
+const ORDINARY_FIRST_TEXT_MS = 4_000;
 /**
  * Reasoning tokens count against max_tokens on both vLLM and Workers AI
  * (measured on Workers AI: 277 of 300 tokens went to reasoning). When thinking
@@ -245,9 +246,12 @@ function prependStream(reader: ReadableStreamDefaultReader<string>, first: strin
 
 // ---------- routing ----------
 
-function timeoutMs(env: Env): number {
+function timeoutMs(env: Env, tier: Tier): number {
   const n = Number(env.BRAIN_TIMEOUT_MS);
-  return Number.isFinite(n) && n > 0 ? n : DEFAULT_BRAIN_TIMEOUT_MS;
+  const configured = Number.isFinite(n) && n > 0 ? n : DEFAULT_BRAIN_TIMEOUT_MS;
+  // A cold container cannot be made warm by keeping an ordinary greeting
+  // waiting. Preserve a warm trained reply's opportunity without parallel calls.
+  return Math.min(configured, tier === "high" ? DEFAULT_BRAIN_TIMEOUT_MS : ORDINARY_FIRST_TEXT_MS);
 }
 
 function tokenLimit(req: BrainRequest): number {
@@ -261,7 +265,7 @@ function allMessages(req: BrainRequest) {
 async function askModal(env: Env, req: BrainRequest, fetchFn: typeof fetch): Promise<BrainResult> {
   const url = env.MODAL_URL!.replace(/\/+$/, "") + "/v1/chat/completions";
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(new Error("modal first-token timeout")), timeoutMs(env));
+  const timer = setTimeout(() => ctrl.abort(new Error("modal first-token timeout")), timeoutMs(env, req.tier));
   // The caller's deadline aborts the whole stream, not just the first token.
   const stop = () => ctrl.abort(req.signal?.reason);
   if (req.signal?.aborted) stop();

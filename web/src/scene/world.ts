@@ -42,6 +42,8 @@ export interface View {
   weatherCode: number;
   apparentC: number;
   yawn: boolean;
+  /** Brief companion expression. Server health and weather remain authoritative. */
+  reaction?: "happy" | "anticipating" | null;
   /** Debug: force a local hour (?hour=). */
   hourOverride: number | null;
   /** Debug: force a moon phase 0..1 (?moon=). */
@@ -70,6 +72,12 @@ export const EMPTY_VIEW: View = {
 };
 
 const mod = (n: number, d: number) => ((n % d) + d) % d;
+
+export function presentationFace(v: View): Face {
+  if (v.mood === "dead" || v.mood === "burrowed") return v.mood;
+  if (v.yawn) return "yawn";
+  return v.reaction ? "affectionate" : v.mood;
+}
 
 /** Weather code families from Open-Meteo. */
 const wx = (code: number) => ({
@@ -713,7 +721,7 @@ export class Scene {
     }
     for (const name of ["stars", "weather", "pet", "cap", "skin", "white", "fx"] as const) L[name].clear();
     this.mask.fill(0);
-    const face: Face = v.mood === "dead" || v.mood === "burrowed" ? v.mood : v.yawn ? "yawn" : v.mood;
+    const face = presentationFace(v);
     const pet = drawPet({ ink: L.pet, cap: L.cap, skin: L.skin, white: L.white, mask: this.mask }, {
       stage: v.stage, tier: v.tier, face, light: e.light, t: clock, sec, reduced, night: e.night,
       fromFace: options.fromFace, transition: options.transition,
@@ -817,9 +825,9 @@ export class World {
 
   set(v: Partial<View>): void {
     if (this.view.mood === "dead" && v.mood && v.mood !== "dead") this.rebornAt = this.seconds;
-    const before = this.view.yawn ? "yawn" : this.view.mood;
+    const before = presentationFace(this.view);
     const next = { ...this.view, ...v };
-    const after = next.yawn ? "yawn" : next.mood;
+    const after = presentationFace(next);
     if (before !== after && ![before, after].some(m => m === "dead" || m === "burrowed")) this.expression = { from: before, at: this.seconds };
     this.view = next;
     this.dirty = true;

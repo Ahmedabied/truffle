@@ -48,3 +48,17 @@ export const BURROW_APPARENT_C = 42;
 export const MAX_GRAVESTONES = 20;
 export const MAX_MEMORY_FACTS = 60;
 export const HISTORY_DAYS = 7;
+
+// Continuous food v2. Decision 0023 leaves every v1 constant above unchanged.
+export const ENERGY_V2_CUTOVER_MS = Date.parse("2026-10-09T07:30:00Z");
+export const ENERGY_V2_UNITS_PER_POINT = 86_400_000;
+export const ENERGY_V2_UNITS_PER_MS = 1_000;
+export const ENERGY_V2_EMPTY_DEATH_MS = 96 * 60 * 60 * 1_000;
+export const ENERGY_V2_MEDIUM_MIN = 1_500;
+export const ENERGY_V2_HIGH_MIN = 3_600;
+export const ENERGY_V2_CAPACITIES: Readonly<Record<Stage, number>> = {
+  Spore: 12_000,
+  Sprout: 24_000,
+  Truffle: 32_000,
+  Elder: 42_000
+};

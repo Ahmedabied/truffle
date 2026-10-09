@@ -1,0 +1,101 @@
+{
+  "decision": "0023_continuous_food_and_living_companion",
+  "cases": [
+    {
+      "id": "late_feed_survives_midnight",
+      "events": [{"type":"feed","total":1000},{"type":"settle","at":60000},{"type":"midnight"},{"type":"settle","at":180000}],
+      "expect": {"energy":997,"energy_units":86220000000,"steps_today":0,"age_days":1,"empty_ms":0}
+    },
+    {
+      "id": "early_feed_loses_only_one_elapsed_minute",
+      "events": [{"type":"feed","total":1000},{"type":"settle","at":60000}],
+      "expect": {"energy":999,"energy_units":86340000000}
+    },
+    {
+      "id": "busy_walk_carries_three_days",
+      "events": [{"type":"feed","total":15000},{"type":"settle","at":259200000}],
+      "expect": {"stage":"Sprout","energy":12000,"energy_units":1036800000000,"dead":false}
+    },
+    {
+      "id": "elder_low_replies_and_quiet_day",
+      "state": {"stage":"Elder","lifetime_steps":100000,"energy":10000},
+      "events": [{"type":"chat","tier":"low","count":10},{"type":"settle","at":43200000},{"type":"midnight"},{"type":"settle","at":129600000},{"type":"chat","tier":"low"}],
+      "expect": {"energy":8280,"energy_units":715392000000,"dead":false}
+    },
+    {
+      "id": "elder_medium_replies_and_quiet_day",
+      "state": {"stage":"Elder","lifetime_steps":100000,"energy":10000},
+      "events": [{"type":"chat","tier":"medium","count":10},{"type":"settle","at":43200000},{"type":"midnight"},{"type":"settle","at":129600000},{"type":"chat","tier":"medium"}],
+      "expect": {"energy":7840,"energy_units":677376000000,"dead":false}
+    },
+    {
+      "id": "empty_clock_starts_at_exact_exhaustion",
+      "state": {"energy":1},
+      "events": [{"type":"settle","at":100000}],
+      "expect": {"energy":0,"energy_units":0,"empty_ms":13600,"zero_days":0,"dead":false}
+    },
+    {
+      "id": "food_one_millisecond_before_death_saves_pet",
+      "events": [{"type":"settle","at":345599999},{"type":"feed","total":1}],
+      "expect": {"energy":1,"empty_ms":0,"zero_days":0,"dead":false}
+    },
+    {
+      "id": "food_at_death_deadline_is_too_late",
+      "events": [{"type":"settle","at":345600000},{"type":"feed","total":1},{"type":"settle","at":432000000}],
+      "expect": {"energy":0,"empty_ms":345600000,"zero_days":4,"dead":true,"died_ms":345600000,"gravestones_count":1,"steps_today":0}
+    },
+    {
+      "id": "heat_preserves_food_for_four_days",
+      "state": {"energy":1000,"burrowed":true},
+      "events": [{"type":"settle","at":345600000}],
+      "expect": {"energy":1000,"empty_ms":0,"dead":false}
+    },
+    {
+      "id": "heat_preserves_empty_survival_clock",
+      "state": {"burrowed":true},
+      "events": [{"type":"settle","at":345600000},{"type":"heat","value":false},{"type":"settle","at":432000000}],
+      "expect": {"energy":0,"empty_ms":86400000,"zero_days":1,"dead":false}
+    },
+    {
+      "id": "fresh_food_has_no_empty_time_debt",
+      "events": [{"type":"settle","at":259200000},{"type":"feed","total":10},{"type":"settle","at":259286400}],
+      "expect": {"energy":9,"energy_units":777600000,"empty_ms":0,"zero_days":0,"dead":false}
+    },
+    {
+      "id": "spore_growth_keeps_full_balance",
+      "state": {"stage":"Spore","lifetime_steps":4999,"energy":12000},
+      "events": [{"type":"feed","total":1}],
+      "expect": {"stage":"Sprout","energy":12001,"tier":"high"}
+    },
+    {
+      "id": "sprout_growth_keeps_full_balance",
+      "state": {"stage":"Sprout","lifetime_steps":29999,"energy":24000},
+      "events": [{"type":"feed","total":1}],
+      "expect": {"stage":"Truffle","energy":24001,"tier":"high"}
+    },
+    {
+      "id": "truffle_growth_keeps_full_balance",
+      "state": {"stage":"Truffle","lifetime_steps":99999,"energy":32000},
+      "events": [{"type":"feed","total":1}],
+      "expect": {"stage":"Elder","energy":32001,"tier":"high"}
+    },
+    {
+      "id": "protected_feed_does_not_grow_and_caps_at_twelve_thousand",
+      "state": {"burrowed":true},
+      "events": [{"type":"feed","total":15000}],
+      "expect": {"stage":"Spore","energy":12000,"lifetime_steps":0,"steps_today":15000}
+    },
+    {
+      "id": "legacy_living_initialization_preserves_food_and_clears_old_empty_snapshots",
+      "state": {"energy":1234,"zero_days":3,"age_days":17,"affection":2,"history7":[10,20]},
+      "events": [],
+      "expect": {"energy":1234,"energy_units":106617600000,"empty_ms":0,"zero_days":0,"age_days":17,"affection":2,"history7":[10,20]}
+    },
+    {
+      "id": "held_food_survives_maintenance",
+      "state": {"energy":21},
+      "events": [{"type":"settle","at":172800,"held":20}],
+      "expect": {"energy":20,"energy_units":1728000000,"empty_ms":86400,"dead":false}
+    }
+  ]
+}

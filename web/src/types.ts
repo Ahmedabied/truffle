@@ -20,6 +20,12 @@ export interface WeatherSummary {
 }
 
 export interface StateSummary {
+  /** Server life fence. Older APIs omit it; never infer a server generation. */
+  generation?: number;
+  companion?: {
+    pending: { id: string; intent: "walk" | "errand" | "rest"; due_ms: number } | null;
+    gifts: import("../../worker/src/gifts").StoredGift[];
+  };
   state: TruffleState;
   mood: Mood;
   tier: Tier;
@@ -56,6 +62,8 @@ export interface Backend {
   pair(lang?: Lang): Promise<PairResult>;
   spawn(lang?: Lang): Promise<PairResult>;
   state(c: Creds): Promise<StateSummary>;
+  /** Additive capability: older APIs/offline clients may not schedule server work. */
+  companion?(c: Creds, action: "away" | "return" | "cancel", intent?: "walk" | "errand" | "rest", requestId?: string, keepalive?: boolean): Promise<StateSummary>;
   chat(c: Creds, message: string, lang: Lang, requested?: Tier, signal?: AbortSignal): AsyncGenerator<ChatEvent>;
   spore(c: Creds): Promise<StateSummary>;
   slider(c: Creds, steps: number): Promise<StateSummary>;

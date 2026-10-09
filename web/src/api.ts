@@ -170,13 +170,14 @@ export class RealBackend implements Backend {
   readonly mock = false;
   constructor(private base: string) {}
 
-  private async call<T>(method: "GET" | "POST", path: string, creds?: Creds, body?: unknown): Promise<T> {
+  private async call<T>(method: "GET" | "POST", path: string, creds?: Creds, body?: unknown, keepalive = false): Promise<T> {
     const headers: Record<string, string> = {};
     if (creds) headers["x-truffle-secret"] = creds.secret;
     if (body !== undefined) headers["content-type"] = "application/json";
     return withTimeout(this.base + path, {
       method,
       headers,
+      keepalive,
       body: body === undefined ? undefined : JSON.stringify(body)
     }, async (res) => {
       if (!res.ok) throw await errorOf(res);
@@ -200,6 +201,12 @@ export class RealBackend implements Backend {
   }
   state(c: Creds) {
     return this.call<StateSummary>("GET", `/state?phrase=${encodeURIComponent(c.phrase)}`, c);
+  }
+  companion(c: Creds, action: "away" | "return" | "cancel", intent?: "walk" | "errand" | "rest", requestId?: string, keepalive = false) {
+    return this.call<StateSummary>("POST", "/companion", c, {
+      phrase: c.phrase, action, ...(intent ? { intent } : {}),
+      ...(requestId ? { client_request_id: requestId } : {})
+    }, keepalive);
   }
   spore(c: Creds) {
     return this.call<StateSummary>("POST", "/spore", c, { phrase: c.phrase });

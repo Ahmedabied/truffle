@@ -14,9 +14,12 @@ The Samsung is unavailable. Physical-device results will remain unverified.
 | 01 | fleet01_energy_architecture | Food contract, migration and conservation | Complete; contract report |
 | 02 | fleet02_companion_architecture | Walking, intent and facial event contract | Complete; contract report |
 | 03 | fleet03_gift_architecture | Actual background gifts and bounded costs | Complete; contract report |
-| 04 | fleet04_energy_engine | Pure v2 engine and fixed-point tests | Running |
-| 05 | fleet05_companion_core | Pure English/Arabic intent and reactions | Running |
-| 06 | fleet06_gift_generator | New procedural ASCII art and job policies | Running |
+| 04 | fleet04_energy_engine | Pure v2 engine and fixed-point tests | Complete; 55 new tests, legacy goldens preserved |
+| 05 | fleet05_companion_core | Pure English/Arabic intent and reactions | Complete; 88 companion tests |
+| 06 | fleet06_gift_generator | New procedural ASCII art and job policies | Complete; 17 tests and 2,000-seed check |
+| 07 | fleet07_economy_do | Migration, continuous settlement and reservations | Running |
+| 08 | fleet08_web_companion | Browser intent, returns and native event wiring | Running |
+| 09 | fleet09_native_companion | Native movement, timely feeds and quiet reminders | Running |
 
 ## Working sequence
 

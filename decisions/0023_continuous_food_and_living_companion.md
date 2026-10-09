@@ -28,6 +28,12 @@ Ordinary conversation defaults to medium or the lower available tier; deep
 thinking is an explicit choice. A short greeting can choose low. The user can
 see the choice and its maximum cost before sending.
 
+Bound the wait for the trained provider's first visible text to four seconds
+for ordinary replies and eight seconds for explicit deep replies. Then use the
+existing honestly labelled fallback. These are routing deadlines, not promises
+about total response time. Preserve cancellation, the finite whole-reply limit,
+and one charge for a visible reply. Do not race two paid providers in parallel.
+
 The pet survives until it has spent 96 actual, non-sheltered hours continuously
 without food. Positive feeding clears this clock immediately. Keep death,
 gravestones and explicit new-spore recovery; do not silently resurrect dead pets.

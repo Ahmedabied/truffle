@@ -13,6 +13,13 @@ reservations. Settle at calendar/heat boundaries and before feed, admission and
 completion. Preserve weather needed by unfinished catch-up. An unused expired
 reservation is returned exactly once; reset/death cannot revive old completions.
 
+Ordinary requests default to medium, complete short greetings to low, and an
+explicit user choice can request deep effort. Eligibility still caps that choice.
+The trained provider gets at most four seconds to first visible text for ordinary
+requests and eight for high effort, then the existing labelled fallback runs.
+This is a routing deadline, not a measured end-to-end latency promise. Providers
+are not raced in parallel and cancellation still reaches their streams.
+
 An owner-authenticated companion endpoint records away/return intent. A single
 pending gift job shares the existing DO alarm by scheduling the earliest pending
 deadline. At ten minutes, bounded procedural code creates and stores new ASCII
