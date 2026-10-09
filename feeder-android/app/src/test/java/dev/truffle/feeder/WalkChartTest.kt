@@ -45,13 +45,51 @@ class WalkChartTest {
         assertTrue(axis.endsWith(" today"))
     }
 
-    @Test fun missingDaysAreZeroOldestFirst() {
+    @Test fun missingDaysRetainUnknownCoverageOldestFirst() {
         val filled = WalkChart.fillDays(mapOf(today to 500L, today.minusDays(3) to 70L), today)
         assertEquals(30, filled.size)
         assertEquals(today.minusDays(29), filled.first().date)
         assertEquals(WalkDay(today, 500), filled.last())
         assertEquals(70L, filled[26].steps)
         assertEquals(0L, filled[25].steps)
+        assertFalse(filled[25].recorded)
+        assertTrue(filled.last().recorded)
+    }
+
+    @Test fun unknownDaysDoNotInventZeroTotalsOrAverages() {
+        val empty = WalkChart.fillDays(emptyMap(), today)
+        assertNull(WalkChart.period(empty, today, 7).total)
+        assertNull(WalkChart.period(empty, today, 7).average)
+        assertNull(WalkChart.stats(empty, today).avg7)
+        assertEquals(0, WalkChart.period(empty, today, 7).recordedDays)
+    }
+
+    @Test fun selectedPeriodCountsOnlyRecordedDatesAndIncludesToday() {
+        val diary = WalkChart.fillDays(mapOf(today to 200L, today.minusDays(1) to 600L,
+            today.minusDays(6) to 0L, today.minusDays(7) to 9_000L), today)
+        assertEquals(200L, WalkChart.period(diary, today, 1).total)
+        val week = WalkChart.period(diary, today, 7)
+        assertEquals(800L, week.total)
+        assertEquals(267L, week.average)
+        assertEquals(3, week.recordedDays)
+        assertEquals(today.minusDays(1), week.best?.date)
+        assertEquals(9_800L, WalkChart.period(diary, today, 30).total)
+        assertEquals(3_200L, WalkChart.stats(diary, today).avg7)
+    }
+
+    @Test fun recordedZeroAndMissingDayRemainDifferent() {
+        val diary = WalkChart.fillDays(mapOf(today to 0L), today)
+        assertEquals(0L, WalkChart.period(diary, today, 1).total)
+        assertEquals(1, WalkChart.period(diary, today, 7).recordedDays)
+        assertNull(WalkChart.period(diary, today.minusDays(1), 1).total)
+        assertNull(WalkChart.stats(diary, today).avg7)
+    }
+
+    @Test fun periodsExcludeFutureRecordsAndFormatLongTotals() {
+        val diary = listOf(WalkDay(today, 1_234_567), WalkDay(today.minusDays(1), 8_765_433),
+            WalkDay(today.plusDays(1), 99_999_999))
+        assertEquals("10,000,000", WalkChart.steps(WalkChart.period(diary, today, 7).total!!))
+        assertEquals(5_000_000L, WalkChart.period(diary, today, 7).average)
     }
 
     @Test fun statsFromFixedDays() {

@@ -5,13 +5,15 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToLong
 
-/** One calendar day of steps in the device zone. */
-data class WalkDay(val date: LocalDate, val steps: Long)
+/** One diary date in its source's zone. A missing record is not a measured zero. */
+data class WalkDay(val date: LocalDate, val steps: Long, val recorded: Boolean = true)
 
 /** One line of the Walk screen. Accent lines are drawn in the accent colour. */
 data class WalkLine(val text: String, val accent: Boolean = false)
 
-data class WalkStats(val avg7: Long, val best: WalkDay?, val streak: Int)
+data class WalkStats(val avg7: Long?, val best: WalkDay?, val streak: Int)
+
+data class WalkPeriod(val total: Long?, val average: Long?, val recordedDays: Int, val best: WalkDay?)
 
 /**
  * Pure text builders for the Walk screen. Fixed numbers in, fixed lines out.
@@ -71,24 +73,34 @@ object WalkChart {
         return left + " ".repeat((days - left.length - right.length).coerceAtLeast(1)) + right
     }
 
-    /** `days` dates ending today, oldest first. A date with no data is zero. */
+    /** `days` dates ending today, oldest first, preserving missing records. */
     fun fillDays(found: Map<LocalDate, Long>, today: LocalDate, days: Int = 30): List<WalkDay> =
         (days - 1 downTo 0).map { back ->
             val date = today.minusDays(back.toLong())
-            WalkDay(date, (found[date] ?: 0L).coerceAtLeast(0L))
+            WalkDay(date, (found[date] ?: 0L).coerceAtLeast(0L), recorded = date in found)
         }
 
+    /** Selected dates include today. Unknown days never enter the denominator. */
+    fun period(days: List<WalkDay>, today: LocalDate, count: Int): WalkPeriod {
+        require(count > 0)
+        val start = today.minusDays(count - 1L)
+        val recorded = days.filter { it.recorded && !it.date.isBefore(start) && !it.date.isAfter(today) }
+        val total = recorded.takeIf { it.isNotEmpty() }?.sumOf { it.steps }
+        return WalkPeriod(total, total?.let { (it.toDouble() / recorded.size).roundToLong() },
+            recorded.size, recorded.filter { it.steps > 0 }.maxWithOrNull(compareBy<WalkDay> { it.steps }.thenBy { it.date }))
+    }
+
     /**
-     * 7 day average over the seven completed days before today. Best day over
+     * Average over recorded dates in the seven completed days before today. Best day over
      * every given day, the latest one on a tie, none when all are zero. Streak
      * counts days at or above the floor, ending today when today already made
      * it, else ending yesterday. A broken streak is simply zero.
      */
     fun stats(days: List<WalkDay>, today: LocalDate): WalkStats {
-        val byDate = days.associate { it.date to it.steps }
-        val week = (1..7).map { byDate[today.minusDays(it.toLong())] ?: 0L }
-        val avg7 = (week.sum().toDouble() / 7).roundToLong()
-        val best = days.filter { it.steps > 0 }
+        val byDate = days.filter { it.recorded }.associate { it.date to it.steps }
+        val week = (1..7).mapNotNull { byDate[today.minusDays(it.toLong())] }
+        val avg7 = week.takeIf { it.isNotEmpty() }?.let { (it.sum().toDouble() / it.size).roundToLong() }
+        val best = days.filter { it.recorded && it.steps > 0 }
             .maxWithOrNull(compareBy<WalkDay> { it.steps }.thenBy { it.date })
         var day = if ((byDate[today] ?: 0L) >= STREAK_FLOOR) today else today.minusDays(1)
         var streak = 0
@@ -118,11 +130,11 @@ object WalkChart {
         lines += WalkLine(hourAxis())
         lines += WalkLine("")
         lines += WalkLine("last ${days.size} days")
-        bars(days.map { it.steps }).forEach { lines += WalkLine(it, accent = true) }
+        bars(days.map { if (it.recorded) it.steps else null }).forEach { lines += WalkLine(it, accent = true) }
         lines += WalkLine(dayAxis(days.size))
         lines += WalkLine("")
         lines += stat("today", "${steps(todaySteps)} steps")
-        lines += stat("7 day average", "${steps(s.avg7)} steps")
+        lines += stat("7 day average", s.avg7?.let { "${steps(it)} steps" } ?: "not recorded")
         lines += stat(
             "best day",
             s.best?.let { "${steps(it.steps)} steps, ${DAY_LABEL.format(it.date)}" } ?: "none yet",
