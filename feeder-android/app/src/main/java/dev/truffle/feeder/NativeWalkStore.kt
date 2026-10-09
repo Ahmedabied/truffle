@@ -21,6 +21,13 @@ class NativeWalkStore(context: Context) {
     val status: String get() = prefs.getString("status", null) ?: "Count walks with this phone, even without Samsung Health."
     val lastActive: Instant? get() = prefs.getLong("active_ms", 0).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
     val lastNudge: Instant? get() = prefs.getLong("nudge_ms", 0).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
+    val lastMovementAt: Instant? get() = prefs.getLong("movement_ms", 0).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
+    val sourceGeneration: String get() = synchronized(lock) {
+        prefs.getString("source_generation", null)?.takeIf { it.isNotEmpty() }
+            ?: java.util.UUID.randomUUID().toString().let { fresh ->
+                if (prefs.edit().putString("source_generation", fresh).commit()) fresh else ""
+            }
+    }
     fun active() {
         val now = System.currentTimeMillis()
         val previous = prefs.getLong("active_ms", 0)
@@ -57,8 +64,20 @@ class NativeWalkStore(context: Context) {
         return json.toString()
     }
 
-    fun observe(sample: SensorCounterSample, zone: ZoneId) = synchronized(lock) {
-        prefs.edit().putString("counter", stateJson(SensorAccumulator.observe(state(), sample, zone))).apply()
+    fun observe(sample: SensorCounterSample, zone: ZoneId): AcceptedMovement? = synchronized(lock) {
+        val before = state()
+        val after = SensorAccumulator.observe(before, sample, zone)
+        val movement = acceptedMovement(before, after)
+        val edit = prefs.edit().putString("counter", stateJson(after))
+        movementTimestamp(lastMovementAt, movement)?.let { edit.putLong("movement_ms", it.toEpochMilli()) }
+        edit.apply()
+        movement
+    }
+
+    fun claimMovementFeed(now: Instant): Boolean = synchronized(lock) {
+        val previous = prefs.getLong("movement_feed_ms", 0).takeIf { it > 0 }?.let(Instant::ofEpochMilli)
+        if (!movementFeedDue(previous, now)) return@synchronized false
+        prefs.edit().putLong("movement_feed_ms", now.toEpochMilli()).commit()
     }
 
     fun baseline(): SensorFeedBaseline? = synchronized(lock) {
@@ -93,16 +112,19 @@ class NativeWalkStore(context: Context) {
     fun enable() = synchronized(lock) {
         // Pausing never joins a previous counter sample across an untracked interval.
         prefs.edit().putString("counter", stateJson(SensorAccumulator.pause(state())))
-            .putBoolean("enabled", true).putBoolean("paused", false).putLong("enabled_at", System.currentTimeMillis()).apply()
+            .putBoolean("enabled", true).putBoolean("paused", false).putLong("enabled_at", System.currentTimeMillis())
+            .putString("source_generation", java.util.UUID.randomUUID().toString()).remove("movement_feed_ms").apply()
     }
 
     fun pause() = synchronized(lock) {
         prefs.edit().putBoolean("enabled", false).putBoolean("paused", true)
+            .putString("source_generation", java.util.UUID.randomUUID().toString())
             .putString("counter", stateJson(SensorAccumulator.pause(state()))).apply()
     }
 
     fun stop() = synchronized(lock) {
         prefs.edit().putBoolean("enabled", false).putBoolean("paused", false).putString("feed_baseline", "")
+            .putString("source_generation", java.util.UUID.randomUUID().toString())
             .putString("counter", stateJson(SensorAccumulator.pause(state()))).apply()
     }
 

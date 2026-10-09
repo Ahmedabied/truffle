@@ -23,8 +23,13 @@ class FeedSender(context: Context) {
     private val health = HealthSteps(context)
     private val settings = FeedSettings(context)
 
-    suspend fun feed(background: Boolean, isRetryRun: Boolean = false): FeedRun = withContext(Dispatchers.IO) { FeedGate.mutex.withLock {
+    suspend fun feed(background: Boolean, isRetryRun: Boolean = false, expectedNativeGeneration: String? = null): FeedRun = withContext(Dispatchers.IO) { FeedGate.mutex.withLock {
         NativeTracking.reconcileStop(context)
+        val native = NativeWalkStore(context)
+        if (expectedNativeGeneration != null) require(nativeMovementFeedAllowed(expectedNativeGeneration,
+            native.sourceGeneration, native.boundTo(settings), native.enabled, NativeTracking.permitted(context))) {
+            "The walking source changed."
+        }
         require(!NativeWalkStore(context).paused) { "Phone counting is paused. Resume in Walk or choose Health Connect there." }
         val direct = NativeWalkStore(context).enabled
         val config = settings.config()

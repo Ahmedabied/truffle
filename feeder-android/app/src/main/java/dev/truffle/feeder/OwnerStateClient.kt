@@ -15,7 +15,10 @@ data class OwnerSnapshot(
     val day: String, val zone: ZoneId, val steps: Long, val dead: Boolean,
     val burrowed: Boolean, val energyPercent: Int,
     val weatherAt: Instant?, val weatherSafe: Boolean,
-)
+    val energyVersion: Int = 1, val food: Long? = null,
+) {
+    val wellFed: Boolean get() = steps >= 3_000 || if (energyVersion == 2) food == null || food >= 1_500 else energyPercent >= 50
+}
 
 fun parseOwnerSnapshot(body: String, now: Instant): OwnerSnapshot {
     val root = JSONObject(body)
@@ -33,13 +36,15 @@ fun parseOwnerSnapshot(body: String, now: Instant): OwnerSnapshot {
     val wind = weather?.opt("wind_kmh") as? Number
     val precipitation = weather?.opt("precipitation_mm") as? Number
     val code = weather?.opt("weather_code") as? Number
+    val energyVersion = if (state.optInt("energy_version", 1) == 2) 2 else 1
+    val food = (state.opt("energy") as? Number)?.toDouble()?.takeIf { it.isFinite() && it >= 0 && it % 1.0 == 0.0 && it <= 250_000 }?.toLong()
     return OwnerSnapshot(day, zone, steps, state.getBoolean("dead"), state.getBoolean("burrowed"),
         root.getInt("energy_pct").coerceIn(0, 100), stamp,
         apparent != null && maximum != null && apparent.toDouble().isFinite() && maximum.toDouble().isFinite() &&
             apparent.toDouble() < 35 && maximum.toDouble() < 35 &&
             wind != null && wind.toDouble().isFinite() && wind.toDouble() in 0.0..<30.0 &&
             precipitation != null && precipitation.toDouble().isFinite() && precipitation.toDouble() in 0.0..<1.0 &&
-            code != null && code.toDouble() in setOf(0.0, 1.0, 2.0, 3.0))
+            code != null && code.toDouble() in setOf(0.0, 1.0, 2.0, 3.0), energyVersion, food)
 }
 
 object OwnerStateClient {

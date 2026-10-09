@@ -32,8 +32,8 @@ object NativeTracking {
         require(settings.creds != null) { "Open your existing Truffle from the web first, so the app can confirm its credited steps." }
         val store = NativeWalkStore(context)
         val oldBaseline = store.baseline()
-        val resume = store.directSelected && store.boundTo(settings) && oldBaseline != null &&
-            SensorAccumulator.feedTotal(store.state(), oldBaseline, Instant.now(), activeZone(settings.activeTz, ZoneId.systemDefault())) != null
+        val resume = canResumeNativeFeed(store.state(), oldBaseline, store.boundTo(settings), store.directSelected,
+            Instant.now(), activeZone(settings.activeTz, ZoneId.systemDefault()))
         // Fence Health Connect immediately, even if the baseline request fails.
         if (!store.enabled) store.enable()
         val message = try {
@@ -75,6 +75,7 @@ object NativeTracking {
         }.getOrDefault(false) else false
         if (userStopped || !permitted(context) || (store.sessionBoot >= 0 && boot != store.sessionBoot)) {
             store.pause()
+            FeedSchedule.cancelMovement(context)
             store.status("Phone counting is paused after Android stopped it or permission changed. Tap Resume when you want to count again.")
             context.stopService(Intent(context, StepCounterService::class.java))
         }
@@ -82,6 +83,7 @@ object NativeTracking {
 
     fun stop(context: Context) {
         NativeWalkStore(context).stop()
+        FeedSchedule.cancelMovement(context)
         context.stopService(Intent(context, StepCounterService::class.java))
     }
 

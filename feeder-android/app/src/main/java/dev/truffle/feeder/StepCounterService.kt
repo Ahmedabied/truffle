@@ -42,6 +42,7 @@ class StepCounterService : Service(), SensorEventListener {
             scope.launch {
                 FeedGate.mutex.withLock {
                     store.pause()
+                    FeedSchedule.cancelMovement(this@StepCounterService)
                     store.status("Phone counting is paused. Resume in Walk, or choose Health Connect there.")
                     stopSelf()
                 }
@@ -105,8 +106,13 @@ class StepCounterService : Service(), SensorEventListener {
         val at = counterRecordedAt(eventElapsed, nowElapsed, Instant.now(), store.state().baseline == null) ?: return
         val boot = runCatching { Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, -1).toLong() }.getOrDefault(-1)
         if (boot < 0) { store.status("Android could not identify this counter session. Pause and use Health Connect."); store.pause(); stopSelf(); return }
-        val zone = activeZone(FeedSettings(this).activeTz, ZoneId.systemDefault())
-        store.observe(SensorCounterSample(raw, eventElapsed, at, boot), zone)
+        val settings = FeedSettings(this)
+        val zone = activeZone(settings.activeTz, ZoneId.systemDefault())
+        val accepted = store.observe(SensorCounterSample(raw, eventElapsed, at, boot), zone) ?: return
+        if (settings.creds != null && store.boundTo(settings)) {
+            NativeMovementEvents.publish(accepted)
+            FeedSchedule.afterMovement(this)
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit

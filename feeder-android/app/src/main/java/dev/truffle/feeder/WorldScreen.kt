@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.graphics.Bitmap
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -23,6 +24,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /**
  * The deployed web world in a locked down WebView. Credentials reach the page
@@ -43,6 +45,15 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     private var loaded = false
     private var loadedOrigin = ""
     private var pairGeneration = 0
+    private var foreground = false
+    private var foregroundSince: Instant? = null
+    private var movementGeneration: String? = null
+    private var document: NativeMovementDocument? = null
+    private var pendingDocumentUrl: String? = null
+    private var pageReady = false
+    private var eventCounter = 0L
+    private val movement = RecentMovement()
+    private val movementListener: (AcceptedMovement) -> Unit = { sendMovement(it) }
 
     init {
         pairPanel.addView(TextView(activity).apply {
@@ -94,6 +105,27 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
             }
         }
         webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                if (view !== web) return
+                pageReady = false
+                movement.clear()
+                if (url == pendingDocumentUrl && document != null) {
+                    pendingDocumentUrl = null
+                    return
+                }
+                // Browser reload, history or page navigation is a new document.
+                // Re-enter through the existing owner import with a fresh nonce.
+                invalidateDocument()
+                if (isWorldDocument(url, prefs.webOrigin) && prefs.creds != null) reloadFresh()
+            }
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                if (view !== web || pendingDocumentUrl != null) return
+                pageReady = document?.let {
+                    it.sameOwner(prefs.webOrigin, prefs.server, prefs.creds) && isWorldDocument(url, it.webOrigin)
+                } == true
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
                 if (AppLink.isInsideWeb(url, prefs.webOrigin)) return false
@@ -118,6 +150,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     }
 
     private fun replaceWebView() {
+        invalidateDocument()
         pageDialog?.cancel()
         pageDialog = null
         val index = root.indexOfChild(web)
@@ -133,21 +166,30 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     fun ensureLoaded() {
         // Pairing belongs to the native button. Never let an unpaired embedded
         // page silently create a second pet behind the native pairing panel.
-        if (prefs.creds == null) return
+        val owner = prefs.creds ?: return
         if (loaded) return
         loaded = true
         loadedOrigin = prefs.webOrigin
-        web.loadUrl(AppLink.worldUrl(loadedOrigin, prefs.creds))
+        val next = NativeMovementDocument.create(loadedOrigin, prefs.server, owner)
+        document = next
+        pageReady = false
+        eventCounter = 0
+        movement.clear()
+        pendingDocumentUrl = AppLink.worldUrl(loadedOrigin, owner, next.scope)
+        web.loadUrl(pendingDocumentUrl!!)
     }
 
     /** The tab became visible. A changed web origin in settings loads fresh. */
     fun onShow() {
         renderPairing()
-        if (loaded && loadedOrigin != prefs.webOrigin) reloadFresh() else ensureLoaded()
+        if (loaded && (loadedOrigin != prefs.webOrigin || document?.sameOwner(prefs.webOrigin, prefs.server, prefs.creds) == false))
+            reloadFresh() else ensureLoaded()
     }
 
     /** New credentials or a new web origin: load fresh with the fragment. */
     fun reloadFresh() {
+        invalidateDocument()
+        web.stopLoading()
         loaded = false
         renderPairing()
         ensureLoaded()
@@ -162,6 +204,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
     /** Back stays inside the page while it has history. */
     fun goBack(): Boolean {
         if (!web.canGoBack()) return false
+        invalidateDocument()
         web.goBack()
         return true
     }
@@ -207,6 +250,7 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
 
     /** Forget: the page's stored credentials go too, then the plain world loads. */
     fun clearData() {
+        invalidateDocument()
         cancelPendingPair()
         // Stop the old document before clearing its storage so it cannot write
         // old credentials back while the new pet is loading.
@@ -223,7 +267,50 @@ class WorldScreen(private val activity: MainActivity, private val prefs: FeedSet
         reloadFresh()
     }
 
-    fun onResume() = web.onResume()
-    fun onPause() = web.onPause()
-    fun destroy() { pageDialog?.cancel(); pageDialog = null; web.destroy() }
+    private fun invalidateDocument() {
+        pageReady = false
+        pendingDocumentUrl = null
+        document = null
+        movement.clear()
+    }
+
+    private fun sendMovement(accepted: AcceptedMovement) {
+        val current = document ?: return
+        val store = NativeWalkStore(activity)
+        if (!pageReady || !current.allows(web.url, prefs.webOrigin, prefs.server, prefs.creds,
+                document?.scope, foreground && root.isVisible && web.isVisible, store.enabled,
+                NativeTracking.permitted(activity), store.boundTo(prefs))) {
+            movement.clear()
+            return
+        }
+        val since = foregroundSince ?: return
+        if (movementGeneration != store.sourceGeneration) {
+            movement.clear()
+            movementGeneration = store.sourceGeneration
+        }
+        val pulse = movement.accept(accepted, Instant.now(), since) ?: return
+        // This runs on the sensor/main looper. There is no deferred event queue.
+        // The page independently checks this nonce after its owner import verifies.
+        web.evaluateJavascript(current.eventScript(pulse, "${current.scope}-${++eventCounter}"), null)
+    }
+
+    fun onResume() {
+        if (!foreground) foregroundSince = Instant.now()
+        foreground = true
+        NativeMovementEvents.listen(movementListener)
+        web.onResume()
+    }
+    fun onPause() {
+        foreground = false
+        foregroundSince = null
+        movementGeneration = null
+        movement.clear()
+        NativeMovementEvents.remove(movementListener)
+        web.onPause()
+    }
+    fun destroy() {
+        onPause()
+        invalidateDocument()
+        pageDialog?.cancel(); pageDialog = null; web.destroy()
+    }
 }

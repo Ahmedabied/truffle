@@ -11,7 +11,7 @@ const val DEFAULT_API_ORIGIN = "https://truffle.ahmed-abied.workers.dev"
 const val DEFAULT_WEB_ORIGIN = "https://truffle-web.ahmed-abied.workers.dev"
 
 /** Appended to the WebView's default user agent so the page knows it runs inside the app. */
-const val USER_AGENT_SUFFIX = " TruffleApp/0.3"
+const val USER_AGENT_SUFFIX = " TruffleApp/0.4"
 
 private val PHRASE = Regex("[a-z]+-[a-z]+-[a-z]+")
 private val SECRET = Regex("[A-Za-z0-9_-]{16,64}")
@@ -84,8 +84,11 @@ object AppLink {
      * The World URL. Credentials ride only in the fragment, which the browser
      * never sends to a server. The page stores them and strips the fragment.
      */
-    fun worldUrl(webOrigin: String, creds: TruffleCreds?): String =
-        if (creds == null) "$webOrigin/" else "$webOrigin/#creds=${creds.packed}"
+    fun worldUrl(webOrigin: String, creds: TruffleCreds?, nativeScope: String? = null): String {
+        require(nativeScope == null || validNativeScope(nativeScope))
+        return if (creds == null) "$webOrigin/" else "$webOrigin/#creds=${creds.packed}" +
+            (nativeScope?.let { "&native_scope=$it" } ?: "")
+    }
 
     /** True when the WebView may load this URL itself: HTTPS on exactly the web origin. */
     fun isInsideWeb(url: String?, webOrigin: String): Boolean {

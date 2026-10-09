@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var palette: TrufflePalette
     private val tabs = mutableMapOf<Tab, TextView>()
     private var current = Tab.WORLD
+    private var resumed = false
 
     private val nativeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in setOf("counter", "status", "enabled", "paused")) {
@@ -105,6 +106,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             FeedGate.mutex.withLock {
                 NativeWalkStore(this@MainActivity).pause()
+                FeedSchedule.cancelMovement(this@MainActivity)
                 stopService(Intent(this@MainActivity, StepCounterService::class.java))
                 NativeWalkStore(this@MainActivity).status("Phone counting is paused. Your saved diary stays here.")
             }
@@ -218,6 +220,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         NativeWalkStore(this).active()
         NativeTracking.reconcileStop(this)
         if (current == Tab.WORLD) world.onResume() else world.onPause()
@@ -232,6 +235,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        resumed = false
         world.onPause()
         super.onPause()
     }
@@ -250,7 +254,7 @@ class MainActivity : ComponentActivity() {
     private fun show(tab: Tab) {
         current = tab
         world.view.isVisible = tab == Tab.WORLD
-        if (tab == Tab.WORLD) world.onResume() else world.onPause()
+        if (resumed && tab == Tab.WORLD) world.onResume() else world.onPause()
         walk.view.isVisible = tab == Tab.WALK
         feed.view.isVisible = tab == Tab.FEED
         for ((t, item) in tabs) {

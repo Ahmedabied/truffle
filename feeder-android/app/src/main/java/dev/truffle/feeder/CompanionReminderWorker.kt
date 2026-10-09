@@ -26,23 +26,20 @@ class CompanionReminderWorker(context: Context, parameters: WorkerParameters) : 
     override suspend fun doWork(): Result = gate.withLock {
         NativeTracking.reconcileStop(applicationContext)
         val store = NativeWalkStore(applicationContext)
-        if (!store.reminders || !store.enabled || !NativeTracking.permitted(applicationContext) || !notificationsAllowed(applicationContext)) return@withLock Result.success()
+        val settings = FeedSettings(applicationContext)
+        if (!store.reminders || settings.creds == null || store.paused || !notificationsAllowed(applicationContext)) return@withLock Result.success()
         try {
-            val snapshot = OwnerStateClient.read(FeedSettings(applicationContext))
-            val now = Instant.now()
-            val lastMove = store.state().baseline?.recordedAt
-            val lastActive = listOfNotNull(store.lastActive, lastMove).maxOrNull()
-            val decision = ReminderPolicy.evaluate(ReminderContext(
-                now, snapshot.zone, optedIn = store.reminders,
-                notificationsAllowed = notificationsAllowed(applicationContext),
-                activityPermission = NativeTracking.permitted(applicationContext), trackingEnabled = store.enabled,
-                alive = !snapshot.dead, wellFed = snapshot.energyPercent >= 50 || snapshot.steps >= 3_000,
-                heatProtected = snapshot.burrowed,
-                weather = snapshot.weatherAt?.let { ReminderWeather(it, snapshot.weatherSafe) },
-                lastActiveAt = lastActive,
-                lastNudge = store.lastNudge?.let { ReminderStamp(it.atZone(snapshot.zone).toLocalDate().toString(), it) },
-            ))
-            if (decision != ReminderDecision.ALLOW) return@withLock Result.success()
+            val owner = settings.creds
+            val server = settings.server
+            val generation = store.sourceGeneration
+            val direct = store.enabled
+            if (!sourceAllowed(store, direct)) return@withLock Result.success()
+            val snapshot = OwnerStateClient.read(settings)
+            val observedAt = Instant.now()
+            // HC supplies no immediate hardware event. A fresh last-hour read
+            // conservatively suppresses a note when any selected-source steps exist.
+            val healthMoved = !direct && HealthSteps(applicationContext).readWindow(
+                DayWindow(observedAt.minusSeconds(3_600), observedAt, snapshot.zone), background = true) > 0
             val manager = applicationContext.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(NotificationChannel(CHANNEL, "Quiet companion notes", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Optional, at most one daytime note. Never a sound or vibration."
@@ -54,12 +51,38 @@ class CompanionReminderWorker(context: Context, parameters: WorkerParameters) : 
                 .setContentText("If a gentle wander fits your day, Truffle can keep you company. Rest is welcome too.")
                 .setContentIntent(open).setAutoCancel(true).setOnlyAlertOnce(true)
                 .setVisibility(Notification.VISIBILITY_PRIVATE).build()
-            // Claim before posting. A crash may skip a note but can never duplicate it.
-            if (!store.nudged(now)) return@withLock Result.success()
-            manager.notify(32, notification)
+            // Source changes serialize with the final recheck and claim. Network
+            // reads above do not hold up a manual feed or a source switch.
+            FeedGate.mutex.withLock post@ {
+                if (owner != settings.creds || server != settings.server || generation != store.sourceGeneration ||
+                    direct != store.enabled || !sourceAllowed(store, direct)) return@post
+                val now = Instant.now()
+                val lastActive = listOfNotNull(store.lastActive, store.lastMovementAt,
+                    observedAt.takeIf { healthMoved }).maxOrNull()
+                val decision = ReminderPolicy.evaluate(ReminderContext(
+                    now, snapshot.zone, optedIn = store.reminders,
+                    notificationsAllowed = notificationsAllowed(applicationContext),
+                    activityPermission = true, trackingEnabled = true,
+                    alive = !snapshot.dead, wellFed = snapshot.wellFed,
+                    heatProtected = snapshot.burrowed,
+                    weather = snapshot.weatherAt?.let { ReminderWeather(it, snapshot.weatherSafe) },
+                    lastActiveAt = lastActive,
+                    lastNudge = store.lastNudge?.let { ReminderStamp(it.atZone(snapshot.zone).toLocalDate().toString(), it) },
+                ))
+                if (decision != ReminderDecision.ALLOW) return@post
+                // Claim before posting. A crash may skip a note but cannot duplicate it.
+                if (store.nudged(now)) manager.notify(32, notification)
+            }
             Result.success()
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { Result.success() } // No retry/escalation of a missed nudge.
+    }
+
+    private suspend fun sourceAllowed(store: NativeWalkStore, direct: Boolean): Boolean {
+        if (direct && !store.boundTo(FeedSettings(applicationContext))) return false
+        val health = if (!direct && !store.paused) HealthSteps(applicationContext).access() else null
+        return reminderSourceAllowed(direct, store.paused, NativeTracking.permitted(applicationContext),
+            health?.stepsGranted == true, health?.backgroundSupported == true, health?.backgroundGranted == true)
     }
 
     companion object {

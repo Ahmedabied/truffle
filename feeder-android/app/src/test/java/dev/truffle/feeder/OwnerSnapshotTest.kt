@@ -45,4 +45,33 @@ class OwnerSnapshotTest {
         val b = body(); b.getJSONObject("state").put("steps_today", -1)
         parseOwnerSnapshot(b.toString(), now)
     }
+
+    @Test fun `v2 is well fed at absolute food threshold even with expanded capacity`() {
+        val b = body().put("energy_pct", 4)
+        b.getJSONObject("state").put("energy_version", 2).put("energy", 1_500)
+        assertTrue(parseOwnerSnapshot(b.toString(), now).wellFed)
+        b.getJSONObject("state").put("energy", 1_499)
+        assertFalse(parseOwnerSnapshot(b.toString(), now).wellFed)
+        b.put("energy_pct", 100)
+        assertFalse(parseOwnerSnapshot(b.toString(), now).wellFed)
+        b.getJSONObject("state").put("steps_today", 3_000)
+        assertTrue(parseOwnerSnapshot(b.toString(), now).wellFed)
+    }
+
+    @Test fun `legacy well fed threshold still uses percentage or steps`() {
+        val b = body().put("energy_pct", 50)
+        assertTrue(parseOwnerSnapshot(b.toString(), now).wellFed)
+        b.put("energy_pct", 49)
+        assertFalse(parseOwnerSnapshot(b.toString(), now).wellFed)
+        b.getJSONObject("state").put("steps_today", 3_000)
+        assertTrue(parseOwnerSnapshot(b.toString(), now).wellFed)
+    }
+
+    @Test fun `missing or malformed v2 food conservatively suppresses notes`() {
+        val b = body()
+        b.getJSONObject("state").put("energy_version", 2)
+        assertTrue(parseOwnerSnapshot(b.toString(), now).wellFed)
+        b.getJSONObject("state").put("energy", -1)
+        assertTrue(parseOwnerSnapshot(b.toString(), now).wellFed)
+    }
 }
