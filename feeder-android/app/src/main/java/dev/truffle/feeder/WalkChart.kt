@@ -15,6 +15,29 @@ data class WalkStats(val avg7: Long?, val best: WalkDay?, val streak: Int)
 
 data class WalkPeriod(val total: Long?, val average: Long?, val recordedDays: Int, val best: WalkDay?)
 
+/** A late result or error from a previous walking source must not replace its successor. */
+class WalkReadState {
+    private var source: String? = null
+    private var sequence = 0L
+    private var pending: Long? = null
+
+    fun select(next: String): Boolean {
+        if (source == next) return false
+        source = next
+        pending = null
+        return true
+    }
+
+    fun begin(): Long? {
+        if (pending != null) return null
+        return (++sequence).also { pending = it }
+    }
+
+    fun accepts(request: Long, currentSource: String): Boolean = pending == request && source == currentSource
+
+    fun finish(request: Long) { if (pending == request) pending = null }
+}
+
 /**
  * Pure text builders for the Walk screen. Fixed numbers in, fixed lines out.
  * Steps and distance only, on purpose.

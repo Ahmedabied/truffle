@@ -16,6 +16,7 @@ import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -45,7 +46,8 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
     val view: View = ScrollView(activity).apply { setBackgroundColor(palette.background); addView(content) }
     private val store = NativeWalkStore(activity)
     private var renderingSource = false
-    private var reading = false
+    private val reads = WalkReadState()
+    private var healthRead: Job? = null
     private var period = 1
     private var today = LocalDate.now()
     private var hours = emptyList<Long>()
@@ -229,7 +231,15 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
         }
     }
 
+    private fun sourceKey(): String = "${store.directSelected}:${store.sourceGeneration}"
+
     fun load() {
+        if (reads.select(sourceKey())) {
+            healthRead?.cancel()
+            hours = emptyList(); days = emptyList(); distance = null; hasData = false
+            grant.isVisible = false
+            renderDiary()
+        }
         renderSource()
         if (store.directSelected) {
             val state = store.state()
@@ -244,24 +254,35 @@ class WalkScreen(private val activity: MainActivity, private val health: HealthS
             renderDiary()
             return
         }
-        if (reading) return
-        reading = true
+        val request = reads.begin() ?: return
         note.text = "Reading Health Connect…"
-        activity.lifecycleScope.launch {
+        healthRead = activity.lifecycleScope.launch {
             try {
                 val data = health.readWalk()
-                if (store.directSelected) return@launch
+                if (!reads.accepts(request, sourceKey())) return@launch
                 hours = data.hourly; days = data.days; today = data.today; distance = data.distanceMeters
                 hasData = true; grant.isVisible = false
                 note.text = "Health Connect reports steps from connected apps. Zero means no steps reported, not proof of no walking. Today's record is still in progress. " +
                     if (distance == null) "Distance appears only with permission and records." else "Only the daily step total feeds Truffle."
                 renderDiary()
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (missing: GrantPermissionException) { showGrant(missing.message.orEmpty()) }
-            catch (_: SecurityException) { showGrant("Allow Health Connect steps to see this diary, or choose phone counting below.") }
-            catch (unavailable: HealthUnavailableException) { hasData = false; grant.isVisible = false; note.text = unavailable.message.orEmpty(); renderDiary() }
-            catch (_: Exception) { note.text = "The diary could not refresh. Your last view stays here; try again in a moment." }
-            finally { reading = false }
+            catch (missing: GrantPermissionException) {
+                if (reads.accepts(request, sourceKey())) showGrant(missing.message.orEmpty())
+            }
+            catch (_: SecurityException) {
+                if (reads.accepts(request, sourceKey())) showGrant("Allow Health Connect steps to see this diary, or choose phone counting below.")
+            }
+            catch (unavailable: HealthUnavailableException) {
+                if (reads.accepts(request, sourceKey())) {
+                    hasData = false; grant.isVisible = false; note.text = unavailable.message.orEmpty(); renderDiary()
+                }
+            }
+            catch (_: Exception) {
+                if (reads.accepts(request, sourceKey())) note.text = if (hasData)
+                    "The diary could not refresh. Your last view stays here; try again in a moment."
+                    else "The diary could not load. Tap Refresh to try again, or choose another source below."
+            }
+            finally { reads.finish(request) }
         }
     }
 

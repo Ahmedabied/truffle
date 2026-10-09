@@ -31,6 +31,10 @@ The main problems were misleading period context and incomplete coverage.
   accessible description gives each date/hour and its recorded total.
 - A native diary whose stored zone differs from the active zone is no longer
   presented under the new zone label. It waits for a record in that zone.
+- Source changes clear the displayed diary and cancel any old Health Connect
+  read. A request/source-session fence rejects old success, permission and error
+  callbacks, including a switch away from Health Connect and back. A failed
+  first read therefore cannot relabel the previous source's totals.
 
 Changes are confined to `WalkScreen.kt`, `AsciiWalkChartView.kt`, `WalkChart.kt`
 and the related JVM tests. The screen still reads phone records in the pinned
@@ -60,7 +64,8 @@ unpaired World panel opened without creating a pet. ADB always included the
 emulator serial; no personal phone was addressed.
 
 New JVM cases cover missing-versus-zero records, unknown totals/averages,
-period boundaries, exclusion of future dates, and multi-million step display.
+period boundaries, exclusion of future dates, multi-million step display and
+late read/error fencing through source switches.
 Existing ASCII tests retain the seven-bit glyph contract. Local
 `git diff --check -- feeder-android` passed. No Android build ran on the laptop.
 
