@@ -64,6 +64,10 @@ So this is the honest version: one real walk, one real dinner, and no evidence e
 
 ## Demo
 
+![The sample world: Truffle sleeps, wakes on a 4,000-step walk, answers a question, offers a moment away, shows a gift, then burrows on a heat day](https://raw.githubusercontent.com/Ahmedabied/truffle/main/docs/assets/demo/sample-world.gif)
+
+*36 seconds of the public sample world at phone size. Steps and replies are simulated.*
+
 **[Try the sample world](https://truffle-web.ahmed-abied.workers.dev/demo?mock=1).** No phone, no account, no model call:
 
 1. Tap **Try a 4,000-step walk** to wake Truffle with simulated steps.
@@ -74,7 +78,6 @@ So this is the honest version: one real walk, one real dinner, and no evidence e
 
 The [live world](https://truffle-web.ahmed-abied.workers.dev) talks to the real fine-tuned model. The **[Android 0.4 APK](https://github.com/Ahmedabied/truffle/releases/tag/v0.4.0-app)** is a public test build with a published checksum.
 
-[VIDEO: embed your recording here once it's uploaded.]
 
 ## Code
 
