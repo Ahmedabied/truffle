@@ -51,7 +51,7 @@ Live trained/fallback timing, independent model judging and blind Arabic
 preference remain unmeasured. Keep existing evaluation limitations visible.
 
 The DEV entry is published: https://dev.to/ahmedabied/i-built-an-ai-pet-that-can-only-think-as-far-as-i-walk-2l40
-Only optional follow-up: embed Ahmed's video via Edit before the deadline.
+The demo GIF (docs/assets/demo, made headlessly from the public sample) is embedded.
 Commits after Monday 10:59 Oman must be disclosed in the README.
 
 ## Safe continuation

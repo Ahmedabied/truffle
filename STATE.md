@@ -78,8 +78,8 @@ are complete; the [roster](docs/reviews/fleet25-roster.md) records actual work.
 - **Entry published** on DEV at 2026-10-11T05:38:38Z (09:38 Oman), at Ahmed's
   explicit request, through his logged-in browser: https://dev.to/ahmedabied/i-built-an-ai-pet-that-can-only-think-as-far-as-i-walk-2l40
   Tags devchallenge, hf26challenge, gemma, android. Source: docs/post_draft.md.
-  Includes Ahmed's real Friday date walk. No video yet; adding one is optional
-  via Edit before Monday 10:59 Oman. Any commit after that must be noted in README.
+  Includes Ahmed's real Friday date walk. A 36-second recording of the public
+  sample world (docs/assets/demo/sample-world.gif) was added at 05:46 UTC. Any commit after that must be noted in README.
 
 ## Operating constraints
 

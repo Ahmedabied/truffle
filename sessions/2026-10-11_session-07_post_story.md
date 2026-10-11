@@ -40,3 +40,11 @@ Ahmed approved publishing in chat. Claude filled DEV's editor on the laptop desk
 (title, four tags, body without the video slot), fixed an over-wide diagram after
 preview, saved a draft, then published. Public URL, confirmed via the DEV API:
 https://dev.to/ahmedabied/i-built-an-ai-pet-that-can-only-think-as-far-as-i-walk-2l40 (published 2026-10-11T05:38:38Z).
+
+## Demo recording
+
+At Ahmed's request, Claude recorded the public `/demo?mock=1` sample at 390x844 with
+headless system Chrome (CDP screencast; `docs/assets/demo/record.cjs`), 36 seconds,
+no console errors: asleep, 4,000-step walk, one sample reply and charge, Take a moment,
+gift preview, heat-day burrow. GIF (2.1 MB) and MP4 are in docs/assets/demo. The live
+post was edited to embed the GIF; DEV API confirmed the edit at 2026-10-11T05:46:51Z.
