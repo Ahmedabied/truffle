@@ -85,11 +85,14 @@ Good places to start: [the food rules written as test cases](https://github.com/
 ## How I Built It
 
 ```text
-Phone step counter → Android app → Cloudflare Worker + Durable Object → Gemma 4 + LoRA
-                                          ↕                                   │
-                                   food, memory, weather                      │
-                                          ↕                                   ↓
-                                     ASCII world  ←──────────────────────── reply
+phone step counter
+        ↓
+Android app ──→ Cloudflare Worker
+                (food, memory, weather)
+                        ↓ price + state
+                Gemma 4 + Truffle LoRA
+                        ↓ reply
+                   ASCII world
 ```
 
 ### Rules in code, soul in weights
