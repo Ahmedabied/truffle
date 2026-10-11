@@ -48,3 +48,5 @@ headless system Chrome (CDP screencast; `docs/assets/demo/record.cjs`), 36 secon
 no console errors: asleep, 4,000-step walk, one sample reply and charge, Take a moment,
 gift preview, heat-day burrow. GIF (2.1 MB) and MP4 are in docs/assets/demo. The live
 post was edited to embed the GIF; DEV API confirmed the edit at 2026-10-11T05:46:51Z.
+
+Cover image (docs/assets/demo/cover.png, cropped from the public sample world after the 4,000-step walk) uploaded at Ahmed's request; DEV API confirmed it at 2026-10-11T05:51:10Z.
