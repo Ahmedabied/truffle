@@ -1,6 +1,6 @@
 ---
 title: "I built an AI pet that can only think as far as I walk"
-published: false
+published: true
 tags: devchallenge, hf26challenge, gemma, android
 ---
 

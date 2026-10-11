@@ -75,12 +75,11 @@ are complete; the [roster](docs/reviews/fleet25-roster.md) records actual work.
   Faster live replies and model-made gifts remain unverified/disabled.
 - The r16 evaluation is a 170-prompt same-base comparison, not independent
   model judging. Blind human Arabic review and habit change remain unproved.
-- DEV [draft](docs/post_draft.md) rewritten October 11 as a story: "I built an
-  AI pet that can only think as far as I walk." It includes Ahmed's own outdoor
-  use on Friday, October 9: a walk to a nearby restaurant and back on a date,
-  phone in pocket, no photos, no chat with Truffle afterwards. No step count
-  for that walk was read back. Still `published: false`; only the video embed
-  slot remains. Ahmed publishes it himself.
+- **Entry published** on DEV at 2026-10-11T05:38:38Z (09:38 Oman), at Ahmed's
+  explicit request, through his logged-in browser: https://dev.to/ahmedabied/i-built-an-ai-pet-that-can-only-think-as-far-as-i-walk-2l40
+  Tags devchallenge, hf26challenge, gemma, android. Source: docs/post_draft.md.
+  Includes Ahmed's real Friday date walk. No video yet; adding one is optional
+  via Edit before Monday 10:59 Oman. Any commit after that must be noted in README.
 
 ## Operating constraints
 

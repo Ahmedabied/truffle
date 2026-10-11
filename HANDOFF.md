@@ -50,10 +50,9 @@ trained-provider routing deadlines do not establish total response latency.
 Live trained/fallback timing, independent model judging and blind Arabic
 preference remain unmeasured. Keep existing evaluation limitations visible.
 
-The DEV article remains unpublished. Session 07 rewrote it as a story around
-Ahmed's real Friday walk (a date, restaurant and back, no photos, no chat after).
-Do not add a step count, photos or Truffle reactions for that walk unless Ahmed
-supplies them. Only the video embed slot remains. Ahmed publishes it himself.
+The DEV entry is published: https://dev.to/ahmedabied/i-built-an-ai-pet-that-can-only-think-as-far-as-i-walk-2l40
+Only optional follow-up: embed Ahmed's video via Edit before the deadline.
+Commits after Monday 10:59 Oman must be disclosed in the README.
 
 ## Safe continuation
 

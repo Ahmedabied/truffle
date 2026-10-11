@@ -33,3 +33,10 @@ his cat. No step count was read back for that walk. All 17 links returned 200.
 
 Ahmed records and uploads a short video, the embed replaces the `[VIDEO]` slot, then
 Ahmed publishes on DEV before Monday 10:59 Oman.
+
+## Published
+
+Ahmed approved publishing in chat. Claude filled DEV's editor on the laptop desktop
+(title, four tags, body without the video slot), fixed an over-wide diagram after
+preview, saved a draft, then published. Public URL, confirmed via the DEV API:
+https://dev.to/ahmedabied/i-built-an-ai-pet-that-can-only-think-as-far-as-i-walk-2l40 (published 2026-10-11T05:38:38Z).
