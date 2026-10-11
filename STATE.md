@@ -1,6 +1,6 @@
 # STATE
 
-Updated October 9, 2026. Decision 0023 is implemented and deployed. This
+Updated October 11, 2026. Decision 0023 is implemented and deployed. This
 supersedes the earlier exploration-only status. All 25 Astra Ultra assignments
 are complete; the [roster](docs/reviews/fleet25-roster.md) records actual work.
 
@@ -75,8 +75,12 @@ are complete; the [roster](docs/reviews/fleet25-roster.md) records actual work.
   Faster live replies and model-made gifts remain unverified/disabled.
 - The r16 evaluation is a 170-prompt same-base comparison, not independent
   model judging. Blind human Arabic review and habit change remain unproved.
-- DEV [draft](docs/post_draft.md) remains `published: false`. No article
-  publication or external messaging occurred. [Checklist](docs/submission_checklist.md).
+- DEV [draft](docs/post_draft.md) rewritten October 11 as a story: "I built an
+  AI pet that can only think as far as I walk." It includes Ahmed's own outdoor
+  use on Friday, October 9: a walk to a nearby restaurant and back on a date,
+  phone in pocket, no photos, no chat with Truffle afterwards. No step count
+  for that walk was read back. Still `published: false`; only the video embed
+  slot remains. Ahmed publishes it himself.
 
 ## Operating constraints
 
